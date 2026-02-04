@@ -1,0 +1,172 @@
+---
+alwaysApply: true
+---
+
+Estou construindo um assistente jurídico baseado em provas, não um chatbot esperto.Subject: Cursor Prompt — ContractAI Review MVP+ (multi-tenant RBAC, retention, privacy, audit, secure pipeline, RAG citations, queues)
+Atualize/implemente o MVP "ContractAI Review" incorporando os requisitos abaixo. Priorize segurança, isolamento multi-tenant e respostas com evidências (citações). Entregue um app funcional end-to-end.
+OBJETIVO
+App web para upload/visualização de contratos, chat jurídico com RAG (contrato + fontes oficiais por país), redlines e versionamento. Agora com multi-tenant (workspace), privacidade, retenção e trilha de auditoria.
+ARQUITETURA (OBRIGATÓRIA)
+- Backend: serviço NestJS separado (API REST + workers BullMQ). Frontend: SPA Angular consumindo essa API, empacotada com Capacitor para web e mobile (iOS/Android).
+1) RAG em dois níveis:
+   - Contract RAG: chunks por arquivo/página/parágrafo, embeddings e retrieval top-k.
+   - Legal RAG: base por país/jurisdição com fontes oficiais (metadados: country, jurisdiction, source_type, language, last_updated, url).
+2) Toda resposta factual deve citar evidências:
+   - Sempre retornar citations[] (fileName, pageNumber, paragraph/span ids, quoteSnippet) para contrato.
+   - Quando usar direito/lei/guidance: citations legais (sourceName, section/article, url).
+   - Se não encontrar evidência suficiente: responder "NOT FOUND" e sugerir onde procurar/perguntar.
+3) Multilíngue (EN/ES/PT):
+   - Detectar idioma do contrato e do usuário; responder no idioma do usuário.
+   - Redlines no idioma original do contrato.
+   - Citações legais mantêm idioma original + breve explicação traduzida.
+
+
+
+STACK (monorepo: apps/api, apps/web)
+- Frontend: Angular (última LTS) + Capacitor (web + iOS/Android)
+- Backend: NestJS (API REST + workers BullMQ)
+- DB: Postgres + TypeORM + pgvector (extensão ou typeorm-pgvector)
+- Storage: S3/R2 compatível (dev pode usar local, mas com interface)
+- Queue/Worker: BullMQ + Redis (OCR/embeddings/parsing pesado)
+- OCR: Tesseract (em worker)
+- PDF: pdf.js
+- IA: OpenAI Responses API (RAG + tools)
+- API: REST como principal; GraphQL opcional para mobile e subscriptions (detalhar em backlog).
+MULTI-TENANT / WORKSPACE ISOLATION (OBRIGATÓRIO)
+- Modelos:
+  - Workspace(id, name, createdAt)
+  - WorkspaceMember(workspaceId, userId, role)
+- Isolamento estrito:
+  - Todo recurso (documents/files/chat/versions/audit/logical sources) pertence a workspaceId.
+  - Todas as queries filtram por workspaceId e enforce em nível de API.
+- RBAC (mínimo):
+  - OWNER: tudo (billing futuro, delete workspace, retention settings)
+  - ADMIN: gerenciar membros, ver tudo, deletar docs
+  - MEMBER: upload, chat, redline, download próprios + docs compartilhados
+  - VIEWER: somente view/download (sem redline)
+- Enforce RBAC em middleware/guard central.
+RETENTION POLICY + HARD DELETE (OBRIGATÓRIO)
+- Controles por workspace (config):
+  - default file retention: 30 dias
+  - default text+embeddings retention: 90 dias
+  - permitir override (dentro de limites)
+- Implementar:
+  - Scheduled purge job (diário) que remove:
+    - arquivos expirados (hard delete no storage)
+    - textos/chunks/embeddings expirados
+    - mensagens/versões conforme política (se aplicável)
+- Endpoints de hard delete:
+  - DELETE /api/workspaces/:id/documents/:docId (hard delete completo)
+  - DELETE /api/account (hard delete do usuário + dados associados onde permitido)
+- Garantir idempotência e auditoria do delete.
+PRIVACY PANEL + DSAR-LITE + NO-LOGS (OBRIGATÓRIO)
+- Página "Privacy" por workspace e por usuário:
+  - DSAR-lite export: baixar JSON/ZIP contendo:
+    - chat messages
+    - versions metadata
+    - prompts de redline (sem conteúdo do contrato se no-logs)
+  - "No-logs option":
+    - modo em que conteúdos sensíveis NÃO são persistidos (ou são minimizados):
+      - não guardar conteúdo do documento após processamento OU não guardar chat/versões (configurável)
+    - ainda permitir funcionamento com sessão temporária e purge acelerado
+  - Mostrar claramente o que é armazenado e por quanto tempo.
+SEGURANÇA (OBRIGATÓRIO)
+- TLS in transit (assumir deploy com HTTPS) e preparar headers de segurança.
+- Encrypt at rest:
+  - Usar SSE em S3/R2 quando disponível (config) e/ou envelope encryption (chave por workspace).
+  - Chaves: KMS futuro; no MVP usar libsodium/crypto com master key via env e key rotation placeholder.
+- Logs:
+  - Nunca logar conteúdo do contrato, chunks completos, ou mensagens do usuário em plaintext.
+  - Logar apenas metadados (ids, tamanhos, tempos, status).
+- Audit logs (obrigatório):
+  - Registrar eventos: open/view, download, chat_query, redline_generate, delete, export_privacy
+  - AuditLog(workspaceId, actorUserId, action, targetType, targetId, ip, userAgent, createdAt, metadata safe)
+  - UI simples para filtrar por ação/usuário/data.
+UPLOAD PIPELINE SEGURO (OBRIGATÓRIO)
+- Validações:
+  - limite de tamanho (ex.: 25MB por arquivo, configurável)
+  - mime sniffing (não confiar em Content-Type)
+  - extensão permitida (pdf, docx, txt, png, jpg)
+- Parser isolation:
+  - parsing/OCR em worker separado (process isolado)
+  - timeouts e limites de memória
+- Future-ready malware scan:
+  - criar interface "scanFile(file)" com noop no MVP (flag) para plugar ClamAV depois.
+- Quarentena:
+  - arquivos só ficam "available" após validação e processamento.
+EVIDENCE-BASED ANSWERS + CONFIDENCE + JURISDICTION RESOLVER (OBRIGATÓRIO)
+- Todas as respostas devem retornar:
+  - answerText (no idioma do usuário)
+  - confidence: {high|medium|low} com regra:
+    - High: múltiplas citações diretas e claras
+    - Medium: evidência parcial / cláusula ambígua
+    - Low: inferência, falta de jurisdição, ou ausência de base legal/contratual direta
+  - citations[] conforme acima
+  - "notFound": boolean quando aplicável
+- Jurisdiction auto-resolver:
+  - 1) extrair governing law do contrato (heurística + pattern)
+  - 2) se ausente, inferir por sinais (endereço, moeda, idioma, referências legais)
+  - 3) se ainda incerto -> perguntar ao usuário antes de aplicar legal RAG
+  - Persistir "resolvedJurisdiction" no Document com status: explicit|inferred|unknown
+REDLINES — PLAYBOOKS + DIFF UI (OBRIGATÓRIO)
+- Playbooks:
+  - Balanced
+  - Conservative (minimiza mudanças, linguagem neutra)
+  - Client-friendly (mais favorável ao cliente)
+- UI:
+  - side-by-side diff para cada versão
+  - aceitar/rejeitar mudanças (granular por bloco)
+  - ao aplicar accept/reject, gerar nova versão (vN+1) mantendo histórico
+QUEUE HEAVY TASKS + PROGRESS + RETRIES + RATE LIMITS (OBRIGATÓRIO)
+- Colocar em fila:
+  - OCR
+  - parsing
+  - chunking + embeddings
+- Job model:
+  - DocumentJob(docId, type, status, progress, attempts, lastError, createdAt, updatedAt)
+- UI de progresso no documento
+- Retries com backoff e DLQ simples
+- Rate limits e token budgets:
+  - por usuário e por workspace (ex.: req/min e tokens/dia)
+  - bloquear abuso com mensagem clara
+ENDPOINTS (mínimo)
+- Workspaces:
+  - POST /api/workspaces
+  - POST /api/workspaces/:id/members
+- Documents:
+  - POST /api/workspaces/:id/documents
+  - POST /api/workspaces/:id/documents/:docId/files
+  - GET  /api/workspaces/:id/documents/:docId
+  - DELETE /api/workspaces/:id/documents/:docId (hard delete)
+- Chat/Redline:
+  - POST /api/workspaces/:id/documents/:docId/chat
+  - POST /api/workspaces/:id/documents/:docId/redline (playbook param)
+- Privacy:
+  - GET /api/workspaces/:id/privacy/export (DSAR-lite)
+  - POST /api/workspaces/:id/privacy/no-logs (toggle setting)
+  - DELETE /api/account (hard delete)
+- Audit:
+  - GET /api/workspaces/:id/audit
+ENTREGÁVEIS
+1) Repo com README (setup local + env vars)
+2) docker-compose (app + postgres + redis)
+3) TypeORM entities + migrações
+4) UI completa: workspace switcher, upload/viewer, chat, versions diff accept/reject, privacy panel, audit log
+5) Worker BullMQ rodando e processando OCR/embeddings com progresso
+6) Exemplos de Legal Sources indexados (pelo menos 1 país EU + 1 país nacional)
+7) Garantir "no plaintext content logging" (auditar console/loggers)
+PRIORIDADES DE IMPLEMENTAÇÃO
+1) Workspace/RBAC e isolamento por workspaceId
+2) Upload seguro + pipeline em fila
+3) RAG com citações + NOT FOUND
+4) Jurisdiction resolver + confidence
+5) Retention + purge job + hard delete
+6) Privacy panel + DSAR-lite + no-logs
+7) Audit logs
+8) Redline playbooks + accept/reject diff
+Comandos para rodar no monorepo (raiz e apps):
+- pnpm install (na raiz)
+- Em apps/api: rodar migrações TypeORM (ex.: pnpm typeorm migration:run ou script NestJS) e subir API (pnpm start:api) e worker (pnpm start:worker)
+- Em apps/web: pnpm start ou pnpm dev (Angular)
+- docker-compose up para Postgres + Redis
+Fluxo de teste completo: workspace, upload, chat com citações, redline com playbook, versões, export privacidade e purge.

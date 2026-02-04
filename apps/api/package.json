@@ -1,0 +1,14 @@
+{
+  "name": "api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ContractAI Review — NestJS API + workers",
+  "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:worker": "nest start --entryFile worker",
+    "migration:run": "typeorm migration:run -d src/data-source.js",
+    "migration:generate": "typeorm migration:generate -d src/data-source.js"
+  }
+}

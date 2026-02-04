@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Env (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Build / output
+dist/
+build/
+.angular/
+*.tsbuildinfo
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Docker
+.docker/
+
+# Test / coverage
+coverage/
+.nyc_output/

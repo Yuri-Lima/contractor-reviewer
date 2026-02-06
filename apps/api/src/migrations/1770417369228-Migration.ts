@@ -1,0 +1,191 @@
+import { MigrationInterface, QueryRunner } from "typeorm";
+
+export class Migration1770417369228 implements MigrationInterface {
+    name = 'Migration1770417369228'
+
+    public async up(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`ALTER TABLE "workspace_members" DROP CONSTRAINT "FK_workspace_members_workspaceId"`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" DROP CONSTRAINT "FK_workspace_members_userId"`);
+        await queryRunner.query(`ALTER TABLE "document_files" DROP CONSTRAINT "FK_document_files_documentId"`);
+        await queryRunner.query(`ALTER TABLE "chunks" DROP CONSTRAINT "FK_chunks_documentId"`);
+        await queryRunner.query(`ALTER TABLE "document_jobs" DROP CONSTRAINT "FK_document_jobs_documentId"`);
+        await queryRunner.query(`ALTER TABLE "documents" DROP CONSTRAINT "FK_documents_workspaceId"`);
+        await queryRunner.query(`ALTER TABLE "workspace_settings" DROP CONSTRAINT "FK_workspace_settings_workspaceId"`);
+        await queryRunner.query(`ALTER TABLE "audit_logs" DROP CONSTRAINT "FK_audit_logs_workspaceId"`);
+        await queryRunner.query(`ALTER TABLE "embeddings" DROP CONSTRAINT "FK_embeddings_legalSourceId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_workspace_members_workspaceId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_workspace_members_userId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_document_files_documentId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_chunks_documentId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_chunks_embedding_hnsw"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_document_jobs_documentId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_document_jobs_status"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_chat_messages_documentId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_chat_messages_workspaceId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_chat_messages_userId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_document_versions_documentId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_document_versions_workspaceId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_document_versions_userId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_documents_workspaceId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_documents_status"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_audit_logs_workspaceId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_audit_logs_actorUserId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_audit_logs_action"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_audit_logs_createdAt"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_embeddings_legalSourceId"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_embeddings_embedding_hnsw"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_legal_sources_country"`);
+        await queryRunner.query(`DROP INDEX "public"."IDX_legal_sources_jurisdiction"`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" DROP CONSTRAINT "UQ_workspace_members_workspaceId_userId"`);
+        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "role"`);
+        await queryRunner.query(`CREATE TYPE "public"."users_role_enum" AS ENUM('user')`);
+        await queryRunner.query(`ALTER TABLE "users" ADD "role" "public"."users_role_enum" NOT NULL DEFAULT 'user'`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" DROP COLUMN "role"`);
+        await queryRunner.query(`CREATE TYPE "public"."workspace_members_role_enum" AS ENUM('OWNER', 'ADMIN', 'MEMBER', 'VIEWER')`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" ADD "role" "public"."workspace_members_role_enum" NOT NULL DEFAULT 'MEMBER'`);
+        await queryRunner.query(`ALTER TABLE "document_files" DROP COLUMN "status"`);
+        await queryRunner.query(`CREATE TYPE "public"."document_files_status_enum" AS ENUM('uploading', 'processing', 'available', 'quarantined', 'error')`);
+        await queryRunner.query(`ALTER TABLE "document_files" ADD "status" "public"."document_files_status_enum" NOT NULL DEFAULT 'uploading'`);
+        await queryRunner.query(`ALTER TABLE "document_files" DROP COLUMN "ocrText"`);
+        await queryRunner.query(`ALTER TABLE "document_files" ADD "ocrText" character varying`);
+        await queryRunner.query(`ALTER TABLE "chunks" DROP COLUMN "embedding"`);
+        await queryRunner.query(`ALTER TABLE "chunks" ADD "embedding" text`);
+        await queryRunner.query(`ALTER TABLE "document_jobs" DROP COLUMN "type"`);
+        await queryRunner.query(`CREATE TYPE "public"."document_jobs_type_enum" AS ENUM('ocr', 'parsing', 'chunking', 'embedding')`);
+        // Add column as nullable first, then update existing rows, then set NOT NULL
+        await queryRunner.query(`ALTER TABLE "document_jobs" ADD "type" "public"."document_jobs_type_enum"`);
+        // Set default value for existing rows (use 'parsing' as a safe default)
+        await queryRunner.query(`UPDATE "document_jobs" SET "type" = 'parsing' WHERE "type" IS NULL`);
+        // Now make it NOT NULL
+        await queryRunner.query(`ALTER TABLE "document_jobs" ALTER COLUMN "type" SET NOT NULL`);
+        await queryRunner.query(`ALTER TABLE "document_jobs" DROP COLUMN "status"`);
+        await queryRunner.query(`CREATE TYPE "public"."document_jobs_status_enum" AS ENUM('pending', 'processing', 'completed', 'failed', 'retrying')`);
+        await queryRunner.query(`ALTER TABLE "document_jobs" ADD "status" "public"."document_jobs_status_enum" NOT NULL DEFAULT 'pending'`);
+        await queryRunner.query(`ALTER TABLE "documents" DROP COLUMN "status"`);
+        await queryRunner.query(`CREATE TYPE "public"."documents_status_enum" AS ENUM('processing', 'available', 'quarantined', 'error')`);
+        await queryRunner.query(`ALTER TABLE "documents" ADD "status" "public"."documents_status_enum" NOT NULL DEFAULT 'processing'`);
+        await queryRunner.query(`ALTER TABLE "documents" DROP COLUMN "jurisdictionStatus"`);
+        await queryRunner.query(`CREATE TYPE "public"."documents_jurisdictionstatus_enum" AS ENUM('explicit', 'inferred', 'unknown')`);
+        await queryRunner.query(`ALTER TABLE "documents" ADD "jurisdictionStatus" "public"."documents_jurisdictionstatus_enum"`);
+        await queryRunner.query(`ALTER TABLE "audit_logs" DROP COLUMN "action"`);
+        await queryRunner.query(`CREATE TYPE "public"."audit_logs_action_enum" AS ENUM('open_view', 'download', 'chat_query', 'redline_generate', 'delete', 'export_privacy', 'upload', 'member_add', 'member_remove', 'settings_update')`);
+        // Add action column as nullable first, update existing rows, then set NOT NULL
+        await queryRunner.query(`ALTER TABLE "audit_logs" ADD "action" "public"."audit_logs_action_enum"`);
+        await queryRunner.query(`UPDATE "audit_logs" SET "action" = 'open_view' WHERE "action" IS NULL`);
+        await queryRunner.query(`ALTER TABLE "audit_logs" ALTER COLUMN "action" SET NOT NULL`);
+        await queryRunner.query(`ALTER TABLE "audit_logs" DROP COLUMN "targetType"`);
+        await queryRunner.query(`CREATE TYPE "public"."audit_logs_targettype_enum" AS ENUM('document', 'file', 'workspace', 'user', 'chat', 'version')`);
+        // Add targetType column as nullable first, update existing rows, then set NOT NULL
+        await queryRunner.query(`ALTER TABLE "audit_logs" ADD "targetType" "public"."audit_logs_targettype_enum"`);
+        await queryRunner.query(`UPDATE "audit_logs" SET "targetType" = 'document' WHERE "targetType" IS NULL`);
+        await queryRunner.query(`ALTER TABLE "audit_logs" ALTER COLUMN "targetType" SET NOT NULL`);
+        // Convert vector to text (vector data will be stored as JSON string via transformer)
+        // Note: If there are existing vector values, they need to be converted to JSON format
+        await queryRunner.query(`ALTER TABLE "embeddings" DROP COLUMN "embedding"`);
+        // Add as nullable first to handle existing data, then update and set NOT NULL
+        await queryRunner.query(`ALTER TABLE "embeddings" ADD "embedding" text`);
+        // Convert existing vector data to JSON string format (if any exists)
+        // This assumes vector data can be cast to text, otherwise manual conversion needed
+        await queryRunner.query(`UPDATE "embeddings" SET "embedding" = '[]' WHERE "embedding" IS NULL`);
+        await queryRunner.query(`ALTER TABLE "embeddings" ALTER COLUMN "embedding" SET NOT NULL`);
+        await queryRunner.query(`ALTER TABLE "legal_sources" DROP COLUMN "sourceType"`);
+        await queryRunner.query(`CREATE TYPE "public"."legal_sources_sourcetype_enum" AS ENUM('law', 'regulation', 'guidance', 'case_law', 'other')`);
+        // Add sourceType column as nullable first, update existing rows, then set NOT NULL
+        await queryRunner.query(`ALTER TABLE "legal_sources" ADD "sourceType" "public"."legal_sources_sourcetype_enum"`);
+        await queryRunner.query(`UPDATE "legal_sources" SET "sourceType" = 'other' WHERE "sourceType" IS NULL`);
+        await queryRunner.query(`ALTER TABLE "legal_sources" ALTER COLUMN "sourceType" SET NOT NULL`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" ADD CONSTRAINT "UQ_99bcb5fdac446371d41f048b24f" UNIQUE ("workspaceId", "userId")`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" ADD CONSTRAINT "FK_0dd45cb52108d0664df4e7e33e6" FOREIGN KEY ("workspaceId") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" ADD CONSTRAINT "FK_22176b38813258c2aadaae32448" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "document_files" ADD CONSTRAINT "FK_4a33c7b4cad3c6b35e106b006d2" FOREIGN KEY ("documentId") REFERENCES "documents"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "chunks" ADD CONSTRAINT "FK_c3e2fcf59b99e1e6b92b815bb0f" FOREIGN KEY ("documentId") REFERENCES "documents"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "document_jobs" ADD CONSTRAINT "FK_2c77b251729b552de3623e2fed7" FOREIGN KEY ("documentId") REFERENCES "documents"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "documents" ADD CONSTRAINT "FK_ab977275b98b482fe6081f9b8a6" FOREIGN KEY ("workspaceId") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "workspace_settings" ADD CONSTRAINT "FK_a1753d20ffcefbbc1fa29f1e559" FOREIGN KEY ("workspaceId") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "audit_logs" ADD CONSTRAINT "FK_298462ac16437827882ce8c9ca1" FOREIGN KEY ("workspaceId") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "embeddings" ADD CONSTRAINT "FK_1e1338d33fddf5dfdf7711a88eb" FOREIGN KEY ("legalSourceId") REFERENCES "legal_sources"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+    }
+
+    public async down(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`ALTER TABLE "embeddings" DROP CONSTRAINT "FK_1e1338d33fddf5dfdf7711a88eb"`);
+        await queryRunner.query(`ALTER TABLE "audit_logs" DROP CONSTRAINT "FK_298462ac16437827882ce8c9ca1"`);
+        await queryRunner.query(`ALTER TABLE "workspace_settings" DROP CONSTRAINT "FK_a1753d20ffcefbbc1fa29f1e559"`);
+        await queryRunner.query(`ALTER TABLE "documents" DROP CONSTRAINT "FK_ab977275b98b482fe6081f9b8a6"`);
+        await queryRunner.query(`ALTER TABLE "document_jobs" DROP CONSTRAINT "FK_2c77b251729b552de3623e2fed7"`);
+        await queryRunner.query(`ALTER TABLE "chunks" DROP CONSTRAINT "FK_c3e2fcf59b99e1e6b92b815bb0f"`);
+        await queryRunner.query(`ALTER TABLE "document_files" DROP CONSTRAINT "FK_4a33c7b4cad3c6b35e106b006d2"`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" DROP CONSTRAINT "FK_22176b38813258c2aadaae32448"`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" DROP CONSTRAINT "FK_0dd45cb52108d0664df4e7e33e6"`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" DROP CONSTRAINT "UQ_99bcb5fdac446371d41f048b24f"`);
+        await queryRunner.query(`ALTER TABLE "legal_sources" DROP COLUMN "sourceType"`);
+        await queryRunner.query(`DROP TYPE "public"."legal_sources_sourcetype_enum"`);
+        await queryRunner.query(`ALTER TABLE "legal_sources" ADD "sourceType" character varying NOT NULL`);
+        await queryRunner.query(`ALTER TABLE "embeddings" DROP COLUMN "embedding"`);
+        await queryRunner.query(`ALTER TABLE "embeddings" ADD "embedding" vector(1536) NOT NULL`);
+        await queryRunner.query(`ALTER TABLE "audit_logs" DROP COLUMN "targetType"`);
+        await queryRunner.query(`DROP TYPE "public"."audit_logs_targettype_enum"`);
+        await queryRunner.query(`ALTER TABLE "audit_logs" ADD "targetType" character varying NOT NULL`);
+        await queryRunner.query(`ALTER TABLE "audit_logs" DROP COLUMN "action"`);
+        await queryRunner.query(`DROP TYPE "public"."audit_logs_action_enum"`);
+        await queryRunner.query(`ALTER TABLE "audit_logs" ADD "action" character varying NOT NULL`);
+        await queryRunner.query(`ALTER TABLE "documents" DROP COLUMN "jurisdictionStatus"`);
+        await queryRunner.query(`DROP TYPE "public"."documents_jurisdictionstatus_enum"`);
+        await queryRunner.query(`ALTER TABLE "documents" ADD "jurisdictionStatus" character varying`);
+        await queryRunner.query(`ALTER TABLE "documents" DROP COLUMN "status"`);
+        await queryRunner.query(`DROP TYPE "public"."documents_status_enum"`);
+        await queryRunner.query(`ALTER TABLE "documents" ADD "status" character varying NOT NULL DEFAULT 'processing'`);
+        await queryRunner.query(`ALTER TABLE "document_jobs" DROP COLUMN "status"`);
+        await queryRunner.query(`DROP TYPE "public"."document_jobs_status_enum"`);
+        await queryRunner.query(`ALTER TABLE "document_jobs" ADD "status" character varying NOT NULL DEFAULT 'pending'`);
+        await queryRunner.query(`ALTER TABLE "document_jobs" DROP COLUMN "type"`);
+        await queryRunner.query(`DROP TYPE "public"."document_jobs_type_enum"`);
+        await queryRunner.query(`ALTER TABLE "document_jobs" ADD "type" character varying NOT NULL`);
+        await queryRunner.query(`ALTER TABLE "chunks" DROP COLUMN "embedding"`);
+        await queryRunner.query(`ALTER TABLE "chunks" ADD "embedding" vector(1536)`);
+        await queryRunner.query(`ALTER TABLE "document_files" DROP COLUMN "ocrText"`);
+        await queryRunner.query(`ALTER TABLE "document_files" ADD "ocrText" text`);
+        await queryRunner.query(`ALTER TABLE "document_files" DROP COLUMN "status"`);
+        await queryRunner.query(`DROP TYPE "public"."document_files_status_enum"`);
+        await queryRunner.query(`ALTER TABLE "document_files" ADD "status" character varying NOT NULL DEFAULT 'uploading'`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" DROP COLUMN "role"`);
+        await queryRunner.query(`DROP TYPE "public"."workspace_members_role_enum"`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" ADD "role" character varying NOT NULL DEFAULT 'MEMBER'`);
+        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "role"`);
+        await queryRunner.query(`DROP TYPE "public"."users_role_enum"`);
+        await queryRunner.query(`ALTER TABLE "users" ADD "role" character varying NOT NULL DEFAULT 'user'`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" ADD CONSTRAINT "UQ_workspace_members_workspaceId_userId" UNIQUE ("workspaceId", "userId")`);
+        await queryRunner.query(`CREATE INDEX "IDX_legal_sources_jurisdiction" ON "legal_sources" ("jurisdiction") `);
+        await queryRunner.query(`CREATE INDEX "IDX_legal_sources_country" ON "legal_sources" ("country") `);
+        await queryRunner.query(`CREATE INDEX "IDX_embeddings_embedding_hnsw" ON "embeddings" ("embedding") `);
+        await queryRunner.query(`CREATE INDEX "IDX_embeddings_legalSourceId" ON "embeddings" ("legalSourceId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_audit_logs_createdAt" ON "audit_logs" ("createdAt") `);
+        await queryRunner.query(`CREATE INDEX "IDX_audit_logs_action" ON "audit_logs" ("action") `);
+        await queryRunner.query(`CREATE INDEX "IDX_audit_logs_actorUserId" ON "audit_logs" ("actorUserId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_audit_logs_workspaceId" ON "audit_logs" ("workspaceId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_documents_status" ON "documents" ("status") `);
+        await queryRunner.query(`CREATE INDEX "IDX_documents_workspaceId" ON "documents" ("workspaceId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_document_versions_userId" ON "document_versions" ("userId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_document_versions_workspaceId" ON "document_versions" ("workspaceId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_document_versions_documentId" ON "document_versions" ("documentId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_chat_messages_userId" ON "chat_messages" ("userId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_chat_messages_workspaceId" ON "chat_messages" ("workspaceId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_chat_messages_documentId" ON "chat_messages" ("documentId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_document_jobs_status" ON "document_jobs" ("status") `);
+        await queryRunner.query(`CREATE INDEX "IDX_document_jobs_documentId" ON "document_jobs" ("documentId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_chunks_embedding_hnsw" ON "chunks" ("embedding") `);
+        await queryRunner.query(`CREATE INDEX "IDX_chunks_documentId" ON "chunks" ("documentId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_document_files_documentId" ON "document_files" ("documentId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_workspace_members_userId" ON "workspace_members" ("userId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_workspace_members_workspaceId" ON "workspace_members" ("workspaceId") `);
+        await queryRunner.query(`ALTER TABLE "embeddings" ADD CONSTRAINT "FK_embeddings_legalSourceId" FOREIGN KEY ("legalSourceId") REFERENCES "legal_sources"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "audit_logs" ADD CONSTRAINT "FK_audit_logs_workspaceId" FOREIGN KEY ("workspaceId") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "workspace_settings" ADD CONSTRAINT "FK_workspace_settings_workspaceId" FOREIGN KEY ("workspaceId") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "documents" ADD CONSTRAINT "FK_documents_workspaceId" FOREIGN KEY ("workspaceId") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "document_jobs" ADD CONSTRAINT "FK_document_jobs_documentId" FOREIGN KEY ("documentId") REFERENCES "documents"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "chunks" ADD CONSTRAINT "FK_chunks_documentId" FOREIGN KEY ("documentId") REFERENCES "documents"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "document_files" ADD CONSTRAINT "FK_document_files_documentId" FOREIGN KEY ("documentId") REFERENCES "documents"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" ADD CONSTRAINT "FK_workspace_members_userId" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "workspace_members" ADD CONSTRAINT "FK_workspace_members_workspaceId" FOREIGN KEY ("workspaceId") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+    }
+
+}

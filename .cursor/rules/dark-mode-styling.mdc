@@ -1,0 +1,107 @@
+# Dark Mode Styling Rules
+
+## OBRIGATÓRIO: Suporte completo a Dark Mode em todos os componentes Angular
+
+Este projeto usa Tailwind CSS com suporte a dark mode via a classe `dark` aplicada no elemento `<html>`. O `ThemeService` gerencia automaticamente a alternância entre light e dark mode.
+
+### Regras Obrigatórias
+
+1. **TODAS as classes de cor devem ter variantes dark mode:**
+   - ✅ `text-gray-800 dark:text-gray-100` (correto)
+   - ❌ `text-gray-800` (sem dark mode - INCORRETO)
+   - ❌ `text-black` (sem dark mode - INCORRETO)
+
+2. **TODOS os backgrounds devem ter variantes dark mode:**
+   - ✅ `bg-white dark:bg-gray-800` (correto)
+   - ✅ `bg-gray-50 dark:bg-gray-900` (correto)
+   - ❌ `bg-white` (sem dark mode - INCORRETO)
+
+3. **TODAS as bordas devem ter variantes dark mode:**
+   - ✅ `border-gray-200 dark:border-gray-700` (correto)
+   - ❌ `border-gray-200` (sem dark mode - INCORRETO)
+
+4. **TODOS os hovers devem ter variantes dark mode:**
+   - ✅ `hover:bg-gray-100 dark:hover:bg-gray-700` (correto)
+   - ❌ `hover:bg-gray-100` (sem dark mode - INCORRETO)
+
+5. **Transições de cor são obrigatórias:**
+   - Sempre adicione `transition-colors duration-200` em elementos que mudam de cor
+
+### Padrões de Cores para Dark Mode
+
+#### Textos
+- **Títulos principais:** `text-gray-800 dark:text-gray-100`
+- **Textos secundários:** `text-gray-600 dark:text-gray-400`
+- **Textos terciários/muted:** `text-gray-500 dark:text-gray-500`
+- **Links:** `text-blue-600 dark:text-blue-400`
+
+#### Backgrounds
+- **Background principal:** `bg-gray-50 dark:bg-gray-900`
+- **Cards/Surfaces:** `bg-white dark:bg-gray-800`
+- **Hover states:** `hover:bg-gray-100 dark:hover:bg-gray-700`
+- **Active states:** `bg-blue-50 dark:bg-blue-900/20`
+
+#### Bordas
+- **Bordas padrão:** `border-gray-200 dark:border-gray-700`
+- **Bordas de destaque:** `border-blue-600 dark:border-blue-400`
+
+#### Cores Semânticas (mantêm-se similares em ambos os modos)
+- **Success:** `text-green-600 dark:text-green-400` / `bg-green-50 dark:bg-green-900/20`
+- **Warning:** `text-yellow-600 dark:text-yellow-400` / `bg-yellow-50 dark:bg-yellow-900/20`
+- **Error/Danger:** `text-red-600 dark:text-red-400` / `bg-red-50 dark:bg-red-900/20`
+- **Info:** `text-blue-600 dark:text-blue-400` / `bg-blue-50 dark:bg-blue-900/20`
+
+### Exemplos de Templates Corretos
+
+```html
+<!-- Card com dark mode completo -->
+<div class="p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm transition-colors duration-200">
+  <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Título</h2>
+  <p class="text-gray-600 dark:text-gray-400">Texto secundário</p>
+  <button class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors">
+    Botão
+  </button>
+</div>
+
+<!-- Link com hover -->
+<a class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors">
+  Link
+</a>
+
+<!-- Input com dark mode -->
+<input class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400" />
+```
+
+### Checklist para Novos Componentes
+
+Ao criar ou modificar um componente Angular, verifique:
+
+- [ ] Todos os textos têm variantes `dark:text-*`
+- [ ] Todos os backgrounds têm variantes `dark:bg-*`
+- [ ] Todas as bordas têm variantes `dark:border-*`
+- [ ] Todos os hovers têm variantes `dark:hover:*`
+- [ ] Transições de cor estão presentes (`transition-colors duration-200`)
+- [ ] Cards/containers têm `dark:bg-gray-800` ou `dark:bg-gray-900`
+- [ ] Ícones têm cores apropriadas para dark mode
+- [ ] Estados disabled/focus têm variantes dark mode
+
+### Exceções
+
+- **Gradientes:** Podem usar `dark:from-*` e `dark:to-*` para variantes
+- **Shadows:** Podem ser ajustadas para dark mode se necessário
+- **PrimeNG Components:** Já têm suporte nativo a dark mode via tema Aura, mas classes Tailwind customizadas ainda precisam de variantes dark
+
+### Validação
+
+Antes de fazer commit, verifique:
+1. Teste visual em light mode
+2. Teste visual em dark mode (use o seletor de tema no header)
+3. Verifique contraste de acessibilidade em ambos os modos
+4. Certifique-se de que não há elementos "invisíveis" em qualquer modo
+
+### Notas Técnicas
+
+- O dark mode é aplicado via classe `dark` no elemento `<html>` pelo `ThemeService`
+- Tailwind CSS detecta automaticamente a classe `dark` e aplica as variantes
+- Use `transition-colors duration-200` para transições suaves entre modos
+- Evite cores hardcoded sem variantes dark mode

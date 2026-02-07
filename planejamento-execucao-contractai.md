@@ -34,84 +34,85 @@
 
 ## Fase 2 — Backend NestJS: base e banco
 
-- [ ] Criar aplicação NestJS em `apps/api`.
-- [ ] Configurar TypeORM com Postgres; habilitar extensão pgvector no banco (migration ou script).
-- [ ] Integrar suporte a tipo `vector` (typeorm-pgvector ou coluna raw).
-- [ ] Definir entities: User, Workspace, WorkspaceMember, Document, DocumentFile, Chunk, Embedding, LegalSource, DocumentJob, AuditLog, WorkspaceSettings (retention/no-logs), etc., com `workspaceId` onde aplicável.
-- [ ] Gerar e rodar migrações TypeORM iniciais.
-- [ ] Configurar módulo de autenticação (JWT ou sessão) e guard de autenticação.
+- [x] Criar aplicação NestJS em `apps/api`.
+- [x] Configurar TypeORM com Postgres; habilitar extensão pgvector no banco (migration ou script).
+- [x] Integrar suporte a tipo `vector` (typeorm-pgvector ou coluna raw).
+- [x] Definir entities: User, Workspace, WorkspaceMember, Document, DocumentFile, Chunk, Embedding, LegalSource, DocumentJob, AuditLog, WorkspaceSettings (retention/no-logs), etc., com `workspaceId` onde aplicável.
+- [x] Gerar e rodar migrações TypeORM iniciais.
+- [x] Configurar módulo de autenticação (JWT ou sessão) e guard de autenticação.
 
 ---
 
 ## Fase 3 — Multi-tenant e RBAC
 
-- [ ] Guard/middleware que resolve workspace a partir da rota e verifica membership.
-- [ ] Implementar RBAC (OWNER, ADMIN, MEMBER, VIEWER) e aplicar em todos os endpoints por recurso.
-- [ ] Garantir que todas as queries de recursos filtrem por `workspaceId` e role.
+- [x] Guard/middleware que resolve workspace a partir da rota e verifica membership.
+- [x] Implementar RBAC (OWNER, ADMIN, MEMBER, VIEWER) e aplicar em todos os endpoints por recurso.
+- [x] Garantir que todas as queries de recursos filtrem por `workspaceId` e role.
 
 ---
 
 ## Fase 4 — Upload e pipeline em fila
 
-- [ ] Módulo de storage (interface S3/R2; implementação local opcional para dev).
-- [ ] Validações de upload: tamanho (ex.: 25MB), mime sniffing, extensões permitidas (pdf, docx, txt, png, jpg).
-- [ ] Integrar BullMQ + Redis no NestJS; criar filas para OCR, parsing, chunking+embeddings.
-- [ ] Entity e atualização de DocumentJob (status, progress, attempts, lastError).
-- [ ] Worker process: jobs de OCR (Tesseract), parsing (pdf.js, etc.), chunking e geração de embeddings; atualizar DocumentJob e marcar arquivo como "available" após sucesso.
-- [ ] Interface `scanFile(file)` noop (flag para futuro ClamAV).
-- [ ] Quarentena: recurso só disponível após validação e processamento.
+- [x] Módulo de storage (interface S3/R2; implementação local opcional para dev).
+- [x] Validações de upload: tamanho (ex.: 25MB), mime sniffing, extensões permitidas (pdf, docx, txt, png, jpg).
+- [x] Integrar BullMQ + Redis no NestJS; criar filas para OCR, parsing, chunking+embeddings.
+- [x] Entity e atualização de DocumentJob (status, progress, attempts, lastError).
+- [x] Worker process: jobs de OCR (Tesseract), parsing (pdf.js, etc.), chunking e geração de embeddings; atualizar DocumentJob e marcar arquivo como "available" após sucesso.
+- [x] Interface `scanFile(file)` noop (flag para futuro ClamAV).
+- [x] Quarentena: recurso só disponível após validação e processamento.
 
 ---
 
 ## Fase 5 — RAG e citações
 
-- [ ] Contract RAG: persistir chunks com embeddings (pgvector); implementar retrieval top-k por documento/workspace.
-- [ ] Legal RAG: modelo LegalSource com metadados (country, jurisdiction, source_type, language, url); chunks/embeddings para fontes legais.
-- [ ] Integração OpenAI (Responses API ou equivalente): receber pergunta, buscar chunks (contrato + legal), montar contexto, gerar resposta com citações.
-- [ ] Formato de resposta: answerText, confidence (high/medium/low), citations[] (contrato e legal), notFound quando aplicável.
-- [ ] Jurisdiction resolver: heurística + patterns no documento; persistir resolvedJurisdiction no Document (explicit|inferred|unknown); perguntar ao usuário se incerto.
+- [x] Contract RAG: persistir chunks com embeddings (pgvector); implementar retrieval top-k por documento/workspace.
+- [x] Legal RAG: modelo LegalSource com metadados (country, jurisdiction, source_type, language, url); chunks/embeddings para fontes legais.
+- [x] Integração OpenAI (Responses API ou equivalente): receber pergunta, buscar chunks (contrato + legal), montar contexto, gerar resposta com citações.
+- [x] Formato de resposta: answerText, confidence (high/medium/low), citations[] (contrato e legal), notFound quando aplicável.
+- [x] Jurisdiction resolver: heurística + patterns no documento; persistir resolvedJurisdiction no Document (explicit|inferred|unknown); perguntar ao usuário se incerto.
 
 ---
 
 ## Fase 6 — Endpoints REST (mínimo)
 
-- [ ] Workspaces: POST /api/workspaces, POST /api/workspaces/:id/members.
-- [ ] Documents: POST/GET/DELETE conforme plano; upload de arquivos em POST .../documents/:docId/files.
-- [ ] Chat: POST /api/workspaces/:id/documents/:docId/chat.
-- [ ] Redline: POST /api/workspaces/:id/documents/:docId/redline (playbook param).
-- [ ] Privacy: GET .../privacy/export, POST .../privacy/no-logs, DELETE /api/account.
-- [ ] Audit: GET /api/workspaces/:id/audit (filtros por ação, usuário, data).
-- [ ] Rate limits e token budgets por usuário/workspace; resposta clara em caso de bloqueio.
+- [x] Workspaces: POST /api/workspaces, POST /api/workspaces/:id/members.
+- [x] Documents: POST/GET/DELETE conforme plano; upload de arquivos em POST .../documents/:docId/files.
+- [x] Chat: POST /api/workspaces/:id/documents/:docId/chat.
+- [x] Redline: POST /api/workspaces/:id/documents/:docId/redline (playbook param) - placeholder implementado (lógica completa em Fase 10).
+- [x] Privacy: GET .../privacy/export (DSAR-lite), POST .../privacy/no-logs (toggle setting), DELETE /api/account (hard delete usuário).
+- [x] Audit: GET /api/workspaces/:id/audit (filtros por ação, usuário, data).
+- [x] Rate limits e token budgets por usuário/workspace; resposta clara em caso de bloqueio (guard implementado, aplicar nos endpoints conforme necessário).
 
 ---
 
 ## Fase 7 — Retention, purge e hard delete
 
-- [ ] Configuração de retention por workspace (file retention, text/embeddings retention, overrides dentro de limites).
-- [ ] Scheduled job diário: purge de arquivos expirados (hard delete no storage), textos/chunks/embeddings expirados, mensagens/versões conforme política.
-- [ ] Endpoints de hard delete idempotentes; registrar evento de delete no audit log.
+- [x] Configuração de retention por workspace (file retention, text/embeddings retention, overrides dentro de limites).
+- [x] Scheduled job diário: purge de arquivos expirados (hard delete no storage), textos/chunks/embeddings expirados, mensagens/versões conforme política.
+- [x] Endpoints de hard delete idempotentes; registrar evento de delete no audit log.
 
 ---
 
 ## Fase 8 — Privacy e audit
 
-- [ ] DSAR-lite: export JSON/ZIP (chat messages, versions metadata, prompts redline conforme no-logs).
-- [ ] No-logs option: toggle por workspace; comportamento configurável (não persistir conteúdo doc e/ou chat/versões); purge acelerado quando aplicável.
-- [ ] AuditLog: registrar open/view, download, chat_query, redline_generate, delete, export_privacy (workspaceId, actorUserId, action, targetType, targetId, ip, userAgent, metadata segura).
-- [ ] Garantir que logs/console nunca persistam conteúdo de contrato, chunks ou mensagens em plaintext.
+- [x] DSAR-lite: export JSON/ZIP (chat messages, versions metadata, prompts redline conforme no-logs).
+- [x] No-logs option: toggle por workspace; comportamento configurável (não persistir conteúdo doc e/ou chat/versões); purge acelerado quando aplicável.
+- [x] AuditLog: registrar open/view, download, chat_query, redline_generate, delete, export_privacy (workspaceId, actorUserId, action, targetType, targetId, ip, userAgent, metadata segura).
+- [x] Garantir que logs/console nunca persistam conteúdo de contrato, chunks ou mensagens em plaintext.
+- [x] **Testado:** Script `test-fase8.sh` valida todas as funcionalidades. Ver `TESTE-FASE-8.md` para guia completo.
 
 ---
 
 ## Fase 9 — Frontend Angular + Capacitor
 
-- [ ] Criar app Angular em `apps/web`; configurar Capacitor para web + iOS/Android.
-- [ ] UI: workspace switcher, listagem de documentos, upload.
-- [ ] Viewer de contrato (pdf.js ou equivalente).
-- [ ] Chat com exibição de citações e confidence.
-- [ ] Versões e redline: side-by-side diff, accept/reject por bloco, gerar nova versão (vN+1).
-- [ ] Privacy panel: export DSAR-lite, toggle no-logs, explicar o que é armazenado e por quanto tempo.
-- [ ] Tela de audit log com filtros (ação, usuário, data).
-- [ ] Exibir progresso de DocumentJob no documento (OCR/embeddings).
+- [x] Criar app Angular em `apps/web`; configurar Capacitor para web + iOS/Android.
+- [x] UI: workspace switcher, listagem de documentos, upload.
+- [ ] Viewer de contrato (pdf.js ou equivalente) — **Pendente: implementar viewer de PDF**
+- [x] Chat com exibição de citações e confidence.
+- [ ] Versões e redline: side-by-side diff, accept/reject por bloco, gerar nova versão (vN+1) — **Pendente: implementar diff UI**
+- [x] Privacy panel: export DSAR-lite, toggle no-logs, explicar o que é armazenado e por quanto tempo.
+- [x] Tela de audit log com filtros (ação, usuário, data).
+- [ ] Exibir progresso de DocumentJob no documento (OCR/embeddings) — **Pendente: adicionar indicador de progresso**
 
 ---
 
@@ -138,6 +139,24 @@
 | 0 | Atualizar .cursor/rules/plano-1.mdc antes de codar. |
 | 1 | Raiz: apenas workspace e infra; apps vazios ou stubs. |
 | 2 | API sobe em apps/api; worker pode ser mesmo processo ou script separado. |
-| 3-8 | Backend completo antes de integrar frontend. |
+| 3 | **Testável:** Endpoints básicos de workspace implementados. Ver TESTING.md para guia completo. |
+| 4 | **Testável:** Upload de documentos funcional. Storage local/S3, validações, BullMQ integrado. Worker: `pnpm start:worker`. |
+| 3-8 | Backend completo antes de integrar frontend. Fase 8 testada e validada. |
 | 9 | Apontar apps/web para API (env). |
 | 10-11 | Refinar redline e validar E2E. |
+
+## Testes
+
+Após Fase 3, os seguintes endpoints estão prontos para teste:
+- ✅ `POST /api/auth/register` - Registrar usuário
+- ✅ `POST /api/auth/login` - Login e obter token JWT
+- ✅ `POST /api/workspaces` - Criar workspace (criador vira OWNER)
+- ✅ `GET /api/workspaces/:id` - Buscar workspace (WorkspaceGuard)
+- ✅ `POST /api/workspaces/:id/members` - Adicionar membro (RBAC: OWNER/ADMIN)
+
+**Guias de testes por fase:**
+- Fase 3-6: Ver `TESTING.md` na raiz do projeto.
+- Fase 5: Ver `TESTE-FASE-5.md` e script `test-rag.sh`.
+- Fase 6: Ver `FASE-6-IMPLEMENTACAO.md` e script `test-fase6.sh`.
+- Fase 7: Ver `TESTE-FASE-7.md` e script `test-fase7.sh`.
+- Fase 8: Ver `TESTE-FASE-8.md` e script `test-fase8.sh`.

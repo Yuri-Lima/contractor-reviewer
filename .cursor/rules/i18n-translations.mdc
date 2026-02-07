@@ -1,0 +1,107 @@
+---
+alwaysApply: true
+---
+
+# Internationalization (i18n) and Translations - MANDATORY RULES
+
+## CRITICAL: Always Use Translation Keys, Never Hardcode Text
+
+**MANDATORY RULE**: All user-facing text MUST use translation keys from the i18n system. Hardcoded strings in templates or TypeScript code are FORBIDDEN.
+
+## Rules
+
+1. **No Hardcoded Strings**: 
+   - NEVER write hardcoded text directly in templates (HTML)
+   - NEVER write hardcoded text in TypeScript/JavaScript code (error messages, success messages, labels, etc.)
+   - ALL user-facing text must use the translation system
+
+2. **Translation Key Format**:
+   - Use dot notation for nested keys: `'common.save'`, `'workspaces.title'`, `'documents.deleteSuccess'`
+   - Keys should be descriptive and organized by feature/domain
+   - Follow the existing structure in `apps/web/src/assets/i18n/*.json`
+
+3. **Using Translations**:
+   - In templates: Use the `translate` pipe: `{{ 'common.save' | translate }}`
+   - In TypeScript: Use `I18nService.translate()`: `this.i18nService.translate('common.error')`
+   - For parameters: `{{ 'workspaces.deleteSuccessMessage' | translate: {name: workspaceName} }}`
+
+4. **Adding New Translation Keys**:
+   - Add keys to ALL language files: `en.json`, `es.json`, `de.json`, `pt-BR.json`
+   - Maintain consistency across all language files
+   - Use meaningful, descriptive keys
+
+5. **Components Must Import**:
+   - `TranslatePipe` for template usage
+   - `I18nService` for TypeScript usage
+   - Example: `import { TranslatePipe } from '../../core/pipes/translate.pipe';`
+   - Example: `import { I18nService } from '../../core/services/i18n.service';`
+
+6. **Error and Success Messages**:
+   - ALL error messages must use translation keys
+   - ALL success messages must use translation keys
+   - Example: `this.messageService.add({ severity: 'error', summary: this.i18nService.translate('common.error'), detail: this.i18nService.translate('documents.deleteError') });`
+
+7. **Validation Messages**:
+   - Form validation messages must use translation keys
+   - Example: `{{ 'validation.required' | translate }}`
+
+8. **Placeholders and Labels**:
+   - Input placeholders must use translation keys
+   - Button labels must use translation keys
+   - All UI labels must use translation keys
+
+## Examples
+
+### ✅ CORRECT:
+```typescript
+// Template
+<button [label]="'common.save' | translate"></button>
+<p>{{ 'workspaces.title' | translate }}</p>
+
+// TypeScript
+this.messageService.add({
+  severity: 'success',
+  summary: this.i18nService.translate('common.success'),
+  detail: this.i18nService.translate('documents.deleteSuccess')
+});
+```
+
+### ❌ WRONG:
+```typescript
+// Template
+<button label="Salvar"></button>
+<p>Workspaces</p>
+
+// TypeScript
+this.messageService.add({
+  severity: 'success',
+  summary: 'Sucesso',
+  detail: 'Documento deletado com sucesso'
+});
+```
+
+## Translation Files Location
+
+- `apps/web/src/assets/i18n/en.json` - English
+- `apps/web/src/assets/i18n/es.json` - Spanish
+- `apps/web/src/assets/i18n/de.json` - German
+- `apps/web/src/assets/i18n/pt-BR.json` - Portuguese (Brazil)
+
+## When Creating New Features
+
+1. Identify all user-facing text
+2. Create translation keys for ALL languages
+3. Use translation keys in templates and code
+4. Test with different languages to ensure all keys exist
+
+## Code Review Checklist
+
+- [ ] No hardcoded strings in templates
+- [ ] No hardcoded strings in TypeScript code
+- [ ] All error messages use translation keys
+- [ ] All success messages use translation keys
+- [ ] All labels and placeholders use translation keys
+- [ ] Translation keys added to ALL language files
+- [ ] Components import TranslatePipe and/or I18nService
+
+**REMEMBER**: If you see hardcoded text, it's a bug. Always use translations!

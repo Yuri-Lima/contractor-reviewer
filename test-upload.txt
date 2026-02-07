@@ -1,0 +1,3 @@
+This is a test document content for upload testing.
+This document contains multiple lines to test the upload and processing pipeline.
+The worker should process this file and mark it as available.

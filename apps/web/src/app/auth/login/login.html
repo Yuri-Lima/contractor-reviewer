@@ -1,0 +1,84 @@
+<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600 dark:from-gray-900 dark:to-gray-800 p-4 transition-colors duration-200 relative">
+  <!-- Language Selector -->
+  <div class="absolute top-4 right-4 z-10">
+    <app-language-selector></app-language-selector>
+  </div>
+  <p-card class="w-full max-w-md dark:bg-gray-800 dark:border-gray-700">
+    <ng-template pTemplate="header">
+      <div class="text-center p-4">
+        <i class="pi pi-sign-in text-4xl text-primary dark:text-blue-400 mb-2"></i>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ 'auth.loginTitle' | translate }}</h1>
+      </div>
+    </ng-template>
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-4 p-6">
+      <div>
+        <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <i class="pi pi-envelope mr-2"></i>{{ 'auth.email' | translate }}
+        </label>
+        <input
+          pInputText
+          id="email"
+          type="email"
+          formControlName="email"
+          [placeholder]="'auth.emailPlaceholder' | translate"
+          class="w-full"
+          [class.ng-invalid]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
+        />
+        @if (loginForm.get('email')?.invalid && loginForm.get('email')?.touched) {
+          <small class="p-error block mt-1">
+            {{ 'auth.invalidEmail' | translate }}
+          </small>
+        }
+      </div>
+
+      <div>
+        <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <i class="pi pi-lock mr-2"></i>{{ 'auth.password' | translate }}
+        </label>
+        <p-password
+          id="password"
+          formControlName="password"
+          [placeholder]="'auth.passwordPlaceholder' | translate"
+          [feedback]="false"
+          [toggleMask]="true"
+          class="w-full"
+          [inputStyleClass]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched ? 'ng-invalid' : ''"
+        ></p-password>
+        @if (loginForm.get('password')?.invalid && loginForm.get('password')?.touched) {
+          <small class="p-error block mt-1">
+            {{ 'auth.requiredPassword' | translate }}
+          </small>
+        }
+      </div>
+
+      @if (error()) {
+        <div class="mt-4">
+          <p-message
+            severity="error"
+            class="w-full"
+          >
+            {{ error() }}
+          </p-message>
+        </div>
+      }
+
+      <p-button
+        type="submit"
+        [label]="'auth.signIn' | translate"
+        icon="pi pi-sign-in"
+        [disabled]="loginForm.invalid || loading()"
+        [loading]="loading()"
+        class="w-full"
+        [class.mt-4]="!error()"
+        [class.mt-6]="error()"
+      ></p-button>
+    </form>
+
+    <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-center text-sm">
+      <span class="text-gray-600 dark:text-gray-400">{{ 'auth.noAccount' | translate }} </span>
+      <a routerLink="/register" class="text-blue-600 dark:text-blue-400 font-medium hover:underline transition-colors">
+        {{ 'auth.register' | translate }}
+      </a>
+    </div>
+  </p-card>
+</div>

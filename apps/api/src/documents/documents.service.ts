@@ -9,6 +9,43 @@ import { Inject } from '@nestjs/common';
 import { StorageServiceToken, IStorageService } from '../storage/storage.module';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import * as fs from 'fs';
+import * as path from 'path';
+
+function writeLog(location: string, message: string, data: any, hypothesisId: string) {
+  try {
+    // Find workspace root by looking for package.json or node_modules
+    let workspaceRoot = process.cwd();
+    let currentDir = workspaceRoot;
+    let found = false;
+    for (let i = 0; i < 10; i++) {
+      if (fs.existsSync(path.join(currentDir, 'package.json')) && 
+          fs.existsSync(path.join(currentDir, 'apps'))) {
+        workspaceRoot = currentDir;
+        found = true;
+        break;
+      }
+      const parent = path.dirname(currentDir);
+      if (parent === currentDir) break; // Reached filesystem root
+      currentDir = parent;
+    }
+    if (!found) {
+      // Fallback: try relative to __dirname
+      workspaceRoot = path.resolve(__dirname, '../../../../..');
+    }
+    const logPath = path.join(workspaceRoot, '.cursor/debug.log');
+    // Ensure .cursor directory exists
+    const logDir = path.dirname(logPath);
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+    const logEntry = JSON.stringify({location,message,data,timestamp:Date.now(),hypothesisId,runId:'run1'}) + '\n';
+    fs.appendFileSync(logPath, logEntry);
+  } catch (e) {
+    // Silently fail to avoid breaking the app
+    console.error('[writeLog error]', e);
+  }
+}
 
 @Injectable()
 export class DocumentsService {
@@ -147,9 +184,23 @@ export class DocumentsService {
    * Add job to appropriate queue
    */
   private async addToQueue(type: JobType, data: any): Promise<void> {
+    // #region agent log
+    writeLog('documents.service.ts:149', 'Adding job to queue', {type,data:JSON.stringify(data)}, 'C');
+    // #endregion
+    
     switch (type) {
       case JobType.PARSING:
-        await this.parsingQueue.add('parse-document', data);
+        try {
+          await this.parsingQueue.add('parse-document', data);
+          // #region agent log
+          writeLog('documents.service.ts:153', 'Parsing job added to queue successfully', {jobId:data.jobId}, 'C');
+          // #endregion
+        } catch (error) {
+          // #region agent log
+          writeLog('documents.service.ts:156', 'Failed to add parsing job to queue', {error:error instanceof Error ? error.message : String(error),jobId:data.jobId}, 'B');
+          // #endregion
+          throw error;
+        }
         break;
       case JobType.OCR:
         await this.ocrQueue.add('ocr-document', data);
@@ -162,10 +213,50 @@ export class DocumentsService {
    * Get all jobs for a document
    */
   async getDocumentJobs(documentId: string): Promise<DocumentJob[]> {
-    return this.documentJobRepository.find({
+    // #region agent log
+    writeLog('documents.service.ts:197', 'getDocumentJobs called', {documentId}, 'F');
+    // #endregion
+    
+    const jobs = await this.documentJobRepository.find({
       where: { documentId },
       order: { createdAt: 'DESC' },
     });
+    
+    // Check for stuck jobs (pending/processing jobs older than 30 seconds with no progress updates)
+    const now = new Date();
+    const stuckJobs = jobs.filter(j => 
+      (j.status === JobStatus.PENDING || j.status === JobStatus.PROCESSING) &&
+      j.updatedAt && 
+      (now.getTime() - j.updatedAt.getTime()) > 30000 // 30 seconds
+    );
+    
+    if (stuckJobs.length > 0) {
+      // #region agent log
+      writeLog('documents.service.ts:220', 'Stuck jobs detected - worker may not be running', {
+        documentId,
+        stuckJobCount: stuckJobs.length,
+        stuckJobs: stuckJobs.map(j => ({id: j.id, type: j.type, status: j.status, progress: j.progress, updatedAt: j.updatedAt}))
+      }, 'F');
+      // #endregion
+    }
+    
+    // #region agent log
+    writeLog('documents.service.ts:204', 'getDocumentJobs returning', {
+      documentId,
+      jobCount: jobs.length,
+      activeJobs: jobs.filter(j => j.status === JobStatus.PENDING || j.status === JobStatus.PROCESSING).length,
+      jobs: jobs.map(j => ({id: j.id, type: j.type, status: j.status, progress: j.progress, updatedAt: j.updatedAt}))
+    }, 'F');
+    // #endregion
+    
+    // Log progress values for active jobs
+    const activeJobs = jobs.filter(j => j.status === JobStatus.PENDING || j.status === JobStatus.PROCESSING);
+    if (activeJobs.length > 0) {
+      console.log(`[API] Returning ${activeJobs.length} active jobs with progress:`, 
+        activeJobs.map(j => `${j.type}=${j.progress}%`).join(', '));
+    }
+    
+    return jobs;
   }
 
   /**
@@ -272,6 +363,26 @@ export class DocumentsService {
    */
   async getFileBuffer(storageKey: string): Promise<Buffer> {
     return await this.storageService.getFileBuffer(storageKey);
+  }
+
+  /**
+   * Get original text from document chunks
+   */
+  async getOriginalText(documentId: string, workspaceId: string): Promise<string> {
+    // Verify document exists and belongs to workspace
+    await this.findById(documentId, workspaceId);
+
+    // Get all chunks for the document, ordered by pageNumber and startIndex
+    const chunks = await this.chunkRepository.find({
+      where: { documentId },
+      order: {
+        pageNumber: 'ASC',
+        startIndex: 'ASC',
+      },
+    });
+
+    // Concatenate text from all chunks
+    return chunks.map((chunk) => chunk.text).join('\n\n');
   }
 
   /**

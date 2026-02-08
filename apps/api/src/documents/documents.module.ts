@@ -18,6 +18,9 @@ import { RagModule } from '../rag/rag.module';
 import { AuditModule } from '../audit/audit.module';
 import { ChatMessageService } from './chat-message.service';
 import { VersionService } from './version.service';
+import { RedlineService } from './redline.service';
+import { DiffService } from './diff.service';
+import { Embedding } from '../entities/embedding.entity';
 
 @Module({
   imports: [
@@ -29,6 +32,7 @@ import { VersionService } from './version.service';
       ChatMessage,
       DocumentVersion,
       WorkspaceSettings,
+      Embedding,
     ]),
     StorageModule,
     QueueModule,
@@ -37,7 +41,7 @@ import { VersionService } from './version.service';
     AuditModule, // For audit logging
   ],
   controllers: [DocumentsController, ChatController, RedlineController],
-  providers: [DocumentsService, ChatMessageService, VersionService],
-  exports: [DocumentsService, ChatMessageService, VersionService],
+  providers: [DocumentsService, ChatMessageService, VersionService, RedlineService, DiffService],
+  exports: [DocumentsService, ChatMessageService, VersionService, RedlineService, DiffService],
 })
 export class DocumentsModule {}

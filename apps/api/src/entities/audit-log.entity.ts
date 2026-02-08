@@ -13,6 +13,7 @@ export enum AuditAction {
   DOWNLOAD = 'download',
   CHAT_QUERY = 'chat_query',
   REDLINE_GENERATE = 'redline_generate',
+  REDLINE_APPLY = 'redline_apply',
   DELETE = 'delete',
   EXPORT_PRIVACY = 'export_privacy',
   UPLOAD = 'upload',

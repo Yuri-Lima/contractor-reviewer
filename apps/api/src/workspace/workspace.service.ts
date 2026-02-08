@@ -37,7 +37,19 @@ export class WorkspaceService {
     });
     await this.workspaceSettingsRepository.save(settings);
 
-    return savedWorkspace;
+    // Reload workspace to ensure all fields are populated
+    const reloadedWorkspace = await this.workspaceRepository.findOne({
+      where: { id: savedWorkspace.id },
+    });
+
+    // Ensure we return a workspace with all required fields
+    const workspaceToReturn = reloadedWorkspace || savedWorkspace;
+    return {
+      id: workspaceToReturn.id,
+      name: workspaceToReturn.name || '',
+      createdAt: workspaceToReturn.createdAt,
+      updatedAt: workspaceToReturn.updatedAt,
+    } as Workspace;
   }
 
   /**
@@ -49,7 +61,30 @@ export class WorkspaceService {
       relations: ['workspace'],
     });
 
-    return memberships.map((membership) => membership.workspace);
+    // Map to workspaces and ensure all fields are included
+    const workspaces = memberships.map((membership) => membership.workspace).filter(Boolean);
+    
+    // Reload workspaces individually to ensure all fields are populated
+    const workspaceIds = workspaces.map((ws) => ws.id);
+    const reloadedWorkspaces = await this.workspaceRepository.find({
+      where: workspaceIds.map((id) => ({ id })),
+    });
+
+    // Create a map for quick lookup
+    const workspaceMap = new Map(reloadedWorkspaces.map((ws) => [ws.id, ws]));
+
+    // Return workspaces with all fields, preserving order
+    return workspaces
+      .map((ws) => {
+        const reloaded = workspaceMap.get(ws.id);
+        return reloaded || ws;
+      })
+      .map((workspace) => ({
+        id: workspace.id,
+        name: workspace.name || '',
+        createdAt: workspace.createdAt,
+        updatedAt: workspace.updatedAt,
+      })) as Workspace[];
   }
 
   /**

@@ -1,17 +1,20 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, viewChild, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { Button } from 'primeng/button';
 import { Avatar } from 'primeng/avatar';
+import { Menu } from 'primeng/menu';
+import { MenuItem } from 'primeng/api';
 import { AuthService } from '../../core/services/auth.service';
 import { ThemeSelectorComponent } from '../theme-selector/theme-selector.component';
 import { LanguageSelectorComponent } from '../language-selector/language-selector.component';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterModule, Button, Avatar, ThemeSelectorComponent, LanguageSelectorComponent, TranslatePipe],
+  imports: [CommonModule, RouterModule, Button, Avatar, Menu, ThemeSelectorComponent, LanguageSelectorComponent, TranslatePipe],
   template: `
     <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm sticky top-0 z-50 transition-colors duration-200">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex justify-between items-center gap-4">
@@ -25,59 +28,69 @@ import { TranslatePipe } from '@ngx-translate/core';
         </a>
         
         <!-- Right Section -->
-        <div class="flex items-center gap-2 sm:gap-3 lg:gap-4 flex-shrink-0" *ngIf="isAuthenticated()">
-          <!-- Language Selector -->
-          <div class="hidden sm:block">
-            <app-language-selector></app-language-selector>
+        @if (isAuthenticated()) {
+          <div class="flex items-center gap-2 sm:gap-3 lg:gap-4 flex-shrink-0">
+            <!-- Language Selector -->
+            <div class="hidden sm:block">
+              <app-language-selector></app-language-selector>
+            </div>
+            
+            <!-- Theme Selector -->
+            <div class="hidden sm:block">
+              <app-theme-selector></app-theme-selector>
+            </div>
+            
+            <!-- User Info - Clickable for Desktop Menu -->
+            <div 
+              (click)="toggleMenu($event)"
+              class="flex items-center gap-2 sm:gap-3 px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 rounded-lg bg-gray-100 dark:bg-gray-700 transition-colors hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer"
+            >
+              <p-avatar
+                [label]="userInitials()"
+                shape="circle"
+                class="bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-sm flex-shrink-0"
+              ></p-avatar>
+              <span class="text-sm sm:text-base text-gray-700 dark:text-gray-200 hidden sm:inline font-medium transition-colors max-w-[120px] lg:max-w-[200px] truncate">
+                {{ userName() }}
+              </span>
+              <i class="pi pi-chevron-down text-xs text-gray-500 dark:text-gray-400 ml-1 hidden sm:inline"></i>
+            </div>
+            
+            <!-- User Menu Dropdown -->
+            <p-menu 
+              #menu 
+              [model]="menuItems()" 
+              [popup]="true"
+            ></p-menu>
+            
+            <!-- Mobile Logout Icon Button -->
+            <p-button
+              icon="pi pi-sign-out"
+              severity="secondary"
+              [text]="true"
+              [rounded]="true"
+              (onClick)="logout()"
+              class="text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 sm:hidden flex-shrink-0"
+              [title]="'common.logout' | translate"
+            ></p-button>
           </div>
-          
-          <!-- Theme Selector -->
-          <div class="hidden sm:block">
-            <app-theme-selector></app-theme-selector>
-          </div>
-          
-          <!-- User Info -->
-          <div class="flex items-center gap-2 sm:gap-3 px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 rounded-lg bg-gray-100 dark:bg-gray-700 transition-colors hover:bg-gray-200 dark:hover:bg-gray-600">
-            <p-avatar
-              [label]="userInitials()"
-              shape="circle"
-              styleClass="bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-sm flex-shrink-0"
-            ></p-avatar>
-            <span class="text-sm sm:text-base text-gray-700 dark:text-gray-200 hidden sm:inline font-medium transition-colors max-w-[120px] lg:max-w-[200px] truncate">
-              {{ userName() }}
-            </span>
-          </div>
-          
-          <!-- Logout Button -->
-          <p-button
-            [label]="'common.logout' | translate"
-            icon="pi pi-sign-out"
-            severity="secondary"
-            [outlined]="true"
-            (onClick)="logout()"
-            styleClass="text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0 hidden sm:inline-flex"
-          ></p-button>
-          
-          <!-- Mobile Logout Icon Button -->
-          <p-button
-            icon="pi pi-sign-out"
-            severity="secondary"
-            [text]="true"
-            [rounded]="true"
-            (onClick)="logout()"
-            styleClass="text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 sm:hidden flex-shrink-0"
-            [title]="'common.logout' | translate"
-          ></p-button>
-        </div>
+        }
       </div>
     </header>
   `,
 })
-export class HeaderComponent {
+export class HeaderComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
+  private translateService = inject(TranslateService);
 
+  menuRef = viewChild<Menu>('menu');
+  
   isAuthenticated = computed(() => this.authService.isAuthenticated());
   currentUser = computed(() => this.authService.currentUser());
+  
+  menuItems = signal<MenuItem[]>([]);
+  
+  private langChangeSubscription?: Subscription;
   
   userName = computed(() => {
     const user = this.currentUser();
@@ -95,6 +108,44 @@ export class HeaderComponent {
       .toUpperCase()
       .substring(0, 2);
   });
+
+  ngOnInit(): void {
+    // Initialize menu items with translations
+    this.updateMenuItems();
+    
+    // Update menu items when language changes
+    this.langChangeSubscription = this.translateService.onLangChange.subscribe(() => {
+      this.updateMenuItems();
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.langChangeSubscription) {
+      this.langChangeSubscription.unsubscribe();
+    }
+  }
+
+  private updateMenuItems(): void {
+    this.menuItems.set([
+      {
+        label: this.translateService.instant('settings.title'),
+        icon: 'pi pi-cog',
+        routerLink: '/settings',
+      },
+      {
+        separator: true,
+      },
+      {
+        label: this.translateService.instant('common.logout'),
+        icon: 'pi pi-sign-out',
+        command: () => this.logout(),
+      },
+    ]);
+  }
+
+  toggleMenu(event: Event): void {
+    this.menuRef()?.toggle(event);
+  }
 
   logout(): void {
     this.authService.logout();

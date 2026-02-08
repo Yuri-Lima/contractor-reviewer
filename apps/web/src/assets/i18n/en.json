@@ -53,7 +53,10 @@
     "hasAccount": "Already have an account?",
     "loginTitle": "Login",
     "registerTitle": "Create Account",
-    "loginError": "Invalid email or password"
+    "register": "Register",
+    "loginError": "Invalid email or password",
+    "emailPlaceholder": "your@email.com",
+    "passwordPlaceholder": "••••••••"
   },
   "workspaces": {
     "title": "Workspaces",
@@ -73,7 +76,8 @@
     "deleteError": "Error deleting workspace. Only the OWNER can delete a workspace.",
     "createSuccess": "Workspace created successfully",
     "createError": "Error creating workspace. Please try again.",
-    "nameRequired": "Workspace name is required"
+    "nameRequired": "Workspace name is required",
+    "unnamed": "Unnamed Workspace"
   },
   "documents": {
     "title": "Documents",
@@ -125,12 +129,33 @@
     "assistant": "Assistant",
     "confidence": "Confidence",
     "citations": "Citations",
-    "page": "Page"
+    "page": "Page",
+    "statusLabels": {
+      "available": "Available",
+      "processing": "Processing",
+      "error": "Error",
+      "quarantined": "Quarantined"
+    },
+    "fileSize": {
+      "bytes": "Bytes",
+      "kb": "KB",
+      "mb": "MB",
+      "gb": "GB"
+    },
+    "failedJobs": "Failed Jobs",
+    "error": "Error",
+    "attempts": "Attempts"
   },
   "redline": {
     "title": "Generate Redline",
-    "description": "The redline suggests changes to the contract based on different strategies (playbooks). Select a playbook and optionally add custom instructions.",
+    "description": "Select text from the document and generate suggested changes based on different strategies (playbooks).",
     "configuration": "Redline Configuration",
+    "selectedText": "Selected Text",
+    "selectTextPlaceholder": "Select text from the document or paste it here...",
+    "selectedTextHint": "Select text from the document viewer or paste the clause you want to revise",
+    "selectedTextRequired": "Selected text is required",
+    "objective": "Objective (Optional)",
+    "objectivePlaceholder": "Describe the intent of the change...",
     "playbook": "Playbook",
     "selectPlaybook": "Select a playbook",
     "playbookRequired": "Playbook required",
@@ -139,19 +164,63 @@
     "instructionsDescription": "Additional instructions that will be considered when generating the redline",
     "generate": "Generate Redline",
     "generated": "Redline Generated",
+    "proposal": "Redline Proposal",
+    "proposedBy": "Proposed by",
     "changes": "change(s) suggested",
     "change": "Change",
     "original": "Original",
     "suggested": "Suggested",
+    "explanation": "Explanation",
     "reason": "Reason",
+    "diffBlocks": "Changes",
     "accept": "Accept",
     "reject": "Reject",
+    "apply": "Apply Changes",
     "noChanges": "No changes suggested for this document.",
+    "notFound": "NOT FOUND: Insufficient evidence found for this suggestion.",
+    "citations": "Contract Citations",
+    "legalCitations": "Legal Citations",
+    "viewSource": "View Source",
+    "generateSuccess": "Redline generated successfully with {{count}} change(s)",
+    "generateError": "Error generating redline",
+    "applySuccess": "New version {{version}} created by {{user}}",
+    "applyError": "Error applying changes",
+    "confidence": {
+      "high": "High Confidence",
+      "medium": "Medium Confidence",
+      "low": "Low Confidence"
+    },
     "playbooks": {
       "balanced": "Balances protections for both parties",
       "conservative": "Minimizes changes, maintains neutral language",
       "clientFriendly": "Favors the client, suggests more favorable changes"
-    }
+    },
+    "rejectProposal": "Reject Proposal",
+    "editText": "Edit Text",
+    "editBlocks": "Edit Blocks",
+    "cancelEdit": "Cancel Edit",
+    "saveEdit": "Save Edit",
+    "editingMode": "Editing Mode",
+    "editSuggestedText": "Edit Suggested Text",
+    "editBlockText": "Edit Block Text",
+    "rejectProposalConfirm": "Are you sure you want to reject this proposal? All changes will be discarded.",
+    "rejectProposalSuccess": "Proposal rejected. You can generate a new proposal.",
+    "confirmRegion": "Confirm Region",
+    "fuzzyMatchFound": "Fuzzy match found",
+    "matchedRegion": "Matched Region",
+    "useSuggestedRegion": "Use Suggested Region",
+    "selectManually": "Select Manually",
+    "manualSelectionNotImplemented": "Manual region selection is not yet implemented. Using suggested region."
+  },
+  "documentContent": {
+    "title": "Document Content",
+    "currentVersion": "Current Version",
+    "lastUpdated": "Last Updated",
+    "loading": "Loading content...",
+    "error": "Error loading content",
+    "noContent": "No content available",
+    "refresh": "Refresh Content",
+    "selectTextHint": "Select text to create redline"
   },
   "privacy": {
     "title": "Privacy Settings",
@@ -269,7 +338,11 @@
     "saveSettings": "Save Settings",
     "loadError": "Error loading retention settings",
     "saveSuccess": "Retention settings saved successfully",
-    "saveError": "Error saving retention settings"
+    "saveError": "Error saving retention settings",
+    "fuzzyMatchSettings": "Fuzzy Match Settings",
+    "fuzzyMatchThreshold": "Fuzzy Match Threshold (%)",
+    "fuzzyMatchThresholdDescription": "Minimum match percentage (0-100) for fuzzy text matching when applying redlines. Higher values require more exact matches.",
+    "mustBeBetween0And100": "Value must be between 0 and 100"
   },
   "workspaceMembers": {
     "title": "Workspace Members",
@@ -308,6 +381,18 @@
       "member": "Member",
       "viewer": "Viewer"
     }
+  },
+  "versions": {
+    "title": "Document Versions",
+    "loading": "Loading versions...",
+    "noVersions": "No versions found for this document.",
+    "version": "Version",
+    "createdBy": "Created by",
+    "view": "View",
+    "hide": "Hide",
+    "decisions": "Decisions",
+    "noChanges": "No changes in this version",
+    "loadError": "Error loading versions"
   },
   "errors": {
     "generic": "An error occurred",

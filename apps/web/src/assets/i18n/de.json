@@ -53,7 +53,10 @@
     "hasAccount": "Haben Sie bereits ein Konto?",
     "loginTitle": "Anmelden",
     "registerTitle": "Konto erstellen",
-    "loginError": "Ungültige E-Mail oder Passwort"
+    "register": "Registrieren",
+    "loginError": "Ungültige E-Mail oder Passwort",
+    "emailPlaceholder": "ihre@email.com",
+    "passwordPlaceholder": "••••••••"
   },
   "workspaces": {
     "title": "Arbeitsbereiche",
@@ -73,7 +76,8 @@
     "deleteError": "Fehler beim Löschen des Arbeitsbereichs. Nur der OWNER kann einen Arbeitsbereich löschen.",
     "createSuccess": "Arbeitsbereich erfolgreich erstellt",
     "createError": "Fehler beim Erstellen des Arbeitsbereichs. Bitte versuchen Sie es erneut.",
-    "nameRequired": "Name des Arbeitsbereichs ist erforderlich"
+    "nameRequired": "Name des Arbeitsbereichs ist erforderlich",
+    "unnamed": "Unbenannter Arbeitsbereich"
   },
   "documents": {
     "title": "Dokumente",
@@ -125,12 +129,33 @@
     "assistant": "Assistent",
     "confidence": "Vertrauen",
     "citations": "Zitate",
-    "page": "Seite"
+    "page": "Seite",
+    "statusLabels": {
+      "available": "Verfügbar",
+      "processing": "Wird verarbeitet",
+      "error": "Fehler",
+      "quarantined": "In Quarantäne"
+    },
+    "fileSize": {
+      "bytes": "Bytes",
+      "kb": "KB",
+      "mb": "MB",
+      "gb": "GB"
+    },
+    "failedJobs": "Fehlgeschlagene Aufträge",
+    "error": "Fehler",
+    "attempts": "Versuche"
   },
   "redline": {
     "title": "Redline generieren",
-    "description": "Der Redline schlägt Änderungen am Vertrag basierend auf verschiedenen Strategien (Playbooks) vor. Wählen Sie ein Playbook und fügen Sie optional benutzerdefinierte Anweisungen hinzu.",
+    "description": "Wählen Sie Text aus dem Dokument aus und generieren Sie Änderungsvorschläge basierend auf verschiedenen Strategien (Playbooks).",
     "configuration": "Redline-Konfiguration",
+    "selectedText": "Ausgewählter Text",
+    "selectTextPlaceholder": "Wählen Sie Text aus dem Viewer aus oder fügen Sie ihn hier ein...",
+    "selectedTextHint": "Wählen Sie Text aus dem Dokumentenviewer aus oder fügen Sie die Klausel ein, die Sie überarbeiten möchten",
+    "selectedTextRequired": "Ausgewählter Text ist erforderlich",
+    "objective": "Ziel (Optional)",
+    "objectivePlaceholder": "Beschreiben Sie die Absicht der Änderung...",
     "playbook": "Playbook",
     "selectPlaybook": "Playbook auswählen",
     "playbookRequired": "Playbook erforderlich",
@@ -139,19 +164,63 @@
     "instructionsDescription": "Zusätzliche Anweisungen, die bei der Generierung des Redlines berücksichtigt werden",
     "generate": "Redline generieren",
     "generated": "Redline generiert",
+    "proposal": "Redline-Vorschlag",
+    "proposedBy": "Vorgeschlagen von",
     "changes": "Änderung(en) vorgeschlagen",
     "change": "Änderung",
     "original": "Original",
     "suggested": "Vorgeschlagen",
+    "explanation": "Erklärung",
     "reason": "Grund",
+    "diffBlocks": "Änderungen",
     "accept": "Akzeptieren",
     "reject": "Ablehnen",
+    "apply": "Änderungen anwenden",
     "noChanges": "Keine Änderungen für dieses Dokument vorgeschlagen.",
+    "notFound": "NICHT GEFUNDEN: Unzureichende Beweise für diesen Vorschlag gefunden.",
+    "citations": "Vertragszitate",
+    "legalCitations": "Rechtliche Zitate",
+    "viewSource": "Quelle anzeigen",
+    "generateSuccess": "Redline erfolgreich mit {{count}} Änderung(en) generiert",
+    "generateError": "Fehler beim Generieren des Redlines",
+    "applySuccess": "Neue Version {{version}} erstellt von {{user}}",
+    "applyError": "Fehler beim Anwenden der Änderungen",
+    "confidence": {
+      "high": "Hohes Vertrauen",
+      "medium": "Mittleres Vertrauen",
+      "low": "Niedriges Vertrauen"
+    },
     "playbooks": {
       "balanced": "Gleicht Schutz für beide Parteien aus",
       "conservative": "Minimiert Änderungen, behält neutrale Sprache bei",
       "clientFriendly": "Begünstigt den Kunden, schlägt günstigere Änderungen vor"
-    }
+    },
+    "rejectProposal": "Vorschlag ablehnen",
+    "editText": "Text bearbeiten",
+    "editBlocks": "Blöcke bearbeiten",
+    "cancelEdit": "Bearbeitung abbrechen",
+    "saveEdit": "Bearbeitung speichern",
+    "editingMode": "Bearbeitungsmodus",
+    "editSuggestedText": "Vorgeschlagenen Text bearbeiten",
+    "editBlockText": "Blocktext bearbeiten",
+    "rejectProposalConfirm": "Sind Sie sicher, dass Sie diesen Vorschlag ablehnen möchten? Alle Änderungen werden verworfen.",
+    "rejectProposalSuccess": "Vorschlag abgelehnt. Sie können einen neuen Vorschlag generieren.",
+    "confirmRegion": "Region bestätigen",
+    "fuzzyMatchFound": "Fuzzy-Übereinstimmung gefunden",
+    "matchedRegion": "Übereinstimmende Region",
+    "useSuggestedRegion": "Vorgeschlagene Region verwenden",
+    "selectManually": "Manuell auswählen",
+    "manualSelectionNotImplemented": "Manuelle Regionsauswahl ist noch nicht implementiert. Verwende vorgeschlagene Region."
+  },
+  "documentContent": {
+    "title": "Dokumentinhalt",
+    "currentVersion": "Aktuelle Version",
+    "lastUpdated": "Zuletzt aktualisiert",
+    "loading": "Inhalt wird geladen...",
+    "error": "Fehler beim Laden des Inhalts",
+    "noContent": "Kein Inhalt verfügbar",
+    "refresh": "Inhalt aktualisieren",
+    "selectTextHint": "Text auswählen, um Redline zu erstellen"
   },
   "privacy": {
     "title": "Datenschutzeinstellungen",
@@ -308,6 +377,18 @@
       "member": "Mitglied",
       "viewer": "Betrachter"
     }
+  },
+  "versions": {
+    "title": "Dokumentversionen",
+    "loading": "Versionen werden geladen...",
+    "noVersions": "Keine Versionen für dieses Dokument gefunden.",
+    "version": "Version",
+    "createdBy": "Erstellt von",
+    "view": "Anzeigen",
+    "hide": "Ausblenden",
+    "decisions": "Entscheidungen",
+    "noChanges": "Keine Änderungen in dieser Version",
+    "loadError": "Fehler beim Laden der Versionen"
   },
   "errors": {
     "generic": "Ein Fehler ist aufgetreten",

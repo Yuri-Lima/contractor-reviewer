@@ -1,6 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DocumentJob, JobStatus, JobType } from '../entities/document-job.entity';
@@ -21,9 +21,14 @@ interface OcrJobData {
   mimeType: string;
 }
 
-@Processor('ocr')
+@Processor('ocr', {
+  stalledInterval: 60000, // OCR jobs take longer, check every 60s
+  maxStalledCount: 1,
+})
 @Injectable()
 export class OcrProcessor extends WorkerHost {
+  private readonly logger = new Logger(OcrProcessor.name);
+
   constructor(
     @InjectRepository(DocumentJob)
     private jobRepository: Repository<DocumentJob>,
@@ -39,6 +44,25 @@ export class OcrProcessor extends WorkerHost {
     private chunkingQueue: Queue,
   ) {
     super();
+  }
+
+  /**
+   * Wrap a promise with a timeout
+   */
+  private async withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    errorMsg: string,
+  ): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`${errorMsg} (timeout after ${timeoutMs}ms)`)),
+          timeoutMs,
+        ),
+      ),
+    ]);
   }
 
   private async updateJobStatus(
@@ -61,7 +85,13 @@ export class OcrProcessor extends WorkerHost {
       job.attempts += 1;
     }
 
+    // Explicitly update updatedAt to ensure change detection
+    job.updatedAt = new Date();
+    
     await this.jobRepository.save(job);
+    
+    const finalProgress = progress !== undefined ? progress : job.progress;
+    this.logger.log(`[PROGRESS] Job ${jobId} (${job.type}): status=${status}, progress=${finalProgress}%`);
   }
 
   private async markFileAvailable(fileId: string): Promise<void> {
@@ -104,6 +134,10 @@ export class OcrProcessor extends WorkerHost {
   async process(job: Job<OcrJobData>): Promise<void> {
     const { jobId, documentId, fileId, storageKey, mimeType } = job.data;
 
+    this.logger.log(
+      `Starting OCR job ${jobId} for file ${fileId} (${mimeType})`,
+    );
+
     try {
       await this.updateJobStatus(jobId, JobStatus.PROCESSING, 10);
 
@@ -112,44 +146,68 @@ export class OcrProcessor extends WorkerHost {
         throw new Error(`File ${fileId} not found`);
       }
 
+      await this.updateJobStatus(jobId, JobStatus.PROCESSING, 20);
+      this.logger.debug(`Job ${jobId}: File found, progress 20%`);
+
       let extractedText = '';
       let pageCount = null;
 
       // Process PDF with OCR
       if (mimeType === 'application/pdf') {
-        await this.updateJobStatus(jobId, JobStatus.PROCESSING, 20);
+        await this.updateJobStatus(jobId, JobStatus.PROCESSING, 30);
+        this.logger.debug(`Job ${jobId}: Starting OCR processing, progress 30%`);
 
         // Extract text using OCR
-        const ocrResult = await this.ocrService.extractTextFromPdf(storageKey);
+        const ocrResult = await this.withTimeout(
+          this.ocrService.extractTextFromPdf(storageKey),
+          300000, // 5 minute timeout for OCR (it's slow)
+          `OCR processing failed for ${storageKey}`,
+        );
         extractedText = ocrResult.fullText;
         pageCount = ocrResult.totalPages;
 
         await this.updateJobStatus(jobId, JobStatus.PROCESSING, 70);
+        this.logger.debug(
+          `Job ${jobId}: OCR completed, extracted ${extractedText.length} characters, progress 70%`,
+        );
 
         file.pageCount = pageCount;
         file.ocrText = extractedText; // Store OCR extracted text
         await this.fileRepository.save(file);
 
         // Resolve jurisdiction
+        await this.updateJobStatus(jobId, JobStatus.PROCESSING, 75);
+        this.logger.debug(`Job ${jobId}: Resolving jurisdiction, progress 75%`);
+
         const document = await this.documentRepository.findOne({
           where: { id: documentId },
         });
 
         if (document && extractedText) {
-          const jurisdictionResult =
-            await this.jurisdictionResolver.resolveJurisdiction(extractedText);
+          const jurisdictionResult = await this.withTimeout(
+            this.jurisdictionResolver.resolveJurisdiction(extractedText),
+            30000, // 30 second timeout for jurisdiction resolution
+            `Jurisdiction resolution failed for document ${documentId}`,
+          );
 
           if (jurisdictionResult.jurisdiction) {
             document.resolvedJurisdiction = jurisdictionResult.jurisdiction;
             document.jurisdictionStatus = jurisdictionResult.status as JurisdictionStatus;
             await this.documentRepository.save(document);
+            this.logger.debug(
+              `Job ${jobId}: Resolved jurisdiction: ${jurisdictionResult.jurisdiction}`,
+            );
           }
         }
       } else {
-        throw new Error(`OCR not supported for mime type: ${mimeType}`);
+        const errorMsg = `OCR not supported for mime type: ${mimeType}. Only application/pdf is supported.`;
+        this.logger.error(`Job ${jobId}: ${errorMsg}`);
+        await this.updateJobStatus(jobId, JobStatus.FAILED, undefined, errorMsg);
+        return;
       }
 
       await this.updateJobStatus(jobId, JobStatus.PROCESSING, 80);
+      this.logger.debug(`Job ${jobId}: Creating chunking job, progress 80%`);
 
       // Create chunking job if text was extracted
       if (extractedText) {
@@ -170,17 +228,23 @@ export class OcrProcessor extends WorkerHost {
           text: extractedText,
           pageCount,
         });
+
+        this.logger.debug(`Job ${jobId}: Chunking job created: ${savedChunkingJob.id}`);
+      } else {
+        this.logger.warn(`Job ${jobId}: No text extracted, skipping chunking job`);
       }
 
       await this.updateJobStatus(jobId, JobStatus.COMPLETED, 100);
       await this.markFileAvailable(fileId);
+      this.logger.log(`Job ${jobId}: Completed successfully`);
     } catch (error) {
-      await this.updateJobStatus(
-        jobId,
-        JobStatus.FAILED,
-        undefined,
-        error instanceof Error ? error.message : String(error),
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Job ${jobId}: Failed with error: ${errorMessage}`,
+        error instanceof Error ? error.stack : undefined,
       );
+      await this.updateJobStatus(jobId, JobStatus.FAILED, undefined, errorMessage);
       throw error;
     }
   }

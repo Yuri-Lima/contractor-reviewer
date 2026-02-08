@@ -1,6 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { DocumentJob, JobStatus } from '../entities/document-job.entity';
@@ -13,7 +13,10 @@ interface EmbeddingsJobData {
   chunkIds: string[];
 }
 
-@Processor('embeddings')
+@Processor('embeddings', {
+  stalledInterval: 60000,
+  maxStalledCount: 1,
+})
 @Injectable()
 export class EmbeddingsProcessor extends WorkerHost {
   constructor(
@@ -46,7 +49,13 @@ export class EmbeddingsProcessor extends WorkerHost {
       job.attempts += 1;
     }
 
+    // Explicitly update updatedAt to ensure change detection
+    job.updatedAt = new Date();
+    
     await this.jobRepository.save(job);
+    
+    const finalProgress = progress !== undefined ? progress : job.progress;
+    this.logger.log(`[PROGRESS] Job ${jobId} (${job.type}): status=${status}, progress=${finalProgress}%`);
   }
 
   async process(job: Job<EmbeddingsJobData>): Promise<void> {

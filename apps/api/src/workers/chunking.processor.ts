@@ -1,6 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DocumentJob, JobStatus, JobType } from '../entities/document-job.entity';
@@ -17,9 +17,14 @@ interface ChunkingJobData {
   pageCount?: number;
 }
 
-@Processor('chunking')
+@Processor('chunking', {
+  stalledInterval: 30000,
+  maxStalledCount: 1,
+})
 @Injectable()
 export class ChunkingProcessor extends WorkerHost {
+  private readonly logger = new Logger(ChunkingProcessor.name);
+
   constructor(
     @InjectRepository(DocumentJob)
     private jobRepository: Repository<DocumentJob>,
@@ -30,6 +35,25 @@ export class ChunkingProcessor extends WorkerHost {
     private embeddingsQueue: Queue,
   ) {
     super();
+  }
+
+  /**
+   * Wrap a promise with a timeout
+   */
+  private async withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    errorMsg: string,
+  ): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`${errorMsg} (timeout after ${timeoutMs}ms)`)),
+          timeoutMs,
+        ),
+      ),
+    ]);
   }
 
   private async updateJobStatus(
@@ -52,21 +76,43 @@ export class ChunkingProcessor extends WorkerHost {
       job.attempts += 1;
     }
 
+    // Explicitly update updatedAt to ensure change detection
+    job.updatedAt = new Date();
+    
     await this.jobRepository.save(job);
+    
+    // Log progress update for debugging
+    const finalProgress = progress !== undefined ? progress : job.progress;
+    this.logger.log(`[PROGRESS] Job ${jobId} (${job.type}): status=${status}, progress=${finalProgress}%`);
   }
 
   async process(job: Job<ChunkingJobData>): Promise<void> {
     const { jobId, documentId, text, pageCount } = job.data;
 
+    this.logger.log(
+      `Starting chunking job ${jobId} for document ${documentId} (${text.length} characters)`,
+    );
+
     try {
       await this.updateJobStatus(jobId, JobStatus.PROCESSING, 10);
+
+      if (!text || text.trim().length === 0) {
+        throw new Error('No text provided for chunking');
+      }
+
+      await this.updateJobStatus(jobId, JobStatus.PROCESSING, 20);
+      this.logger.debug(`Job ${jobId}: Starting text chunking, progress 20%`);
 
       // Chunk the text
       const chunks = this.chunkingService.chunkText(text, pageCount || undefined);
 
-      await this.updateJobStatus(jobId, JobStatus.PROCESSING, 50);
+      await this.updateJobStatus(jobId, JobStatus.PROCESSING, 40);
+      this.logger.debug(`Job ${jobId}: Created ${chunks.length} chunks, progress 40%`);
 
       // Save chunks to database
+      await this.updateJobStatus(jobId, JobStatus.PROCESSING, 50);
+      this.logger.debug(`Job ${jobId}: Saving chunks to database, progress 50%`);
+
       const chunkEntities = chunks.map((chunk) =>
         this.chunkRepository.create({
           documentId,
@@ -78,11 +124,19 @@ export class ChunkingProcessor extends WorkerHost {
         }),
       );
 
-      const savedChunks = await this.chunkRepository.save(chunkEntities);
+      const savedChunks = await this.withTimeout(
+        this.chunkRepository.save(chunkEntities),
+        60000, // 60 second timeout for saving chunks
+        `Failed to save chunks for document ${documentId}`,
+      );
 
-      await this.updateJobStatus(jobId, JobStatus.PROCESSING, 80);
+      await this.updateJobStatus(jobId, JobStatus.PROCESSING, 70);
+      this.logger.debug(`Job ${jobId}: Saved ${savedChunks.length} chunks, progress 70%`);
 
       // Create embeddings job
+      await this.updateJobStatus(jobId, JobStatus.PROCESSING, 80);
+      this.logger.debug(`Job ${jobId}: Creating embeddings job, progress 80%`);
+
       const embeddingsJob = this.jobRepository.create({
         documentId,
         type: JobType.EMBEDDING,
@@ -99,14 +153,18 @@ export class ChunkingProcessor extends WorkerHost {
         chunkIds: savedChunks.map((c) => c.id),
       });
 
+      this.logger.debug(`Job ${jobId}: Embeddings job created: ${savedEmbeddingsJob.id}`);
+
       await this.updateJobStatus(jobId, JobStatus.COMPLETED, 100);
+      this.logger.log(`Job ${jobId}: Completed successfully`);
     } catch (error) {
-      await this.updateJobStatus(
-        jobId,
-        JobStatus.FAILED,
-        undefined,
-        error instanceof Error ? error.message : String(error),
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Job ${jobId}: Failed with error: ${errorMessage}`,
+        error instanceof Error ? error.stack : undefined,
       );
+      await this.updateJobStatus(jobId, JobStatus.FAILED, undefined, errorMessage);
       throw error;
     }
   }

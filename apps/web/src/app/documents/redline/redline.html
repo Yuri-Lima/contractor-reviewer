@@ -1,0 +1,385 @@
+<div class="redline-container p-6">
+  <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">{{ 'redline.title' | translate }}</h2>
+
+  <p-message
+    severity="info"
+    [text]="'redline.description' | translate"
+    class="mb-6"
+  ></p-message>
+
+  <!-- Step 1-2: Selection and Request Form -->
+  @if (!redlineResult()) {
+    <form [formGroup]="redlineForm" (ngSubmit)="onGenerate()" class="space-y-6">
+    <p-card>
+      <ng-template pTemplate="header">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ 'redline.configuration' | translate }}</h3>
+        </div>
+      </ng-template>
+      <div class="p-4 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {{ 'redline.selectedText' | translate }} *
+          </label>
+          <textarea
+            pTextarea
+            formControlName="selectedText"
+            rows="4"
+            [placeholder]="'redline.selectTextPlaceholder' | translate"
+            class="w-full"
+          ></textarea>
+          <small class="text-gray-500 dark:text-gray-400 mt-1 block">
+            {{ 'redline.selectedTextHint' | translate }}
+          </small>
+          @if (redlineForm.get('selectedText')?.invalid && redlineForm.get('selectedText')?.touched) {
+            <small class="p-error block mt-1">
+              {{ 'redline.selectedTextRequired' | translate }}
+            </small>
+          }
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {{ 'redline.objective' | translate }}
+          </label>
+          <textarea
+            pTextarea
+            formControlName="objective"
+            rows="2"
+            [placeholder]="'redline.objectivePlaceholder' | translate"
+            class="w-full"
+          ></textarea>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {{ 'redline.playbook' | translate }} *
+          </label>
+          <p-select
+            formControlName="playbook"
+            [options]="playbookOptions"
+            optionLabel="label"
+            optionValue="value"
+            [placeholder]="'redline.selectPlaybook' | translate"
+            class="w-full"
+          ></p-select>
+          <small class="text-gray-500 dark:text-gray-400 mt-1 block">
+            {{ getPlaybookDescription(redlineForm.value.playbook) }}
+          </small>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {{ 'redline.customInstructions' | translate }}
+          </label>
+          <textarea
+            pTextarea
+            formControlName="instructions"
+            rows="3"
+            [placeholder]="'redline.addInstructions' | translate"
+            class="w-full"
+          ></textarea>
+        </div>
+      </div>
+    </p-card>
+
+    <div class="flex gap-2 justify-end">
+      <p-button
+        type="submit"
+        [label]="'redline.generate' | translate"
+        icon="pi pi-magic"
+        [disabled]="redlineForm.invalid || generating()"
+        [loading]="generating()"
+      ></p-button>
+    </div>
+    </form>
+  }
+
+  <!-- Step 3-6: Display Proposal, Accept/Reject, Apply -->
+  @if (redlineResult()) {
+    <div class="mt-8">
+    <p-card>
+      <ng-template pTemplate="header">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+          <div class="flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">
+              {{ 'redline.proposal' | translate }}
+            </h3>
+            <div class="flex items-center gap-2">
+              @if (redlineResult()?.changes && redlineResult()!.changes.length > 0) {
+                <p-tag
+                  [value]="getConfidenceLabel(redlineResult()!.changes[0]?.confidence)"
+                  [severity]="getConfidenceSeverity(redlineResult()!.changes[0]?.confidence)"
+                ></p-tag>
+              }
+              <span class="text-sm text-gray-600 dark:text-gray-400">
+                {{ 'redline.proposedBy' | translate }}: {{ currentUser()?.email || 'User' }}
+              </span>
+            </div>
+          </div>
+          <div class="flex gap-2 mt-4">
+            @if (editingMode() === 'view') {
+              <p-button
+                [label]="'redline.editText' | translate"
+                icon="pi pi-pencil"
+                severity="secondary"
+                [outlined]="true"
+                (onClick)="startEditText()"
+              ></p-button>
+              <p-button
+                [label]="'redline.editBlocks' | translate"
+                icon="pi pi-edit"
+                severity="secondary"
+                [outlined]="true"
+                (onClick)="startEditBlocks()"
+              ></p-button>
+              <p-button
+                [label]="'redline.rejectProposal' | translate"
+                icon="pi pi-times"
+                severity="danger"
+                [outlined]="true"
+                (onClick)="confirmRejectProposal()"
+              ></p-button>
+            } @else {
+              <p-button
+                [label]="'redline.cancelEdit' | translate"
+                icon="pi pi-times"
+                severity="secondary"
+                [outlined]="true"
+                (onClick)="cancelEdit()"
+              ></p-button>
+              <p-button
+                [label]="'redline.saveEdit' | translate"
+                icon="pi pi-check"
+                severity="success"
+                (onClick)="saveEdit()"
+              ></p-button>
+            }
+          </div>
+        </div>
+      </ng-template>
+      <div class="p-4 space-y-6">
+        @for (change of redlineResult()?.changes; track $index) {
+          <div class="change-item">
+            <!-- Edit Suggested Text Mode -->
+            @if (editingMode() === 'edit-text') {
+              <div class="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  {{ 'redline.editSuggestedText' | translate }}
+                </label>
+                <textarea
+                  pTextarea
+                  [value]="editedSuggestedText() || change.suggestedText"
+                  (input)="onSuggestedTextEdit($event)"
+                  rows="8"
+                  class="w-full font-mono text-sm"
+                ></textarea>
+              </div>
+            }
+
+            <!-- Explanation -->
+            <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+              <div class="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                {{ 'redline.explanation' | translate }}:
+              </div>
+              <p class="text-sm text-blue-800 dark:text-blue-200">{{ change.explanation }}</p>
+            </div>
+
+            <!-- NOT FOUND Warning -->
+            @if (change.notFound) {
+              <div class="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                <p class="text-sm text-yellow-800 dark:text-yellow-200">
+                  {{ 'redline.notFound' | translate }}
+                </p>
+              </div>
+            }
+
+            <!-- Diff Blocks -->
+            <div class="mb-4">
+              <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                {{ 'redline.diffBlocks' | translate }}:
+              </h4>
+              <div class="space-y-2">
+                @for (block of change.diffBlocks; track block.id) {
+                  <div
+                    class="p-2 rounded border"
+                    [class.bg-gray-50]="block.type === 'equal'"
+                    [class.dark:bg-gray-800]="block.type === 'equal'"
+                    [class.bg-red-50]="block.type === 'remove'"
+                    [class.dark:bg-red-900/20]="block.type === 'remove'"
+                    [class.bg-green-50]="block.type === 'add'"
+                    [class.dark:bg-green-900/20]="block.type === 'add'"
+                    [class.border-gray-200]="block.type === 'equal'"
+                    [class.dark:border-gray-700]="block.type === 'equal'"
+                    [class.border-red-200]="block.type === 'remove'"
+                    [class.dark:border-red-800]="block.type === 'remove'"
+                    [class.border-green-200]="block.type === 'add'"
+                    [class.dark:border-green-800]="block.type === 'add'"
+                    [class.border-yellow-400]="editingMode() === 'edit-blocks' && block.type !== 'equal'"
+                    [class.dark:border-yellow-600]="editingMode() === 'edit-blocks' && block.type !== 'equal'"
+                  >
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="flex-1">
+                        <span
+                          class="text-xs font-mono px-1 py-0.5 rounded"
+                          [class.bg-gray-200]="block.type === 'equal'"
+                          [class.dark:bg-gray-700]="block.type === 'equal'"
+                          [class.bg-red-200]="block.type === 'remove'"
+                          [class.dark:bg-red-800]="block.type === 'remove'"
+                          [class.bg-green-200]="block.type === 'add'"
+                          [class.dark:bg-green-800]="block.type === 'add'"
+                        >
+                          {{ block.type }}
+                        </span>
+                        @if (editingMode() === 'edit-blocks' && block.type !== 'equal') {
+                          <textarea
+                            pTextarea
+                            [value]="getEditedBlockText(block.id) || block.text"
+                            (input)="onBlockTextEdit(block.id, $event)"
+                            rows="3"
+                            class="w-full mt-2 font-mono text-sm"
+                          ></textarea>
+                        } @else {
+                          <span class="text-sm text-gray-800 dark:text-gray-200 ml-2 whitespace-pre-wrap">{{ getEditedBlockText(block.id) || block.text }}</span>
+                        }
+                      </div>
+                      @if (block.type !== 'equal' && editingMode() === 'view') {
+                        <div class="flex gap-1">
+                          <p-button
+                            icon="pi pi-check"
+                            [text]="true"
+                            [severity]="getBlockDecision(block.id) === 'accept' ? 'success' : 'secondary'"
+                            [outlined]="getBlockDecision(block.id) !== 'accept'"
+                            (onClick)="acceptBlock(block.id)"
+                            [title]="'redline.accept' | translate"
+                          ></p-button>
+                          <p-button
+                            icon="pi pi-times"
+                            [text]="true"
+                            [severity]="getBlockDecision(block.id) === 'reject' ? 'danger' : 'secondary'"
+                            [outlined]="getBlockDecision(block.id) !== 'reject'"
+                            (onClick)="rejectBlock(block.id)"
+                            [title]="'redline.reject' | translate"
+                          ></p-button>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Citations -->
+            @if (change.citations && change.citations.length > 0) {
+              <div class="mb-4">
+                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  {{ 'redline.citations' | translate }}:
+                </h4>
+                <div class="space-y-2">
+                  @for (citation of change.citations; track $index) {
+                    <div
+                      class="p-2 bg-gray-50 dark:bg-gray-900 rounded text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                      (click)="scrollToCitation(citation)"
+                    >
+                      <span class="font-medium">{{ citation.file }}</span>
+                      @if (citation.page) {
+                        <span> - {{ 'redline.page' | translate }} {{ citation.page }}</span>
+                      }
+                      @if (citation.quoteSnippet) {
+                        <div class="mt-1 italic text-xs text-gray-600 dark:text-gray-400">
+                          "{{ citation.quoteSnippet }}"
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Legal Citations -->
+            @if (change.legalCitations && change.legalCitations.length > 0) {
+              <div class="mb-4">
+                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  {{ 'redline.legalCitations' | translate }}:
+                </h4>
+                <div class="space-y-2">
+                  @for (citation of change.legalCitations; track $index) {
+                    <div
+                      class="p-2 bg-gray-50 dark:bg-gray-900 rounded text-sm"
+                    >
+                      <span class="font-medium">{{ citation.source }}</span>
+                      @if (citation.section) {
+                        <span> - {{ citation.section }}</span>
+                      }
+                      @if (citation.url) {
+                        <a
+                          [href]="citation.url"
+                          target="_blank"
+                          class="text-blue-600 dark:text-blue-400 ml-2"
+                        >
+                          {{ 'redline.viewSource' | translate }}
+                        </a>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Apply Button -->
+        @if (editingMode() === 'view') {
+          <div class="flex justify-end gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <p-button
+              [label]="'redline.apply' | translate"
+              icon="pi pi-check-circle"
+              [disabled]="!hasDecisions() && !hasEditedContent() || applying()"
+              [loading]="applying()"
+              (onClick)="applyChanges()"
+            ></p-button>
+          </div>
+        }
+      </div>
+    </p-card>
+    </div>
+  }
+
+  <!-- Region Confirmation Dialog -->
+  @if (showRegionConfirmation() && fuzzyMatchInfo()) {
+    <p-dialog
+      [visible]="true"
+      [modal]="true"
+      [header]="'redline.confirmRegion' | translate"
+      [style]="{ width: '600px' }"
+      (onHide)="showRegionConfirmation.set(false)"
+    >
+      <div class="region-confirmation space-y-4">
+        <p class="text-gray-700 dark:text-gray-300">
+          {{ 'redline.fuzzyMatchFound' | translate }}: <strong>{{ fuzzyMatchInfo()?.matchScore }}%</strong>
+        </p>
+        @if (fuzzyMatchInfo()?.matchedText) {
+          <div class="region-preview p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{{ 'redline.matchedRegion' | translate }}:</p>
+            <pre class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{{ fuzzyMatchInfo()?.matchedText }}</pre>
+          </div>
+        }
+        <div class="flex gap-2 justify-end">
+          <p-button 
+            [label]="'redline.selectManually' | translate"
+            severity="secondary"
+            [outlined]="true"
+            (onClick)="selectRegionManually()"
+          ></p-button>
+          <p-button 
+            [label]="'redline.useSuggestedRegion' | translate"
+            (onClick)="confirmSuggestedRegion()"
+          ></p-button>
+        </div>
+      </div>
+    </p-dialog>
+  }
+
+  <p-confirmDialog></p-confirmDialog>
+  <p-toast></p-toast>
+</div>

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -9,12 +9,21 @@ import { Card } from 'primeng/card';
 import { Tag } from 'primeng/tag';
 import { Toast } from 'primeng/toast';
 import { MessageModule } from 'primeng/message';
-import { MessageService } from 'primeng/api';
+import { ConfirmDialog } from 'primeng/confirmdialog';
+import { Dialog } from 'primeng/dialog';
+import { MessageService, ConfirmationService } from 'primeng/api';
 import { ApiService } from '../../core/services/api.service';
-import { RedlineRequest, RedlineResponse, RedlinePlaybook, RedlineChange } from '../../core/models/redline.model';
+import {
+  RedlineRequest,
+  RedlineResponse,
+  RedlinePlaybook,
+  RedlineChange,
+  DiffBlock,
+} from '../../core/models/redline.model';
 import { TranslatePipe } from '@ngx-translate/core';
-import { I18nService } from '../../core/services/i18n.service';
 import { TranslateService } from '@ngx-translate/core';
+import { AuthService } from '../../core/services/auth.service';
+import { DiffMatchPatch, DiffOp } from 'diff-match-patch-ts';
 
 @Component({
   selector: 'app-redline',
@@ -29,146 +38,12 @@ import { TranslateService } from '@ngx-translate/core';
     Tag,
     Toast,
     MessageModule,
+    ConfirmDialog,
+    Dialog,
     TranslatePipe,
   ],
-  providers: [MessageService],
-  template: `
-    <div class="redline-container p-6">
-      <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">{{ 'redline.title' | translate }}</h2>
-
-      <p-message
-        severity="info"
-        [text]="'redline.description' | translate"
-        class="mb-6"
-      ></p-message>
-
-      <form [formGroup]="redlineForm" (ngSubmit)="onGenerate()" class="space-y-6">
-        <p-card>
-          <ng-template pTemplate="header">
-            <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ 'redline.configuration' | translate }}</h3>
-            </div>
-          </ng-template>
-          <div class="p-4 space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {{ 'redline.playbook' | translate }}
-              </label>
-              <p-select
-                formControlName="playbook"
-                [options]="playbookOptions"
-                optionLabel="label"
-                optionValue="value"
-                [placeholder]="'redline.selectPlaybook' | translate"
-                class="w-full"
-              ></p-select>
-              <small class="text-gray-500 dark:text-gray-400 mt-1 block">
-                {{ getPlaybookDescription(redlineForm.value.playbook) }}
-              </small>
-              <small class="p-error block mt-1" *ngIf="redlineForm.get('playbook')?.invalid && redlineForm.get('playbook')?.touched">
-                {{ 'redline.playbookRequired' | translate }}
-              </small>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {{ 'redline.customInstructions' | translate }}
-              </label>
-              <textarea
-                pTextarea
-                formControlName="instructions"
-                rows="4"
-                [placeholder]="'redline.addInstructions' | translate"
-                class="w-full"
-              ></textarea>
-              <small class="text-gray-500 dark:text-gray-400 mt-1 block">
-                {{ 'redline.instructionsDescription' | translate }}
-              </small>
-            </div>
-          </div>
-        </p-card>
-
-        <div class="flex gap-2 justify-end">
-          <p-button
-            type="submit"
-            [label]="'redline.generate' | translate"
-            icon="pi pi-magic"
-            [disabled]="redlineForm.invalid || generating()"
-            [loading]="generating()"
-          ></p-button>
-        </div>
-      </form>
-
-      <!-- Generated Redline Results -->
-      <div *ngIf="redlineResult()" class="mt-8">
-        <p-card>
-          <ng-template pTemplate="header">
-            <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">
-                {{ 'redline.generated' | translate }} - {{ redlineResult()?.changes?.length || 0 }} {{ 'redline.changes' | translate }}
-              </h3>
-            </div>
-          </ng-template>
-          <div class="p-4 space-y-6">
-            <div *ngFor="let change of redlineResult()?.changes; let i = index" class="change-item p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div class="flex justify-between items-start mb-3">
-                <h4 class="font-semibold text-gray-800 dark:text-gray-100">
-                  {{ 'redline.change' | translate }} {{ i + 1 }}: {{ change.section }}
-                </h4>
-                <p-tag
-                  [value]="redlineResult()?.playbook"
-                  severity="info"
-                ></p-tag>
-              </div>
-              
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                <div>
-                  <div class="text-sm font-medium text-red-600 dark:text-red-400 mb-2">{{ 'redline.original' | translate }}:</div>
-                  <div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                    {{ change.original }}
-                  </div>
-                </div>
-                <div>
-                  <div class="text-sm font-medium text-green-600 dark:text-green-400 mb-2">{{ 'redline.suggested' | translate }}:</div>
-                  <div class="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                    {{ change.suggested }}
-                  </div>
-                </div>
-              </div>
-
-              <div class="mt-3">
-                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'redline.reason' | translate }}:</div>
-                <p class="text-sm text-gray-600 dark:text-gray-400">{{ change.reason }}</p>
-              </div>
-
-              <div class="flex gap-2 mt-4">
-                <p-button
-                  [label]="'redline.accept' | translate"
-                  icon="pi pi-check"
-                  severity="success"
-                  [outlined]="true"
-                  (onClick)="acceptChange(i)"
-                ></p-button>
-                <p-button
-                  [label]="'redline.reject' | translate"
-                  icon="pi pi-times"
-                  severity="danger"
-                  [outlined]="true"
-                  (onClick)="rejectChange(i)"
-                ></p-button>
-              </div>
-            </div>
-
-            <div *ngIf="!redlineResult()?.changes || redlineResult()!.changes.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
-              {{ 'redline.noChanges' | translate }}
-            </div>
-          </div>
-        </p-card>
-      </div>
-
-      <p-toast></p-toast>
-    </div>
-  `,
+  providers: [MessageService, ConfirmationService],
+  templateUrl: './redline.html',
   styles: [`
     .redline-container {
       max-width: 1200px;
@@ -179,14 +54,28 @@ import { TranslateService } from '@ngx-translate/core';
 export class RedlineComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private apiService = inject(ApiService);
+  private authService = inject(AuthService);
   private fb = inject(FormBuilder);
   private messageService = inject(MessageService);
+  private confirmationService = inject(ConfirmationService);
   private translateService = inject(TranslateService);
+  private dmp = new DiffMatchPatch();
+  private cdr = inject(ChangeDetectorRef);
 
   workspaceId = signal('');
   documentId = signal('');
   generating = signal(false);
+  applying = signal(false);
   redlineResult = signal<RedlineResponse | null>(null);
+  currentUser = signal<any>(null);
+  decisions = signal<Map<string, 'accept' | 'reject'>>(new Map());
+  editingMode = signal<'view' | 'edit-text' | 'edit-blocks'>('view');
+  editedSuggestedText = signal<string>('');
+  editedBlocks = signal<Map<string, string>>(new Map());
+  selectedStartIndex = signal<number | undefined>(undefined);
+  selectedEndIndex = signal<number | undefined>(undefined);
+  fuzzyMatchInfo = signal<{ used: boolean; matchScore?: number; matchedText?: string; suggestedRegion?: { startIndex: number; endIndex: number }; requiresConfirmation?: boolean } | null>(null);
+  showRegionConfirmation = signal(false);
 
   playbookOptions = [
     { label: 'Balanced', value: RedlinePlaybook.BALANCED },
@@ -198,6 +87,8 @@ export class RedlineComponent implements OnInit {
 
   constructor() {
     this.redlineForm = this.fb.group({
+      selectedText: ['', [Validators.required]],
+      objective: [''],
       playbook: [RedlinePlaybook.BALANCED, [Validators.required]],
       instructions: [''],
     });
@@ -208,6 +99,9 @@ export class RedlineComponent implements OnInit {
     const docId = this.route.snapshot.paramMap.get('documentId') || '';
     this.workspaceId.set(wsId);
     this.documentId.set(docId);
+
+    // Get current user from auth service
+    this.currentUser.set(this.authService.currentUser());
   }
 
   getPlaybookDescription(playbook: RedlinePlaybook | null): string {
@@ -220,15 +114,34 @@ export class RedlineComponent implements OnInit {
     return descriptions[playbook] || '';
   }
 
+  onTextSelectedFromContent(event: { text: string; startIndex?: number; endIndex?: number }): void {
+    this.redlineForm.patchValue({ selectedText: event.text });
+    this.selectedStartIndex.set(event.startIndex);
+    this.selectedEndIndex.set(event.endIndex);
+  }
+
   onGenerate(): void {
     if (this.redlineForm.invalid) {
       return;
     }
 
     this.generating.set(true);
+    this.decisions.set(new Map());
+    this.editingMode.set('view');
+    this.editedSuggestedText.set('');
+    this.editedBlocks.set(new Map());
+    
+    // Get current user language
+    const currentLang = this.translateService.currentLang || 'en';
+    
     const request: RedlineRequest = {
+      selectedText: this.redlineForm.value.selectedText.trim(),
       playbook: this.redlineForm.value.playbook,
       instructions: this.redlineForm.value.instructions || undefined,
+      objective: this.redlineForm.value.objective || undefined,
+      language: currentLang,
+      startIndex: this.selectedStartIndex(), // Include position if available
+      endIndex: this.selectedEndIndex(),
     };
 
     this.apiService.generateRedline(this.workspaceId(), this.documentId(), request).subscribe({
@@ -253,21 +166,352 @@ export class RedlineComponent implements OnInit {
     });
   }
 
-  acceptChange(index: number): void {
-    // TODO: Implement accept change logic (will create new version)
-    this.messageService.add({
-      severity: 'info',
-      summary: this.translateService.instant('common.info'),
-      detail: this.translateService.instant('redline.acceptInfo'),
+  acceptBlock(blockId: string): void {
+    this.decisions.update(decisions => {
+      const newDecisions = new Map(decisions);
+      newDecisions.set(blockId, 'accept');
+      return newDecisions;
+    });
+    // Force change detection if signal update doesn't trigger template update
+    this.cdr.markForCheck();
+  }
+
+  rejectBlock(blockId: string): void {
+    this.decisions.update(decisions => {
+      const newDecisions = new Map(decisions);
+      newDecisions.set(blockId, 'reject');
+      return newDecisions;
+    });
+    // Force change detection if signal update doesn't trigger template update
+    this.cdr.markForCheck();
+  }
+
+  getBlockDecision(blockId: string): 'accept' | 'reject' | null {
+    const decisions = this.decisions(); // Explicitly read signal
+    return decisions.get(blockId) || null;
+  }
+
+  hasDecisions(): boolean {
+    return this.decisions().size > 0;
+  }
+
+  hasEditedContent(): boolean {
+    return this.editedSuggestedText().trim().length > 0 || this.editedBlocks().size > 0;
+  }
+
+  confirmRejectProposal(): void {
+    this.confirmationService.confirm({
+      message: this.translateService.instant('redline.rejectProposalConfirm'),
+      header: this.translateService.instant('redline.rejectProposal'),
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      acceptLabel: this.translateService.instant('redline.rejectProposal'),
+      rejectLabel: this.translateService.instant('common.cancel'),
+      accept: () => {
+        this.rejectProposal();
+      },
     });
   }
 
-  rejectChange(index: number): void {
-    // TODO: Implement reject change logic
+  rejectProposal(): void {
+    this.redlineResult.set(null);
+    this.decisions.set(new Map());
+    this.editingMode.set('view');
+    this.editedSuggestedText.set('');
+    this.editedBlocks.set(new Map());
+    this.redlineForm.reset({
+      playbook: RedlinePlaybook.BALANCED,
+      selectedText: '',
+      objective: '',
+      instructions: '',
+    });
+    this.messageService.add({
+      severity: 'success',
+      summary: this.translateService.instant('common.success'),
+      detail: this.translateService.instant('redline.rejectProposalSuccess'),
+    });
+  }
+
+  startEditText(): void {
+    const result = this.redlineResult();
+    if (result?.changes && result.changes.length > 0) {
+      this.editedSuggestedText.set(result.changes[0].suggestedText);
+      this.editingMode.set('edit-text');
+    }
+  }
+
+  startEditBlocks(): void {
+    this.editingMode.set('edit-blocks');
+  }
+
+  cancelEdit(): void {
+    this.editingMode.set('view');
+    this.editedSuggestedText.set('');
+    this.editedBlocks.set(new Map());
+  }
+
+  onSuggestedTextEdit(event: Event): void {
+    const target = event.target as HTMLTextAreaElement;
+    if (target) {
+      this.editedSuggestedText.set(target.value);
+    }
+  }
+
+  onBlockTextEdit(blockId: string, event: Event): void {
+    const target = event.target as HTMLTextAreaElement;
+    if (target) {
+      const currentBlocks = new Map(this.editedBlocks());
+      currentBlocks.set(blockId, target.value);
+      this.editedBlocks.set(currentBlocks);
+    }
+  }
+
+  getEditedBlockText(blockId: string): string | null {
+    return this.editedBlocks().get(blockId) || null;
+  }
+
+  saveEdit(): void {
+    const result = this.redlineResult();
+    if (!result?.changes || result.changes.length === 0) {
+      return;
+    }
+
+    const change = result.changes[0];
+
+    if (this.editingMode() === 'edit-text') {
+      const editedText = this.editedSuggestedText().trim();
+      if (!editedText) {
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translateService.instant('common.error'),
+          detail: this.translateService.instant('redline.selectedTextRequired'),
+        });
+        return;
+      }
+
+      // Regenerate diff blocks from edited text
+      const newDiffBlocks = this.generateDiffBlocks(change.originalText, editedText);
+      
+      // Update the change with new diff blocks and suggested text
+      const updatedChange: RedlineChange = {
+        ...change,
+        suggestedText: editedText,
+        diffBlocks: newDiffBlocks,
+      };
+
+      // Update redlineResult
+      this.redlineResult.set({
+        ...result,
+        changes: [updatedChange],
+      });
+
+      // Clear decisions since diff blocks changed
+      this.decisions.set(new Map());
+    } else if (this.editingMode() === 'edit-blocks') {
+      // Reconstruct suggested text from edited blocks
+      const editedBlocks = this.editedBlocks();
+      let suggestedText = '';
+      
+      for (const block of change.diffBlocks) {
+        const editedText = editedBlocks.get(block.id);
+        const blockText = editedText || block.text;
+        
+        if (block.type === 'equal' || block.type === 'add') {
+          suggestedText += blockText;
+        }
+        // 'remove' blocks are not included in suggested text
+      }
+
+      // Regenerate diff blocks from reconstructed text
+      const newDiffBlocks = this.generateDiffBlocks(change.originalText, suggestedText);
+      
+      const updatedChange: RedlineChange = {
+        ...change,
+        suggestedText,
+        diffBlocks: newDiffBlocks,
+      };
+
+      this.redlineResult.set({
+        ...result,
+        changes: [updatedChange],
+      });
+
+      // Clear decisions since diff blocks changed
+      this.decisions.set(new Map());
+    }
+
+    this.editingMode.set('view');
+    this.messageService.add({
+      severity: 'success',
+      summary: this.translateService.instant('common.success'),
+      detail: this.translateService.instant('redline.saveEdit'),
+    });
+  }
+
+  generateDiffBlocks(originalText: string, suggestedText: string): DiffBlock[] {
+    const diffs = this.dmp.diff_main(originalText, suggestedText);
+    this.dmp.diff_cleanupSemantic(diffs);
+
+    const blocks: DiffBlock[] = [];
+    let blockIndex = 0;
+
+    for (const diff of diffs) {
+      const [operation, text] = diff;
+
+      if (operation === DiffOp.Equal) {
+        blocks.push({
+          id: `b${blockIndex++}`,
+          type: 'equal',
+          text,
+        });
+      } else if (operation === DiffOp.Delete) {
+        blocks.push({
+          id: `b${blockIndex++}`,
+          type: 'remove',
+          text,
+        });
+      } else if (operation === DiffOp.Insert) {
+        blocks.push({
+          id: `b${blockIndex++}`,
+          type: 'add',
+          text,
+        });
+      }
+    }
+
+    return blocks;
+  }
+
+  applyChanges(): void {
+    const result = this.redlineResult();
+    if (!result) {
+      return;
+    }
+
+    // Check if we have edited content or decisions
+    const hasEditedText = this.editedSuggestedText().trim().length > 0;
+    const hasEditedBlocks = this.editedBlocks().size > 0;
+    const hasBlockDecisions = this.decisions().size > 0;
+
+    if (!hasEditedText && !hasEditedBlocks && !hasBlockDecisions) {
+      return;
+    }
+
+    const change = result.changes[0];
+    let finalText: string;
+    let decisionsArray: Array<{ blockId: string; decision: 'accept' | 'reject' }> | undefined;
+
+    if (hasEditedText) {
+      // Use edited suggested text directly
+      finalText = this.editedSuggestedText().trim();
+      decisionsArray = undefined;
+    } else if (hasEditedBlocks) {
+      // Reconstruct from edited blocks
+      const editedBlocks = this.editedBlocks();
+      let reconstructedText = '';
+      
+      for (const block of change.diffBlocks) {
+        const editedText = editedBlocks.get(block.id);
+        const blockText = editedText || block.text;
+        
+        if (block.type === 'equal' || block.type === 'add') {
+          reconstructedText += blockText;
+        }
+      }
+      
+      finalText = reconstructedText;
+      decisionsArray = undefined;
+    } else {
+      // Use existing decisions logic
+      decisionsArray = Array.from(this.decisions().entries()).map(([blockId, decision]) => ({
+        blockId,
+        decision,
+      }));
+      finalText = undefined as any; // Will be calculated on backend
+    }
+
+    this.applying.set(true);
+    this.apiService
+      .applyRedline(
+        this.workspaceId(),
+        this.documentId(),
+        result.versionId,
+        decisionsArray,
+        finalText,
+      )
+      .subscribe({
+        next: (applyResult) => {
+          this.messageService.add({
+            severity: 'success',
+            summary: this.translateService.instant('common.success'),
+            detail: this.translateService.instant('redline.applySuccess', {
+              version: applyResult.versionNumber,
+              user: this.currentUser()?.email || 'User',
+            }),
+          });
+          this.applying.set(false);
+          // Reset form and result
+          this.redlineResult.set(null);
+          this.decisions.set(new Map());
+          this.editingMode.set('view');
+          this.editedSuggestedText.set('');
+          this.editedBlocks.set(new Map());
+          this.redlineForm.reset({
+            playbook: RedlinePlaybook.BALANCED,
+            selectedText: '',
+            objective: '',
+            instructions: '',
+          });
+        },
+        error: (err) => {
+          console.error('Error applying redline:', err);
+          this.messageService.add({
+            severity: 'error',
+            summary: this.translateService.instant('common.error'),
+            detail: err.error?.message || this.translateService.instant('redline.applyError'),
+          });
+          this.applying.set(false);
+        },
+      });
+  }
+
+  scrollToCitation(citation: any): void {
+    // TODO: Implement scroll to citation in document viewer
+    console.log('Scroll to citation:', citation);
+  }
+
+  getConfidenceLabel(confidence?: 'high' | 'medium' | 'low'): string {
+    if (!confidence) return '';
+    return this.translateService.instant(`redline.confidence.${confidence}`);
+  }
+
+  getConfidenceSeverity(confidence?: 'high' | 'medium' | 'low'): 'success' | 'warn' | 'danger' {
+    switch (confidence) {
+      case 'high':
+        return 'success';
+      case 'medium':
+        return 'warn';
+      case 'low':
+        return 'danger';
+      default:
+        return 'warn';
+    }
+  }
+
+  confirmSuggestedRegion(): void {
+    // User confirmed the suggested region, proceed with application
+    this.showRegionConfirmation.set(false);
+    this.applyChanges();
+  }
+
+  selectRegionManually(): void {
+    // User wants to select region manually - for now, just close dialog
+    // Future: could implement manual selection UI
+    this.showRegionConfirmation.set(false);
     this.messageService.add({
       severity: 'info',
       summary: this.translateService.instant('common.info'),
-      detail: this.translateService.instant('redline.rejectInfo'),
+      detail: this.translateService.instant('redline.manualSelectionNotImplemented'),
     });
   }
 }

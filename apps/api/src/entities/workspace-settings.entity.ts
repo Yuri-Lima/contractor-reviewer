@@ -37,6 +37,9 @@ export class WorkspaceSettings {
   @Column({ type: 'jsonb', nullable: true })
   retentionOverrides: Record<string, number>; // Overrides per document type or other criteria
 
+  @Column({ type: 'int', default: 70 })
+  fuzzyMatchThreshold: number; // Minimum match percentage for fuzzy matching (0-100)
+
   @CreateDateColumn()
   createdAt: Date;
 

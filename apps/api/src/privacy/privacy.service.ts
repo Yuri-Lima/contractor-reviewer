@@ -214,4 +214,26 @@ export class PrivacyService {
       defaultTextEmbeddingsRetentionDays: settings?.defaultTextEmbeddingsRetentionDays || 90,
     };
   }
+
+  /**
+   * Get no-logs configuration
+   */
+  async getNoLogsConfig(workspaceId: string): Promise<{
+    enabled: boolean;
+    config?: {
+      skipDocumentContent?: boolean;
+      skipChatMessages?: boolean;
+      skipVersions?: boolean;
+      acceleratedPurgeDays?: number;
+    } | null;
+  }> {
+    const settings = await this.settingsRepository.findOne({
+      where: { workspaceId },
+    });
+
+    return {
+      enabled: settings?.noLogsEnabled || false,
+      config: settings?.noLogsConfig || null,
+    };
+  }
 }

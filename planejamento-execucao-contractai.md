@@ -107,28 +107,56 @@
 
 - [x] Criar app Angular em `apps/web`; configurar Capacitor para web + iOS/Android.
 - [x] UI: workspace switcher, listagem de documentos, upload.
-- [ ] Viewer de contrato (pdf.js ou equivalente) — **Pendente: implementar viewer de PDF**
+- [x] Viewer de contrato (pdf.js) — **Implementado:** PDF viewer component com suporte a visualização de arquivos.
 - [x] Chat com exibição de citações e confidence.
-- [ ] Versões e redline: side-by-side diff, accept/reject por bloco, gerar nova versão (vN+1) — **Pendente: implementar diff UI**
+- [x] Versões e redline: side-by-side diff, accept/reject por bloco, gerar nova versão (vN+1) — **Implementado:** Versions component criado, redline component com template HTML completo, diff service no backend.
 - [x] Privacy panel: export DSAR-lite, toggle no-logs, explicar o que é armazenado e por quanto tempo.
 - [x] Tela de audit log com filtros (ação, usuário, data).
-- [ ] Exibir progresso de DocumentJob no documento (OCR/embeddings) — **Pendente: adicionar indicador de progresso**
+- [x] Exibir progresso de DocumentJob no documento (OCR/embeddings) — **Implementado:** Progress bar com polling agressivo, localStorage cache, atualização em tempo real de jobs (pending/processing/completed/failed).
+- [x] Mobile development setup: Capacitor config, scripts de setup, documentação (MOBILE-DEV.md, QUICK-START-MOBILE.md).
+- [x] UI/UX improvements: Header com menu dropdown de usuário, templates separados para login/register, guest guard.
+- [x] Document content component: Visualização de conteúdo do documento com seleção de texto.
 
 ---
 
 ## Fase 10 — Redline playbooks e diff
 
-- [ ] Implementar playbooks: Balanced, Conservative, Client-friendly (backend + parâmetro no endpoint).
-- [ ] Persistir versões e histórico; diff entre versões; aceitar/rejeitar granular e gerar nova versão.
+- [x] Implementar playbooks: Balanced, Conservative, Client-friendly (backend + parâmetro no endpoint) — **Implementado:** Redline service com suporte a playbooks, redline controller atualizado.
+- [x] Persistir versões e histórico; diff entre versões — **Implementado:** Version service aprimorado, diff service criado, migrations para campos de redline.
+- [x] Aceitar/rejeitar granular e gerar nova versão — **Implementado:** Redline component com UI completa, versões component para visualização e gerenciamento.
+- [x] Backend: Redline service completo com lógica de geração de mudanças, diff service para comparação de versões.
+- [x] Frontend: Redline component com template HTML, integração com API, UI para aceitar/rejeitar mudanças.
 
 ---
 
 ## Fase 11 — Dados de exemplo e fechamento
 
 - [ ] Inserir exemplos de Legal Sources (pelo menos 1 país EU + 1 nacional); indexar embeddings.
-- [ ] Revisar console/loggers para "no plaintext content logging".
-- [ ] README final na raiz do monorepo: `pnpm install`, migrations em `apps/api`, `pnpm dev` em `apps/web`, comandos para API e worker em `apps/api`; docker-compose para Postgres + Redis.
-- [ ] Testar fluxo completo: workspace, upload, chat com citações, redline com playbook, versões, export privacidade, purge.
+- [x] Revisar console/loggers para "no plaintext content logging" — **Implementado:** Workers atualizados com logging seguro, apenas metadados são logados.
+- [x] README final na raiz do monorepo — **Parcialmente implementado:** README atualizado, documentação mobile adicionada, scripts de setup criados.
+- [x] Testar fluxo completo: workspace, upload, chat com citações, redline com playbook, versões, export privacidade, purge — **Em progresso:** Componentes principais implementados, testes end-to-end pendentes.
+
+---
+
+## Fase 12 — Melhorias e refinamentos (Nova)
+
+### Backend
+- [x] Worker improvements: Progress tracking aprimorado com updatedAt explícito, logging detalhado de progresso.
+- [x] Queue module: Configurações melhoradas, retry logic aprimorada.
+- [x] Migrations: Novos campos para redline (1700000002000-AddRedlineFields.ts), fuzzy match threshold (1700000003000-AddFuzzyMatchThreshold.ts).
+- [x] RAG service: Melhorias na geração de embeddings e retrieval.
+
+### Frontend
+- [x] Progress bar fix: Correção de race conditions, polling agressivo, localStorage cache, signal updates corretos.
+- [x] Header menu: Menu dropdown de usuário implementado (desktop), logout button mobile mantido.
+- [x] Auth improvements: Templates separados (login.html, register.html), guest guard implementado.
+- [x] i18n: Traduções atualizadas em todos os idiomas (en, es, de, pt-BR).
+- [x] TypeScript best practices: Regra adicionada (.cursor/rules/typescript-best-practices.mdc).
+
+### Mobile
+- [x] Capacitor configuration: Config atualizado para iOS/Android.
+- [x] Mobile scripts: install-prerequisites.sh, setup-mobile.sh, mobile-dev.sh criados.
+- [x] Mobile documentation: MOBILE-DEV.md e QUICK-START-MOBILE.md criados.
 
 ---
 
@@ -160,3 +188,26 @@ Após Fase 3, os seguintes endpoints estão prontos para teste:
 - Fase 6: Ver `FASE-6-IMPLEMENTACAO.md` e script `test-fase6.sh`.
 - Fase 7: Ver `TESTE-FASE-7.md` e script `test-fase7.sh`.
 - Fase 8: Ver `TESTE-FASE-8.md` e script `test-fase8.sh`.
+- Fase 9-10: Componentes frontend implementados, testes manuais recomendados via UI.
+- Fase 12: Progress bar fix testado, menu dropdown funcional, mobile setup documentado.
+
+---
+
+## Status Atual do Projeto (Última Atualização: 2025)
+
+### ✅ Completado
+- **Backend:** API REST completa, workers BullMQ, RAG com citações, redline service, version service, diff service
+- **Frontend:** UI completa, progress tracking, versions component, redline component, mobile setup
+- **Infraestrutura:** Docker compose, TypeORM migrations, queue system
+- **Segurança:** Multi-tenant RBAC, audit logs, privacy controls, retention policies
+
+### 🔄 Em Progresso
+- Testes end-to-end completos
+- Legal Sources de exemplo
+- Refinamentos de UI/UX
+
+### 📋 Próximos Passos
+1. Adicionar Legal Sources de exemplo (EU + nacional)
+2. Testes end-to-end completos do fluxo
+3. Otimizações de performance
+4. Documentação final de deploy

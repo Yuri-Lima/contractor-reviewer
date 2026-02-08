@@ -30,6 +30,7 @@ export interface RagResponse {
 @Injectable()
 export class RagService {
   private readonly openaiClient: OpenAI;
+  private readonly chatModel: string;
 
   constructor(
     @InjectRepository(Chunk)
@@ -46,6 +47,7 @@ export class RagService {
       console.warn('OPENAI_API_KEY not set - chat answers will fail');
     }
     this.openaiClient = new OpenAI({ apiKey: apiKey || 'dummy-key' });
+    this.chatModel = this.configService.get<string>('OPENAI_CHAT_MODEL') || 'gpt-4o-mini';
   }
 
   /**
@@ -139,6 +141,7 @@ export class RagService {
     documentId: string,
     workspaceId: string,
     jurisdiction?: string,
+    language: string = 'en', // Add language parameter with default
   ): Promise<RagResponse> {
     try {
       // Generate embedding for the question
@@ -226,6 +229,7 @@ export class RagService {
       question,
       contractChunks,
       legalChunks,
+      language, // Pass language parameter
     );
 
     const notFound = contractChunks.length === 0 && legalChunks.length === 0;
@@ -268,6 +272,7 @@ export class RagService {
     question: string,
     contractChunks: Array<Chunk & { distance: number }>,
     legalChunks: Array<Embedding & { distance: number; sourceName?: string }>,
+    language: string = 'en', // Add language parameter
   ): Promise<string> {
     // Build context from chunks
     const contractContext = contractChunks
@@ -280,23 +285,36 @@ export class RagService {
 
     const context = [contractContext, legalContext].filter(Boolean).join('\n\n');
 
+    // Map language codes to language names
+    const languageMap: Record<string, string> = {
+      'en': 'English',
+      'es': 'Spanish',
+      'pt-BR': 'Portuguese (Brazil)',
+      'pt': 'Portuguese',
+      'de': 'German',
+    };
+    
+    const languageName = languageMap[language] || 'English';
+
     const prompt = `You are a legal assistant analyzing contracts. Answer the question based ONLY on the provided context. If the context doesn't contain enough information, say "NOT FOUND" and suggest where to look.
+
+IMPORTANT: You MUST provide your answer in ${languageName}. All responses must be written in ${languageName}.
 
 Context:
 ${context || 'No relevant context found.'}
 
 Question: ${question}
 
-Answer (be concise and cite specific excerpts):`;
+Answer (be concise and cite specific excerpts, respond in ${languageName}):`;
 
     try {
       const response = await this.openaiClient.chat.completions.create({
-        model: 'gpt-4o-mini', // or gpt-4o for better quality
+        model: this.chatModel,
         messages: [
           {
             role: 'system',
             content:
-              'You are a legal assistant. Provide accurate, evidence-based answers. Always cite your sources.',
+              'You are a legal assistant. Provide accurate, evidence-based answers. Always cite your sources. IMPORTANT: When a language is specified, provide all answers in that language.',
           },
           {
             role: 'user',

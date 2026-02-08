@@ -6,7 +6,7 @@ import { arrayToVectorString } from '../vector-helpers';
 @Injectable()
 export class EmbeddingsService {
   private readonly openai: OpenAI;
-  private readonly model = 'text-embedding-3-small'; // 1536 dimensions
+  private readonly model: string;
   private readonly batchSize = 100; // Process in batches to avoid rate limits
 
   constructor(private configService: ConfigService) {
@@ -19,6 +19,7 @@ export class EmbeddingsService {
     this.openai = new OpenAI({
       apiKey: apiKey || 'dummy-key', // Will fail at runtime if not set
     });
+    this.model = this.configService.get<string>('OPENAI_EMBEDDING_MODEL') || 'text-embedding-3-small';
   }
 
   /**

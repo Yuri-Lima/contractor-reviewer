@@ -55,7 +55,10 @@
     "hasAccount": "Já tem uma conta?",
     "loginTitle": "Login",
     "registerTitle": "Criar Conta",
-    "loginError": "Email ou senha inválidos"
+    "register": "Registrar",
+    "loginError": "Email ou senha inválidos",
+    "emailPlaceholder": "seu@email.com",
+    "passwordPlaceholder": "••••••••"
   },
   "workspaces": {
     "title": "Workspaces",
@@ -75,7 +78,8 @@
     "deleteError": "Erro ao deletar workspace. Apenas o OWNER pode deletar um workspace.",
     "createSuccess": "Workspace criado com sucesso",
     "createError": "Erro ao criar workspace. Tente novamente.",
-    "nameRequired": "Nome do workspace é obrigatório"
+    "nameRequired": "Nome do workspace é obrigatório",
+    "unnamed": "Workspace sem nome"
   },
   "documents": {
     "title": "Documentos",
@@ -127,12 +131,33 @@
     "assistant": "Assistente",
     "confidence": "Confiança",
     "citations": "Citações",
-    "page": "Página"
+    "page": "Página",
+    "statusLabels": {
+      "available": "Disponível",
+      "processing": "Processando",
+      "error": "Erro",
+      "quarantined": "Em Quarentena"
+    },
+    "fileSize": {
+      "bytes": "Bytes",
+      "kb": "KB",
+      "mb": "MB",
+      "gb": "GB"
+    },
+    "failedJobs": "Trabalhos Falhados",
+    "error": "Erro",
+    "attempts": "Tentativas"
   },
   "redline": {
     "title": "Gerar Redline",
-    "description": "O redline sugere mudanças no contrato baseado em diferentes estratégias (playbooks). Selecione um playbook e opcionalmente adicione instruções customizadas.",
+    "description": "Selecione texto do documento e gere sugestões de mudanças baseadas em diferentes estratégias (playbooks).",
     "configuration": "Configuração do Redline",
+    "selectedText": "Texto Selecionado",
+    "selectTextPlaceholder": "Selecione texto do visualizador ou cole aqui...",
+    "selectedTextHint": "Selecione texto do visualizador de documentos ou cole a cláusula que deseja revisar",
+    "selectedTextRequired": "Texto selecionado é obrigatório",
+    "objective": "Objetivo (Opcional)",
+    "objectivePlaceholder": "Descreva a intenção da mudança...",
     "playbook": "Playbook",
     "selectPlaybook": "Selecione um playbook",
     "playbookRequired": "Playbook obrigatório",
@@ -141,23 +166,63 @@
     "instructionsDescription": "Instruções adicionais que serão consideradas ao gerar o redline",
     "generate": "Gerar Redline",
     "generated": "Redline Gerado",
+    "proposal": "Proposta de Redline",
+    "proposedBy": "Proposto por",
     "changes": "mudança(s) sugerida(s)",
     "change": "Mudança",
     "original": "Original",
     "suggested": "Sugerido",
+    "explanation": "Explicação",
     "reason": "Razão",
+    "diffBlocks": "Mudanças",
     "accept": "Aceitar",
     "reject": "Rejeitar",
+    "apply": "Aplicar Mudanças",
     "noChanges": "Nenhuma mudança sugerida para este documento.",
-    "generateSuccess": "Redline gerado com {{count}} mudança(s)",
+    "notFound": "NÃO ENCONTRADO: Evidência insuficiente encontrada para esta sugestão.",
+    "citations": "Citações do Contrato",
+    "legalCitations": "Citações Legais",
+    "viewSource": "Ver Fonte",
+    "generateSuccess": "Redline gerado com sucesso com {{count}} mudança(s)",
     "generateError": "Erro ao gerar redline",
-    "acceptInfo": "Aceitar mudanças criará uma nova versão do documento",
-    "rejectInfo": "Rejeitar mudanças será implementado na próxima fase",
+    "applySuccess": "Nova versão {{version}} criada por {{user}}",
+    "applyError": "Erro ao aplicar mudanças",
+    "confidence": {
+      "high": "Alta Confiança",
+      "medium": "Média Confiança",
+      "low": "Baixa Confiança"
+    },
     "playbooks": {
       "balanced": "Equilibra proteções para ambas as partes",
       "conservative": "Minimiza mudanças, mantém linguagem neutra",
       "clientFriendly": "Favorece o cliente, sugere mudanças mais favoráveis"
-    }
+    },
+    "rejectProposal": "Rejeitar Proposta",
+    "editText": "Editar Texto",
+    "editBlocks": "Editar Blocos",
+    "cancelEdit": "Cancelar Edição",
+    "saveEdit": "Salvar Edição",
+    "editingMode": "Modo de Edição",
+    "editSuggestedText": "Editar Texto Sugerido",
+    "editBlockText": "Editar Texto do Bloco",
+    "rejectProposalConfirm": "Tem certeza de que deseja rejeitar esta proposta? Todas as mudanças serão descartadas.",
+    "rejectProposalSuccess": "Proposta rejeitada. Você pode gerar uma nova proposta.",
+    "confirmRegion": "Confirmar Região",
+    "fuzzyMatchFound": "Correspondência fuzzy encontrada",
+    "matchedRegion": "Região Correspondente",
+    "useSuggestedRegion": "Usar Região Sugerida",
+    "selectManually": "Selecionar Manualmente",
+    "manualSelectionNotImplemented": "Seleção manual de região ainda não está implementada. Usando região sugerida."
+  },
+  "documentContent": {
+    "title": "Conteúdo do Documento",
+    "currentVersion": "Versão Atual",
+    "lastUpdated": "Última Atualização",
+    "loading": "Carregando conteúdo...",
+    "error": "Erro ao carregar conteúdo",
+    "noContent": "Nenhum conteúdo disponível",
+    "refresh": "Atualizar Conteúdo",
+    "selectTextHint": "Selecione texto para criar redline"
   },
   "privacy": {
     "title": "Configurações de Privacidade",
@@ -275,7 +340,11 @@
     "saveSettings": "Salvar Configurações",
     "loadError": "Erro ao carregar configurações de retenção",
     "saveSuccess": "Configurações de retenção salvas com sucesso",
-    "saveError": "Erro ao salvar configurações de retenção"
+    "saveError": "Erro ao salvar configurações de retenção",
+    "fuzzyMatchSettings": "Configurações de Correspondência Fuzzy",
+    "fuzzyMatchThreshold": "Limite de Correspondência Fuzzy (%)",
+    "fuzzyMatchThresholdDescription": "Porcentagem mínima de correspondência (0-100) para correspondência fuzzy de texto ao aplicar redlines. Valores mais altos exigem correspondências mais exatas.",
+    "mustBeBetween0And100": "Valor deve estar entre 0 e 100"
   },
   "workspaceMembers": {
     "title": "Membros do Workspace",
@@ -314,6 +383,18 @@
       "member": "Membro",
       "viewer": "Visualizador"
     }
+  },
+  "versions": {
+    "title": "Versões do Documento",
+    "loading": "Carregando versões...",
+    "noVersions": "Nenhuma versão encontrada para este documento.",
+    "version": "Versão",
+    "createdBy": "Criado por",
+    "view": "Visualizar",
+    "hide": "Ocultar",
+    "decisions": "Decisões",
+    "noChanges": "Nenhuma mudança nesta versão",
+    "loadError": "Erro ao carregar versões"
   },
   "errors": {
     "generic": "Ocorreu um erro",

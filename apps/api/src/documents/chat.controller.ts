@@ -37,7 +37,7 @@ export class ChatController {
     @Param('documentId') documentId: string,
     @CurrentUser() user: { id: string },
     @RequestInfo() requestInfo: { ip: string; userAgent: string },
-    @Body() chatDto: { question: string },
+    @Body() chatDto: { question: string; language?: string },
   ): Promise<RagResponse> {
     try {
       // Verify document exists and belongs to workspace
@@ -56,6 +56,7 @@ export class ChatController {
         documentId,
         workspaceId,
         jurisdiction,
+        chatDto.language || 'en', // Pass language, default to 'en'
       );
       
       // Save chat message (respects no-logs configuration)

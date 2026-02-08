@@ -21,7 +21,9 @@ import { Roles } from '../workspace/decorators/roles.decorator';
 import { WorkspaceRole } from '../entities/workspace-member.entity';
 import { WorkspaceId, CurrentUser } from '../workspace/decorators';
 import { DocumentsService } from './documents.service';
+import { VersionService } from './version.service';
 import { Document } from '../entities/document.entity';
+import { DocumentVersion } from '../entities/document-version.entity';
 import { UploadValidator } from '../storage/upload-validator';
 import { NoopMalwareScanner } from '../storage/malware-scanner.interface';
 import { AuditService } from '../audit/audit.service';
@@ -33,6 +35,7 @@ import { RequestInfo } from '../common/decorators/request-info.decorator';
 export class DocumentsController {
   constructor(
     private documentsService: DocumentsService,
+    private versionService: VersionService,
     private malwareScanner: NoopMalwareScanner,
     private auditService: AuditService,
   ) {}
@@ -182,6 +185,43 @@ export class DocumentsController {
     // Verify document exists and belongs to workspace
     await this.documentsService.findById(documentId, workspaceId);
     return this.documentsService.getDocumentJobs(documentId);
+  }
+
+  @Get(':documentId/versions')
+  @UseGuards(RolesGuard)
+  @Roles(WorkspaceRole.VIEWER, WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
+  async getVersions(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+  ): Promise<DocumentVersion[]> {
+    // Verify document exists and belongs to workspace
+    await this.documentsService.findById(documentId, workspaceId);
+    return this.versionService.getVersions(documentId, workspaceId);
+  }
+
+  @Get(':documentId/content')
+  @UseGuards(RolesGuard)
+  @Roles(WorkspaceRole.VIEWER, WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
+  async getDocumentContent(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+  ): Promise<{ content: string; versionNumber: number; lastUpdated: Date }> {
+    // Verify document exists and belongs to workspace
+    await this.documentsService.findById(documentId, workspaceId);
+    return this.versionService.getCurrentContent(documentId, workspaceId);
+  }
+
+  @Get(':documentId/versions/:versionId/content')
+  @UseGuards(RolesGuard)
+  @Roles(WorkspaceRole.VIEWER, WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
+  async getVersionContent(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+    @Param('versionId') versionId: string,
+  ): Promise<{ content: string; versionNumber: number; createdAt: Date }> {
+    // Verify document exists and belongs to workspace
+    await this.documentsService.findById(documentId, workspaceId);
+    return this.versionService.getVersionContent(versionId, documentId, workspaceId);
   }
 
   @Delete(':documentId')

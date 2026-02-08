@@ -14,8 +14,13 @@
     "clean": "rm -rf .angular/cache dist out-tsc",
     "cap:add": "npx cap add",
     "cap:sync": "npx cap sync",
+    "cap:copy": "npx cap copy",
     "cap:open:ios": "npx cap open ios",
-    "cap:open:android": "npx cap open android"
+    "cap:open:android": "npx cap open android",
+    "cap:build:sync": "pnpm build && pnpm cap:sync",
+    "cap:dev:ios": "pnpm start & pnpm cap:open:ios",
+    "cap:dev:android": "pnpm start & pnpm cap:open:android",
+    "cap:doctor": "npx cap doctor"
   },
   "dependencies": {
     "@angular/animations": "^21.0.0",
@@ -41,7 +46,8 @@
     "primeng": "^21.1.1",
     "rxjs": "^7.8.1",
     "tslib": "^2.8.1",
-    "zone.js": "^0.15.0"
+    "zone.js": "^0.15.0",
+    "diff-match-patch-ts": "^0.8.0"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^21.0.0",

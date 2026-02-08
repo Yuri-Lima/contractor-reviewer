@@ -44,30 +44,68 @@ pnpm build
 
 ## Capacitor (Mobile)
 
-### Adicionar plataformas
+### Quick Start
+
+For a quick setup guide, see **[QUICK-START-MOBILE.md](./QUICK-START-MOBILE.md)**
+
+For comprehensive mobile development documentation, see **[MOBILE-DEV.md](./MOBILE-DEV.md)**
+
+### Initial Setup
+
+**Step 1: Install Prerequisites** (if needed)
 
 ```bash
-# iOS
-pnpm cap:add ios
+# Automated installation helper
+./scripts/install-prerequisites.sh --all
 
-# Android
-pnpm cap:add android
+# Or install individually
+./scripts/install-prerequisites.sh --ios
+./scripts/install-prerequisites.sh --android
 ```
 
-### Sincronizar com Capacitor
+**Step 2: Setup Platforms**
 
 ```bash
-pnpm cap:sync
+# Setup both platforms
+./scripts/setup-mobile.sh --all
+
+# Or specific platform
+./scripts/setup-mobile.sh --ios
+./scripts/setup-mobile.sh --android
+
+# Continue even if prerequisites are missing
+./scripts/setup-mobile.sh --all --force
 ```
 
-### Abrir no Xcode/Android Studio
+**Quick Guide**: See [QUICK-START-MOBILE.md](./QUICK-START-MOBILE.md) for detailed instructions.
+
+### Development Workflow
+
+Use the helper script for automated workflow:
 
 ```bash
-# iOS
+# iOS with live reload
+./scripts/mobile-dev.sh --ios --local-ip
+
+# Android with live reload
+./scripts/mobile-dev.sh --android --local-ip
+```
+
+### Manual Commands
+
+```bash
+# Build and sync
+pnpm cap:build:sync
+
+# Sync only (faster)
+pnpm cap:copy
+
+# Open in IDE
 pnpm cap:open:ios
-
-# Android
 pnpm cap:open:android
+
+# Check setup
+pnpm cap:doctor
 ```
 
 ## Estrutura do Projeto

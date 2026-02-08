@@ -17,6 +17,8 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction, TargetType } from '../entities/audit-log.entity';
 import { RequestInfo } from '../common/decorators/request-info.decorator';
 import { VersionService } from './version.service';
+import { RedlineService } from './redline.service';
+import { DiffService } from './diff.service';
 
 export enum RedlinePlaybook {
   BALANCED = 'balanced',
@@ -24,19 +26,54 @@ export enum RedlinePlaybook {
   CLIENT_FRIENDLY = 'client-friendly',
 }
 
+export interface DiffBlock {
+  id: string;
+  type: 'equal' | 'add' | 'remove';
+  text: string;
+}
+
+export interface Citation {
+  kind: 'contract';
+  file?: string;
+  page?: number;
+  spanId?: string;
+  quoteSnippet?: string;
+}
+
+export interface LegalCitation {
+  kind: 'legal';
+  source?: string;
+  section?: string;
+  url?: string;
+}
+
+export interface RedlineChange {
+  section: string;
+  originalText: string;
+  suggestedText: string;
+  diffBlocks: DiffBlock[];
+  explanation: string;
+  confidence: 'high' | 'medium' | 'low';
+  citations: Citation[];
+  legalCitations: LegalCitation[];
+  notFound: boolean;
+}
+
 export interface RedlineRequest {
+  selectedText: string;
   playbook: RedlinePlaybook;
-  instructions?: string; // Optional custom instructions
+  instructions?: string;
+  objective?: string;
+  pageNumber?: number;
+  spanId?: string;
+  language?: string; // ISO 639-1 code (en, es, pt-BR, de)
+  startIndex?: number; // Character position in full document (optional)
+  endIndex?: number; // Character position in full document (optional)
 }
 
 export interface RedlineResponse {
   versionId: string;
-  changes: Array<{
-    section: string;
-    original: string;
-    suggested: string;
-    reason: string;
-  }>;
+  changes: RedlineChange[];
   playbook: RedlinePlaybook;
   createdAt: Date;
 }
@@ -49,6 +86,8 @@ export class RedlineController {
     private documentsService: DocumentsService,
     private auditService: AuditService,
     private versionService: VersionService,
+    private redlineService: RedlineService,
+    private diffService: DiffService,
   ) {}
 
   @Post()
@@ -63,36 +102,43 @@ export class RedlineController {
     // Verify document exists and belongs to workspace
     const document = await this.documentsService.findById(documentId, workspaceId);
 
-    // TODO: Implement redline generation logic
-    // For now, return a placeholder response
-    // This will be fully implemented in Fase 10
-    const changes: Array<{
-      section: string;
-      original: string;
-      suggested: string;
-      reason: string;
-    }> = []; // Empty for now, will be populated in Fase 10
+    if (!redlineDto.selectedText || !redlineDto.selectedText.trim()) {
+      throw new Error('selectedText is required');
+    }
 
     const playbook = redlineDto.playbook || RedlinePlaybook.BALANCED;
-    
+
+    // Generate redline using AI + RAG
+    const redlineChange = await this.redlineService.generateRedline(
+      redlineDto.selectedText.trim(),
+      documentId,
+      workspaceId,
+      playbook,
+      redlineDto.instructions,
+      redlineDto.objective,
+      redlineDto.pageNumber,
+      redlineDto.spanId,
+      redlineDto.language || 'en', // Pass language, default to 'en'
+    );
+
     // Create version (respects no-logs configuration)
     const version = await this.versionService.createVersion(
       documentId,
       workspaceId,
       user.id,
       playbook,
-      changes,
+      [redlineChange],
       redlineDto.instructions,
-      undefined, // prompt will be added in Fase 10
+      undefined, // prompt can be added later if needed
     );
-    
+
     const response: RedlineResponse = {
       versionId: version.id,
-      changes,
+      changes: [redlineChange],
       playbook,
       createdAt: version.createdAt,
     };
-    
+
     // Log redline generation
     await this.auditService.createAuditLog(
       workspaceId,
@@ -102,9 +148,95 @@ export class RedlineController {
       documentId,
       requestInfo.ip,
       requestInfo.userAgent,
-      { playbook: response.playbook, changesCount: response.changes.length },
+      {
+        playbook: response.playbook,
+        changesCount: response.changes.length,
+        versionId: version.id,
+      },
     );
-    
+
     return response;
+  }
+
+  @Post(':versionId/apply')
+  @HttpCode(HttpStatus.OK)
+  async applyRedline(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+    @Param('versionId') versionId: string,
+    @CurrentUser() user: { id: string },
+    @RequestInfo() requestInfo: { ip: string; userAgent: string },
+    @Body() body: {
+      decisions?: Array<{ blockId: string; decision: 'accept' | 'reject' }>;
+      finalText?: string;
+    },
+  ) {
+    // Validate that at least one of decisions or finalText is provided
+    if (!body.decisions && !body.finalText) {
+      throw new Error('Either decisions or finalText must be provided');
+    }
+
+    // Verify document exists
+    await this.documentsService.findById(documentId, workspaceId);
+
+    // Get the version
+    const version = await this.versionService.getVersionById(versionId, documentId, workspaceId);
+
+    if (!version || !version.changes || version.changes.length === 0) {
+      throw new Error('Version not found or has no changes');
+    }
+
+    const change = version.changes[0];
+    let finalText: string;
+    let decisionsArray: Array<{ blockId: string; decision: 'accept' | 'reject' }> | undefined;
+
+    if (body.finalText) {
+      // Use provided finalText directly (manually edited)
+      finalText = body.finalText;
+      decisionsArray = body.decisions; // May be undefined if only finalText provided
+    } else if (body.decisions) {
+      // Use existing logic with decisions
+      const originalText = change.originalText;
+      const diffBlocks = change.diffBlocks;
+      finalText = this.diffService.applyDecisions(originalText, diffBlocks, body.decisions);
+      decisionsArray = body.decisions;
+    } else {
+      throw new Error('Either decisions or finalText must be provided');
+    }
+
+    // Create new version
+    const newVersion = await this.versionService.applyVersion(
+      versionId,
+      documentId,
+      workspaceId,
+      user.id,
+      decisionsArray || [],
+      finalText,
+    );
+
+    // Log redline apply
+    await this.auditService.createAuditLog(
+      workspaceId,
+      user.id,
+      AuditAction.REDLINE_APPLY,
+      TargetType.VERSION,
+      newVersion.id,
+      requestInfo.ip,
+      requestInfo.userAgent,
+      {
+        parentVersionId: versionId,
+        newVersionId: newVersion.id,
+        versionNumber: newVersion.versionNumber,
+        decisionsCount: decisionsArray?.length || 0,
+        manuallyEdited: !!body.finalText && !body.decisions,
+      },
+    );
+
+    return {
+      versionId: newVersion.id,
+      versionNumber: newVersion.versionNumber,
+      finalText,
+      createdAt: newVersion.createdAt,
+    };
   }
 }

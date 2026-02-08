@@ -7,6 +7,7 @@ export interface RetentionConfig {
   defaultFileRetentionDays: number;
   defaultTextEmbeddingsRetentionDays: number;
   retentionOverrides?: Record<string, number>;
+  fuzzyMatchThreshold?: number; // Minimum match percentage for fuzzy matching (0-100)
 }
 
 @Injectable()
@@ -87,6 +88,7 @@ export class RetentionService {
         defaultFileRetentionDays: config.defaultFileRetentionDays ?? 30,
         defaultTextEmbeddingsRetentionDays: config.defaultTextEmbeddingsRetentionDays ?? 90,
         retentionOverrides: config.retentionOverrides,
+        fuzzyMatchThreshold: config.fuzzyMatchThreshold ?? 70,
       });
     } else {
       if (config.defaultFileRetentionDays !== undefined) {
@@ -98,6 +100,13 @@ export class RetentionService {
       if (config.retentionOverrides !== undefined) {
         settings.retentionOverrides = config.retentionOverrides;
       }
+      if (config.fuzzyMatchThreshold !== undefined) {
+        // Validate threshold range
+        if (config.fuzzyMatchThreshold < 0 || config.fuzzyMatchThreshold > 100) {
+          throw new BadRequestException('Fuzzy match threshold must be between 0 and 100');
+        }
+        settings.fuzzyMatchThreshold = config.fuzzyMatchThreshold;
+      }
     }
 
     settings = await this.workspaceSettingsRepository.save(settings);
@@ -106,6 +115,7 @@ export class RetentionService {
       defaultFileRetentionDays: settings.defaultFileRetentionDays,
       defaultTextEmbeddingsRetentionDays: settings.defaultTextEmbeddingsRetentionDays,
       retentionOverrides: settings.retentionOverrides || {},
+      fuzzyMatchThreshold: settings.fuzzyMatchThreshold || 70,
     };
   }
 

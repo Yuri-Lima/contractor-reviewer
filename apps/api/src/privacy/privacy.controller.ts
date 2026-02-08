@@ -62,6 +62,16 @@ export class PrivacyController {
     res.json(exportData);
   }
 
+  @Get('no-logs')
+  @UseGuards(RolesGuard)
+  @Roles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN, WorkspaceRole.MEMBER, WorkspaceRole.VIEWER)
+  async getNoLogsConfig(
+    @WorkspaceId() workspaceId: string,
+  ): Promise<{ enabled: boolean; config?: any }> {
+    const config = await this.privacyService.getNoLogsConfig(workspaceId);
+    return { enabled: config.enabled, config: config.config };
+  }
+
   @Post('no-logs')
   @UseGuards(RolesGuard)
   @Roles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)

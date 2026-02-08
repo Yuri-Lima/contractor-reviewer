@@ -5,7 +5,7 @@ import { API_CONFIG } from '../config/api.config';
 import { Workspace, CreateWorkspaceRequest, AddMemberRequest, WorkspaceMember } from '../models/workspace.model';
 import { Document, CreateDocumentRequest, DocumentJob } from '../models/document.model';
 import { ChatRequest, ChatResponse } from '../models/chat.model';
-import { RedlineRequest, RedlineResponse } from '../models/redline.model';
+import { RedlineRequest, RedlineResponse, DocumentVersion } from '../models/redline.model';
 import { RetentionConfig } from '../models/retention.model';
 
 @Injectable({
@@ -106,11 +106,55 @@ export class ApiService {
     );
   }
 
+  applyRedline(
+    workspaceId: string,
+    documentId: string,
+    versionId: string,
+    decisions?: Array<{ blockId: string; decision: 'accept' | 'reject' }>,
+    finalText?: string,
+  ): Observable<{ versionId: string; versionNumber: number; finalText: string; createdAt: string }> {
+    const body: { decisions?: Array<{ blockId: string; decision: 'accept' | 'reject' }>; finalText?: string } = {};
+    if (decisions) {
+      body.decisions = decisions;
+    }
+    if (finalText) {
+      body.finalText = finalText;
+    }
+    return this.http.post<{ versionId: string; versionNumber: number; finalText: string; createdAt: string }>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.redline(workspaceId, documentId)}/${versionId}/apply`,
+      body,
+    );
+  }
+
+  getDocumentVersions(workspaceId: string, documentId: string): Observable<DocumentVersion[]> {
+    return this.http.get<DocumentVersion[]>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/versions`,
+    );
+  }
+
+  getDocumentContent(workspaceId: string, documentId: string): Observable<{ content: string; versionNumber: number; lastUpdated: string }> {
+    return this.http.get<{ content: string; versionNumber: number; lastUpdated: string }>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/content`,
+    );
+  }
+
+  getVersionContent(workspaceId: string, documentId: string, versionId: string): Observable<{ content: string; versionNumber: number; createdAt: string }> {
+    return this.http.get<{ content: string; versionNumber: number; createdAt: string }>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/versions/${versionId}/content`,
+    );
+  }
+
   // Privacy
   exportPrivacyData(workspaceId: string): Observable<any> {
     return this.http.get(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.privacy(workspaceId)}/export`, {
       responseType: 'blob',
     });
+  }
+
+  getNoLogsConfig(workspaceId: string): Observable<{ enabled: boolean; config?: any }> {
+    return this.http.get<{ enabled: boolean; config?: any }>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.privacy(workspaceId)}/no-logs`,
+    );
   }
 
   toggleNoLogs(workspaceId: string, enabled: boolean, config?: any): Observable<any> {

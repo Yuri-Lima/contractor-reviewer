@@ -25,6 +25,7 @@ export interface Citation {
 
 export interface ChatRequest {
   question: string;
+  language?: string; // ISO 639-1 code (en, es, pt-BR, de)
 }
 
 export interface ChatResponse {

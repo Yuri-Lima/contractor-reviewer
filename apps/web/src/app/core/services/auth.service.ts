@@ -85,11 +85,32 @@ export class AuthService {
   }
 
   private validateToken(): void {
-    // In a real app, you might want to call an endpoint to validate the token
-    // For now, we'll just check if it exists
     const token = this.getToken();
     if (!token) {
       this.clearAuth();
+      return;
     }
+
+    // Basic JWT expiration check (if token is JWT)
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const exp = payload.exp;
+      
+      // Check if token is expired (exp is in seconds, Date.now() is in milliseconds)
+      if (exp && exp * 1000 < Date.now()) {
+        console.warn('Token expired, clearing authentication');
+        this.clearAuth();
+        return;
+      }
+    } catch (e) {
+      // If token is not a valid JWT, we'll assume it's valid for now
+      // In production, you should validate with the backend
+    }
+
+    // Optional: Validate token with backend
+    // You can uncomment this to validate token on app init
+    // this.http.get(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}`).subscribe({
+    //   error: () => this.clearAuth()
+    // });
   }
 }

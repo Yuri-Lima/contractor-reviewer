@@ -40,10 +40,41 @@ export class DocumentVersion {
   @Column({ type: 'jsonb', nullable: true })
   changes: Array<{
     section: string;
-    original: string;
-    suggested: string;
-    reason: string;
+    originalText: string;
+    suggestedText: string;
+    diffBlocks: Array<{
+      id: string;
+      type: 'equal' | 'add' | 'remove';
+      text: string;
+    }>;
+    explanation: string;
+    confidence: 'high' | 'medium' | 'low';
+    citations: Array<{
+      kind: 'contract';
+      file?: string;
+      page?: number;
+      spanId?: string;
+      quoteSnippet?: string;
+    }>;
+    legalCitations: Array<{
+      kind: 'legal';
+      source?: string;
+      section?: string;
+      url?: string;
+    }>;
+    notFound: boolean;
   }> | null; // Redline changes (may be null if no-logs enabled)
+
+  @Column({ type: 'jsonb', nullable: true })
+  decisions: Array<{
+    blockId: string;
+    decision: 'accept' | 'reject';
+    userId: string;
+    timestamp: Date;
+  }> | null; // Decisions for accept/reject by block
+
+  @Column({ type: 'uuid', nullable: true })
+  parentVersionId: string | null; // Reference to parent version (for applied versions)
 
   @Column({ type: 'text', nullable: true })
   prompt: string | null; // Redline generation prompt (may be null if no-logs enabled)

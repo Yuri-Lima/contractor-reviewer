@@ -13,16 +13,21 @@ import { ThemeService } from './core/services/theme.service';
   imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent],
   template: `
     <div class="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-      <app-header *ngIf="showHeader()"></app-header>
-      <div class="flex flex-1" *ngIf="showSidebar()">
-        <app-sidebar [workspaceId]="currentWorkspaceId() || undefined"></app-sidebar>
-        <main class="flex-1 bg-gray-50 dark:bg-gray-900 min-h-[calc(100vh-64px)] transition-colors duration-200">
+      @if (showHeader()) {
+        <app-header></app-header>
+      }
+      @if (showSidebar()) {
+        <div class="flex flex-1">
+          <app-sidebar [workspaceId]="currentWorkspaceId() || undefined"></app-sidebar>
+          <main class="flex-1 bg-gray-50 dark:bg-gray-900 min-h-[calc(100vh-64px)] transition-colors duration-200">
+            <router-outlet></router-outlet>
+          </main>
+        </div>
+      } @else {
+        <main class="flex-1 min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
           <router-outlet></router-outlet>
         </main>
-      </div>
-      <main class="flex-1 min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200" *ngIf="!showSidebar()">
-        <router-outlet></router-outlet>
-      </main>
+      }
     </div>
   `,
 })
@@ -34,7 +39,11 @@ export class AppComponent {
   currentWorkspaceId = signal<string | null>(null);
   currentUrl = signal<string>(this.router.url);
 
-  showHeader = computed(() => this.authService.isAuthenticated());
+  // Header should only show when authenticated AND not on auth routes
+  showHeader = computed(() => 
+    this.authService.isAuthenticated() && !this.isAuthRoute(this.currentUrl())
+  );
+  // Sidebar should only show when authenticated AND not on auth routes
   showSidebar = computed(() => 
     this.authService.isAuthenticated() && !this.isAuthRoute(this.currentUrl())
   );

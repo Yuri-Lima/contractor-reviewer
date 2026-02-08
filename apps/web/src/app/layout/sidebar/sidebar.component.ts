@@ -17,7 +17,7 @@ import { RouterModule } from '@angular/router';
           <i class="pi pi-building text-lg"></i>
           <span class="text-sm">Workspaces</span>
         </a>
-        <ng-container *ngIf="workspaceId">
+        @if (workspaceId) {
           <a
             [routerLink]="['/workspaces', workspaceId, 'documents']"
             routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400 font-medium"
@@ -58,7 +58,7 @@ import { RouterModule } from '@angular/router';
             <i class="pi pi-clock text-lg"></i>
             <span class="text-sm">Retenção</span>
           </a>
-        </ng-container>
+        }
         <div class="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4">
           <a
             routerLink="/settings"

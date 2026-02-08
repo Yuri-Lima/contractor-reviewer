@@ -28,95 +28,106 @@ import { TranslatePipe } from '@ngx-translate/core';
         </button>
       </div>
 
-      <div class="create-form mb-8" *ngIf="showCreateForm()">
-        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm">
-          <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">{{ 'documents.create' | translate }}</h3>
-          <input 
-            [value]="newDocumentTitle()" 
-            (input)="onTitleInput($event)" 
-            class="w-full px-4 py-2 mb-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-            [placeholder]="'documents.titlePlaceholder' | translate" 
-          />
-          <textarea 
-            [value]="newDocumentDescription()" 
-            (input)="onDescriptionInput($event)" 
-            class="w-full px-4 py-2 mb-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 resize-none"
-            [placeholder]="'documents.descriptionPlaceholder' | translate" 
-            rows="3"
-          ></textarea>
-          <div class="error-message mb-4" *ngIf="error()">
-            <p class="text-red-600 dark:text-red-400 text-sm">{{ error() }}</p>
-          </div>
-          <div class="form-actions flex gap-3">
-            <button 
-              class="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              (click)="createDocument()"
-              [disabled]="loading()"
-            >
-              <span *ngIf="!loading()">{{ 'common.create' | translate }}</span>
-              <span *ngIf="loading()">{{ 'documents.creating' | translate }}</span>
-            </button>
-            <button 
-              class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors font-medium"
-              (click)="showCreateForm.set(false); error.set(null);"
-              [disabled]="loading()"
-            >
-              {{ 'common.cancel' | translate }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="documents-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" *ngIf="documents().length > 0; else emptyState">
-        <div
-          *ngFor="let doc of documents()"
-          class="document-card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-md dark:hover:shadow-lg transition-all duration-200 relative group"
-        >
-          <a
-            [routerLink]="['/workspaces', workspaceId(), 'documents', doc.id]"
-            class="block no-underline"
-          >
-            <h3 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">{{ doc.title }}</h3>
-            <p *ngIf="doc.description" class="text-sm text-gray-600 dark:text-gray-400 mb-4">{{ doc.description }}</p>
-            <div class="document-meta flex justify-between items-center">
-              <span 
-                class="px-2 py-1 text-xs rounded"
-                [class.bg-green-100]="doc.status === 'available'"
-                [class.text-green-800]="doc.status === 'available'"
-                [class.dark:bg-green-900]="doc.status === 'available'"
-                [class.dark:text-green-200]="doc.status === 'available'"
-                [class.bg-gray-100]="doc.status !== 'available'"
-                [class.text-gray-800]="doc.status !== 'available'"
-                [class.dark:bg-gray-700]="doc.status !== 'available'"
-                [class.dark:text-gray-300]="doc.status !== 'available'"
+      @if (showCreateForm()) {
+        <div class="create-form mb-8">
+          <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm">
+            <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">{{ 'documents.create' | translate }}</h3>
+            <input 
+              [value]="newDocumentTitle()" 
+              (input)="onTitleInput($event)" 
+              class="w-full px-4 py-2 mb-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              [placeholder]="'documents.titlePlaceholder' | translate" 
+            />
+            <textarea 
+              [value]="newDocumentDescription()" 
+              (input)="onDescriptionInput($event)" 
+              class="w-full px-4 py-2 mb-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 resize-none"
+              [placeholder]="'documents.descriptionPlaceholder' | translate" 
+              rows="3"
+            ></textarea>
+            @if (error()) {
+              <div class="error-message mb-4">
+                <p class="text-red-600 dark:text-red-400 text-sm">{{ error() }}</p>
+              </div>
+            }
+            <div class="form-actions flex gap-3">
+              <button 
+                class="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                (click)="createDocument()"
+                [disabled]="loading()"
               >
-                {{ doc.status }}
-              </span>
-              <span class="text-xs text-gray-500 dark:text-gray-400">{{ doc.createdAt | localeDate: 'short' }}</span>
+                @if (!loading()) {
+                  <span>{{ 'common.create' | translate }}</span>
+                }
+                @if (loading()) {
+                  <span>{{ 'documents.creating' | translate }}</span>
+                }
+              </button>
+              <button 
+                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors font-medium"
+                (click)="showCreateForm.set(false); error.set(null);"
+                [disabled]="loading()"
+              >
+                {{ 'common.cancel' | translate }}
+              </button>
             </div>
-          </a>
-          <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <p-button
-              icon="pi pi-trash"
-              [text]="true"
-              severity="danger"
-              [rounded]="true"
-              (onClick)="confirmDelete(doc)"
-              [disabled]="deletingDocId() === doc.id"
-              styleClass="hover:bg-red-50 dark:hover:bg-red-900/20"
-            ></p-button>
           </div>
         </div>
-      </div>
+      }
 
-      <p-confirmDialog></p-confirmDialog>
-      <p-toast></p-toast>
-
-      <ng-template #emptyState>
+      @if (documents().length > 0) {
+        <div class="documents-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          @for (doc of documents(); track doc.id) {
+            <div
+              class="document-card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-md dark:hover:shadow-lg transition-all duration-200 relative group"
+            >
+              <a
+                [routerLink]="['/workspaces', workspaceId(), 'documents', doc.id]"
+                class="block no-underline"
+              >
+                <h3 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">{{ doc.title }}</h3>
+                @if (doc.description) {
+                  <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{{ doc.description }}</p>
+                }
+                <div class="document-meta flex justify-between items-center">
+                  <span 
+                    class="px-2 py-1 text-xs rounded"
+                    [class.bg-green-100]="doc.status === 'available'"
+                    [class.text-green-800]="doc.status === 'available'"
+                    [class.dark:bg-green-900]="doc.status === 'available'"
+                    [class.dark:text-green-200]="doc.status === 'available'"
+                    [class.bg-gray-100]="doc.status !== 'available'"
+                    [class.text-gray-800]="doc.status !== 'available'"
+                    [class.dark:bg-gray-700]="doc.status !== 'available'"
+                    [class.dark:text-gray-300]="doc.status !== 'available'"
+                  >
+                    {{ doc.status }}
+                  </span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ doc.createdAt | localeDate: 'short' }}</span>
+                </div>
+              </a>
+              <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <p-button
+                  icon="pi pi-trash"
+                  [text]="true"
+                  severity="danger"
+                  [rounded]="true"
+                  (onClick)="confirmDelete(doc)"
+                  [disabled]="deletingDocId() === doc.id"
+                  class="hover:bg-red-50 dark:hover:bg-red-900/20"
+                ></p-button>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
         <div class="empty-state text-center py-12 px-8">
           <p class="text-gray-600 dark:text-gray-400">{{ 'documents.noDocumentsFound' | translate }}</p>
         </div>
-      </ng-template>
+      }
+
+      <p-confirmDialog></p-confirmDialog>
+      <p-toast></p-toast>
     </div>
   `,
   styles: [`

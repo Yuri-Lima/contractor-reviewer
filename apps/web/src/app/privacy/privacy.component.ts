@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject, computed } from '@angular/core';
+import { Component, OnInit, signal, inject, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -52,7 +52,7 @@ interface NoLogsConfig {
             <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">{{ 'privacy.noLogsMode' | translate }}</h2>
           </div>
         </ng-template>
-        <div class="p-4 space-y-4">
+        <form [formGroup]="noLogsForm" class="p-4 space-y-4">
           <div class="flex items-center justify-between">
             <div class="flex-1">
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -68,8 +68,9 @@ interface NoLogsConfig {
             ></p-toggleswitch>
           </div>
 
-          <div *ngIf="noLogsForm.value.noLogsEnabled" class="mt-6 space-y-4 pl-4 border-l-4 border-blue-500 dark:border-blue-400">
-            <div class="flex items-center justify-between">
+          @if (isNoLogsEnabled()) {
+            <div class="mt-6 space-y-4 pl-4 border-l-4 border-blue-500 dark:border-blue-400">
+              <div class="flex items-center justify-between">
               <div class="flex-1">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {{ 'privacy.skipDocumentContent' | translate }}
@@ -121,7 +122,8 @@ interface NoLogsConfig {
                 {{ 'privacy.acceleratedPurgeDesc' | translate }}
               </small>
             </div>
-          </div>
+            </div>
+          }
 
           <div class="mt-4 flex justify-end">
             <p-button
@@ -129,10 +131,10 @@ interface NoLogsConfig {
               icon="pi pi-check"
               (onClick)="saveNoLogsConfig()"
               [loading]="saving()"
-              [disabled]="!noLogsForm.value.noLogsEnabled"
+              [disabled]="!isNoLogsEnabled()"
             ></p-button>
           </div>
-        </div>
+        </form>
       </p-card>
 
       <!-- Export Data -->
@@ -144,21 +146,21 @@ interface NoLogsConfig {
         </ng-template>
         <div class="p-4">
           <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            {{ 'privacy.exportDescription' | translate }}
+            {{ ('privacy.exportDescription' | translate) || 'Download all your data related to this workspace in JSON format. This includes chat messages, document versions, and audit logs.' }}
           </p>
           <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
             <h3 class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
-              {{ 'privacy.whatWillBeExported' | translate }}
+              {{ ('privacy.whatWillBeExported' | translate) || 'What will be exported:' }}
             </h3>
             <ul class="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
-              <li>{{ 'privacy.exportItems.chatMessages' | translate }}</li>
-              <li>{{ 'privacy.exportItems.versionMetadata' | translate }}</li>
-              <li>{{ 'privacy.exportItems.auditLogs' | translate }}</li>
-              <li>{{ 'privacy.exportItems.privacySettings' | translate }}</li>
+              <li>{{ ('privacy.exportItems.chatMessages' | translate) || 'Chat messages (according to no-logs configuration)' }}</li>
+              <li>{{ ('privacy.exportItems.versionMetadata' | translate) || 'Document version metadata' }}</li>
+              <li>{{ ('privacy.exportItems.auditLogs' | translate) || 'Audit logs related to your user' }}</li>
+              <li>{{ ('privacy.exportItems.privacySettings' | translate) || 'Privacy settings' }}</li>
             </ul>
           </div>
           <p-button
-            [label]="'privacy.export' | translate"
+            [label]="('privacy.export' | translate) || 'Export Data'"
             icon="pi pi-download"
             (onClick)="exportData()"
             [loading]="exporting()"
@@ -189,6 +191,12 @@ export class PrivacyComponent implements OnInit {
   // Computed property for days suffix
   daysSuffix = computed(() => ` ${this.translateService.instant('common.days')}`);
 
+  // Signal to track no-logs enabled state (avoids ExpressionChangedAfterItHasBeenCheckedError)
+  private noLogsEnabledSignal = signal<boolean>(false);
+
+  // Computed property to avoid ExpressionChangedAfterItHasBeenCheckedError
+  isNoLogsEnabled = computed(() => this.noLogsEnabledSignal());
+
   noLogsForm: FormGroup;
 
   constructor() {
@@ -199,6 +207,14 @@ export class PrivacyComponent implements OnInit {
       skipVersions: [false],
       acceleratedPurgeDays: [7],
     });
+
+    // Update signal when form value changes
+    this.noLogsForm.get('noLogsEnabled')?.valueChanges.subscribe((value) => {
+      this.noLogsEnabledSignal.set(value || false);
+    });
+
+    // Initialize signal with form value
+    this.noLogsEnabledSignal.set(this.noLogsForm.get('noLogsEnabled')?.value || false);
   }
 
   ngOnInit(): void {
@@ -208,19 +224,45 @@ export class PrivacyComponent implements OnInit {
   }
 
   loadNoLogsConfig(): void {
-    // TODO: Load current no-logs config from API
-    // For now, we'll assume it's disabled by default
-    // The backend should provide an endpoint to get current config
+    this.apiService.getNoLogsConfig(this.workspaceId()).subscribe({
+      next: (response) => {
+        // Update form with loaded configuration
+        this.noLogsForm.patchValue({
+          noLogsEnabled: response.enabled,
+          skipDocumentContent: response.config?.skipDocumentContent || false,
+          skipChatMessages: response.config?.skipChatMessages || false,
+          skipVersions: response.config?.skipVersions || false,
+          acceleratedPurgeDays: response.config?.acceleratedPurgeDays || 7,
+        }, { emitEvent: false }); // Don't emit events to avoid triggering valueChanges
+        
+        // Update signal directly
+        this.noLogsEnabledSignal.set(response.enabled || false);
+      },
+      error: (err) => {
+        console.error('Error loading no-logs config:', err);
+        // Keep default values (all false) if loading fails
+        this.noLogsEnabledSignal.set(false);
+      },
+    });
   }
 
   onNoLogsToggle(): void {
-    // Auto-save when toggling main switch
+    // Auto-save when toggling main switch off
     if (!this.noLogsForm.value.noLogsEnabled) {
+      // Reset sub-options when disabling
+      this.noLogsForm.patchValue({
+        skipDocumentContent: false,
+        skipChatMessages: false,
+        skipVersions: false,
+        acceleratedPurgeDays: 7,
+      });
       this.saveNoLogsConfig();
     }
   }
 
   saveNoLogsConfig(): void {
+    this.saving.set(true);
+    
     if (!this.noLogsForm.value.noLogsEnabled) {
       // If disabled, save with all options off
       this.apiService.toggleNoLogs(this.workspaceId(), false).subscribe({
@@ -230,6 +272,7 @@ export class PrivacyComponent implements OnInit {
             summary: this.translateService.instant('common.success'),
             detail: this.translateService.instant('privacy.saveSuccess'),
           });
+          this.saving.set(false);
         },
         error: (err) => {
           console.error('Error saving no-logs config:', err);
@@ -238,12 +281,14 @@ export class PrivacyComponent implements OnInit {
             summary: this.translateService.instant('common.error'),
             detail: this.translateService.instant('privacy.saveError'),
           });
+          this.saving.set(false);
+          // Reload config on error to restore previous state
+          this.loadNoLogsConfig();
         },
       });
       return;
     }
 
-    this.saving.set(true);
     const config: NoLogsConfig = {
       skipDocumentContent: this.noLogsForm.value.skipDocumentContent,
       skipChatMessages: this.noLogsForm.value.skipChatMessages,
@@ -268,6 +313,8 @@ export class PrivacyComponent implements OnInit {
           detail: err.error?.message || this.translateService.instant('privacy.saveError'),
         });
         this.saving.set(false);
+        // Reload config on error to restore previous state
+        this.loadNoLogsConfig();
       },
     });
   }

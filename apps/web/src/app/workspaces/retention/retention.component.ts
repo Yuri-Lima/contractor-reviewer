@@ -59,9 +59,11 @@ import { RetentionConfig } from '../../core/models/retention.model';
               <small class="text-gray-500 dark:text-gray-400 mt-1 block">
                 {{ 'retention.fileRetentionDescription' | translate }}
               </small>
-              <small class="p-error block mt-1" *ngIf="retentionForm.get('defaultFileRetentionDays')?.invalid && retentionForm.get('defaultFileRetentionDays')?.touched">
-                {{ 'retention.mustBeBetween' | translate }}
-              </small>
+              @if (retentionForm.get('defaultFileRetentionDays')?.invalid && retentionForm.get('defaultFileRetentionDays')?.touched) {
+                <small class="p-error block mt-1">
+                  {{ 'retention.mustBeBetween' | translate }}
+                </small>
+              }
             </div>
           </div>
         </p-card>
@@ -88,9 +90,42 @@ import { RetentionConfig } from '../../core/models/retention.model';
               <small class="text-gray-500 dark:text-gray-400 mt-1 block">
                 {{ 'retention.textEmbeddingsRetentionDescription' | translate }}
               </small>
-              <small class="p-error block mt-1" *ngIf="retentionForm.get('defaultTextEmbeddingsRetentionDays')?.invalid && retentionForm.get('defaultTextEmbeddingsRetentionDays')?.touched">
-                {{ 'retention.mustBeBetweenText' | translate }}
+              @if (retentionForm.get('defaultTextEmbeddingsRetentionDays')?.invalid && retentionForm.get('defaultTextEmbeddingsRetentionDays')?.touched) {
+                <small class="p-error block mt-1">
+                  {{ 'retention.mustBeBetweenText' | translate }}
+                </small>
+              }
+            </div>
+          </div>
+        </p-card>
+
+        <p-card>
+          <ng-template pTemplate="header">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">{{ 'retention.fuzzyMatchSettings' | translate }}</h2>
+            </div>
+          </ng-template>
+          <div class="p-4 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {{ 'retention.fuzzyMatchThreshold' | translate }}
+              </label>
+              <p-inputNumber
+                formControlName="fuzzyMatchThreshold"
+                [min]="0"
+                [max]="100"
+                [showButtons]="true"
+                [suffix]="'%'"
+                class="w-full"
+              ></p-inputNumber>
+              <small class="text-gray-500 dark:text-gray-400 mt-1 block">
+                {{ 'retention.fuzzyMatchThresholdDescription' | translate }}
               </small>
+              @if (retentionForm.get('fuzzyMatchThreshold')?.invalid && retentionForm.get('fuzzyMatchThreshold')?.touched) {
+                <small class="p-error block mt-1">
+                  {{ 'retention.mustBeBetween0And100' | translate }}
+                </small>
+              }
             </div>
           </div>
         </p-card>
@@ -153,6 +188,7 @@ export class RetentionComponent implements OnInit {
     this.retentionForm = this.fb.group({
       defaultFileRetentionDays: [30, [Validators.required, Validators.min(1), Validators.max(365)]],
       defaultTextEmbeddingsRetentionDays: [90, [Validators.required, Validators.min(1), Validators.max(730)]],
+      fuzzyMatchThreshold: [70, [Validators.required, Validators.min(0), Validators.max(100)]],
     });
   }
 
@@ -193,6 +229,7 @@ export class RetentionComponent implements OnInit {
     const config: Partial<RetentionConfig> = {
       defaultFileRetentionDays: this.retentionForm.value.defaultFileRetentionDays,
       defaultTextEmbeddingsRetentionDays: this.retentionForm.value.defaultTextEmbeddingsRetentionDays,
+      fuzzyMatchThreshold: this.retentionForm.value.fuzzyMatchThreshold,
     };
 
     this.apiService.updateRetentionConfig(this.workspaceId(), config).subscribe({

@@ -1,7 +1,13 @@
-import { Component, input, signal, effect, viewChild, ElementRef, inject, PLATFORM_ID } from '@angular/core';
+import { Component, input, output, signal, effect, viewChild, ElementRef, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Button } from 'primeng/button';
 import { TranslateService } from '@ngx-translate/core';
+
+export interface TextSelection {
+  text: string;
+  pageNumber: number;
+  spanId?: string;
+}
 
 @Component({
   selector: 'app-pdf-viewer',
@@ -63,15 +69,19 @@ import { TranslateService } from '@ngx-translate/core';
           ></p-button>
         </div>
       </div>
-      <div class="pdf-viewer-content overflow-auto bg-gray-100 dark:bg-gray-900 p-4" style="max-height: 70vh;">
+      <div class="pdf-viewer-content overflow-auto bg-gray-100 dark:bg-gray-900 p-4" style="max-height: 70vh;" (mouseup)="onTextSelection()">
         <canvas #canvasRef class="mx-auto shadow-lg"></canvas>
       </div>
-      <div class="p-4 text-center text-sm text-gray-600 dark:text-gray-400" *ngIf="loading()">
-        Carregando PDF...
-      </div>
-      <div class="p-4 text-center text-sm text-red-600 dark:text-red-400" *ngIf="error()">
-        {{ error() }}
-      </div>
+      @if (loading()) {
+        <div class="p-4 text-center text-sm text-gray-600 dark:text-gray-400">
+          Carregando PDF...
+        </div>
+      }
+      @if (error()) {
+        <div class="p-4 text-center text-sm text-red-600 dark:text-red-400">
+          {{ error() }}
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -98,6 +108,9 @@ export class PdfViewerComponent {
   // Inputs
   fileUrl = input.required<string>();
   fileName = input<string>('');
+
+  // Outputs
+  textSelected = output<TextSelection>();
 
   // ViewChild
   canvasRef = viewChild<ElementRef<HTMLCanvasElement>>('canvasRef');
@@ -204,5 +217,27 @@ export class PdfViewerComponent {
 
   resetZoom(): void {
     this.scale.set(1.0);
+  }
+
+  onTextSelection(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const selectedText = selection.toString().trim();
+    if (!selectedText) return;
+
+    // Emit selection event
+    this.textSelected.emit({
+      text: selectedText,
+      pageNumber: this.currentPage(),
+      spanId: undefined, // Can be enhanced later with text layer positioning
+    });
+
+    // Clear selection after a short delay
+    setTimeout(() => {
+      selection.removeAllRanges();
+    }, 100);
   }
 }

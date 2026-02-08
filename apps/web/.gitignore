@@ -42,6 +42,23 @@ testem.log
 Thumbs.db
 
 # Capacitor
-ios/
-android/
+# Note: ios/ and android/ folders should be committed, but build artifacts should be ignored
 .capacitor/
+
+# iOS build artifacts (keep ios/ folder structure)
+ios/App/build/
+ios/App/DerivedData/
+ios/App/Pods/
+ios/App/*.xcworkspace/xcuserdata/
+ios/App/*.xcodeproj/xcuserdata/
+ios/App/*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Android build artifacts (keep android/ folder structure)
+android/.gradle/
+android/build/
+android/app/build/
+android/.idea/
+android/local.properties
+android/*.iml
+android/.cxx/
+android/.externalNativeBuild/

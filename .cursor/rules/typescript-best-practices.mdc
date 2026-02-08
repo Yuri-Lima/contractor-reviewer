@@ -1,0 +1,78 @@
+---
+alwaysApply: true
+---
+
+# TypeScript Best Practices - MANDATORY RULES
+
+## CRITICAL: Avoid Type Assertions (`as any`) Unless Absolutely Necessary
+
+**MANDATORY RULE**: Never use `as any` or other unsafe type assertions unless it's the only viable solution after exploring all alternatives.
+
+## Rules
+
+1. **Avoid `as any`**:
+   - `as any` disables TypeScript's type checking and defeats the purpose of using TypeScript
+   - Always explore proper type definitions, interfaces, or type guards first
+   - If types are missing or incorrect, fix the types or use proper type assertions (`as SpecificType`)
+   - Only use `as any` as a last resort when no other solution exists
+
+2. **When Type Errors Occur**:
+   - **First**: Check if the property/method actually exists in the type definition
+   - **Second**: Verify if you're using the correct API or configuration location
+   - **Third**: Check if there's a proper way to configure it (e.g., different decorator, different property)
+   - **Fourth**: Look for type definitions that might need to be extended or corrected
+   - **Last Resort**: Use proper type assertion with a comment explaining why it's necessary
+
+3. **Proper Type Assertions**:
+   - Use specific types: `as WorkerOptions` instead of `as any`
+   - Use type guards: `if (obj is MyType) { ... }`
+   - Use utility types: `Partial<T>`, `Pick<T, K>`, `Omit<T, K>`
+   - Create proper interfaces/types when needed
+
+4. **Configuration Examples**:
+   - **BullMQ/NestJS**: Worker settings belong in `@Processor` decorator, not in queue registration
+   - **API Configuration**: Use proper interfaces and types from libraries
+   - **Custom Types**: Create interfaces for complex configurations
+
+## Examples
+
+### ✅ CORRECT:
+```typescript
+// Proper configuration in the right place
+@Processor('parsing', {
+  stalledInterval: 30000,
+  maxStalledCount: 1,
+})
+export class ParsingProcessor extends WorkerHost { }
+
+// Using proper type assertion when needed
+const workerOptions: WorkerOptions = {
+  stalledInterval: 30000,
+  maxStalledCount: 1,
+};
+```
+
+### ❌ WRONG:
+```typescript
+// Using as any to bypass type checking
+settings: {
+  stalledInterval: 30000,
+  maxStalledCount: 1,
+} as any, // Don't do this!
+
+// Wrong configuration location
+BullModule.registerQueue({
+  name: 'parsing',
+  settings: { stalledInterval: 30000 } as any, // Wrong place, wrong approach
+});
+```
+
+## Code Review Checklist
+
+- [ ] No `as any` used without justification
+- [ ] Type errors resolved by fixing types, not bypassing them
+- [ ] Configuration is in the correct location (decorators, options, etc.)
+- [ ] Proper interfaces/types are used when available
+- [ ] Comments explain any necessary type assertions
+
+**REMEMBER**: TypeScript's type system is there to help catch errors. Don't disable it with `as any` - fix the underlying issue instead!

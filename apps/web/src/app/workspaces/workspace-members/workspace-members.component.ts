@@ -40,16 +40,18 @@ import { TranslatePipe } from '@ngx-translate/core';
     <div class="workspace-members-container p-6 max-w-6xl mx-auto">
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ 'workspaceMembers.title' | translate }}</h1>
-        <p-button
-          [label]="'workspaceMembers.addMember' | translate"
-          icon="pi pi-user-plus"
-          (onClick)="showAddForm.set(true)"
-          *ngIf="canManageMembers()"
-        ></p-button>
+        @if (canManageMembers()) {
+          <p-button
+            [label]="'workspaceMembers.addMember' | translate"
+            icon="pi pi-user-plus"
+            (onClick)="showAddForm.set(true)"
+          ></p-button>
+        }
       </div>
 
       <!-- Add Member Form -->
-      <div *ngIf="showAddForm() && canManageMembers()" class="mb-6 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+      @if (showAddForm() && canManageMembers()) {
+        <div class="mb-6 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
         <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">{{ 'workspaceMembers.addMember' | translate }}</h3>
         <form [formGroup]="addMemberForm" (ngSubmit)="onAddMember()" class="space-y-4">
           <div>
@@ -62,9 +64,11 @@ import { TranslatePipe } from '@ngx-translate/core';
               [placeholder]="'workspaceMembers.emailPlaceholder' | translate"
               class="w-full"
             />
-            <small class="p-error block mt-1" *ngIf="addMemberForm.get('email')?.invalid && addMemberForm.get('email')?.touched">
-              {{ 'validation.email' | translate }}
-            </small>
+            @if (addMemberForm.get('email')?.invalid && addMemberForm.get('email')?.touched) {
+              <small class="p-error block mt-1">
+                {{ 'validation.email' | translate }}
+              </small>
+            }
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -78,9 +82,11 @@ import { TranslatePipe } from '@ngx-translate/core';
               [placeholder]="'workspaceMembers.selectRole' | translate"
               class="w-full"
             ></p-select>
-            <small class="p-error block mt-1" *ngIf="addMemberForm.get('role')?.invalid && addMemberForm.get('role')?.touched">
-              {{ 'validation.required' | translate }}
-            </small>
+            @if (addMemberForm.get('role')?.invalid && addMemberForm.get('role')?.touched) {
+              <small class="p-error block mt-1">
+                {{ 'validation.required' | translate }}
+              </small>
+            }
           </div>
           <div class="flex gap-2">
             <p-button
@@ -101,13 +107,14 @@ import { TranslatePipe } from '@ngx-translate/core';
             ></p-button>
           </div>
         </form>
-      </div>
+        </div>
+      }
 
       <!-- Members Table -->
       <p-table
         [value]="members()"
         [loading]="loading()"
-        styleClass="p-datatable-striped"
+        class="p-datatable-striped"
         [paginator]="true"
         [rows]="10"
         [showCurrentPageReport]="true"
@@ -119,7 +126,9 @@ import { TranslatePipe } from '@ngx-translate/core';
             <th>{{ 'workspaceMembers.email' | translate }}</th>
             <th>{{ 'workspaceMembers.role' | translate }}</th>
             <th>{{ 'workspaceMembers.joinedAt' | translate }}</th>
-            <th *ngIf="canManageMembers()">{{ 'workspaceMembers.actions' | translate }}</th>
+            @if (canManageMembers()) {
+              <th>{{ 'workspaceMembers.actions' | translate }}</th>
+            }
           </tr>
         </ng-template>
         <ng-template pTemplate="body" let-member>
@@ -133,17 +142,19 @@ import { TranslatePipe } from '@ngx-translate/core';
               ></p-tag>
             </td>
             <td>{{ member.joinedAt | localeDate: 'short' }}</td>
-            <td *ngIf="canManageMembers()">
-              <p-button
-                icon="pi pi-trash"
-                [text]="true"
-                severity="danger"
-                [disabled]="member.userId === currentUserId() || member.role === 'OWNER'"
-                (onClick)="confirmRemove(member)"
-                [rounded]="true"
-                [pTooltip]="'workspaceMembers.remove' | translate"
-              ></p-button>
-            </td>
+            @if (canManageMembers()) {
+              <td>
+                <p-button
+                  icon="pi pi-trash"
+                  [text]="true"
+                  severity="danger"
+                  [disabled]="member.userId === currentUserId() || member.role === 'OWNER'"
+                  (onClick)="confirmRemove(member)"
+                  [rounded]="true"
+                  [pTooltip]="'workspaceMembers.remove' | translate"
+                ></p-button>
+              </td>
+            }
           </tr>
         </ng-template>
         <ng-template pTemplate="emptymessage">

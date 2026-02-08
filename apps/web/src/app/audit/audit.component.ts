@@ -140,7 +140,7 @@ interface AuditLog {
         [showCurrentPageReport]="true"
         [currentPageReportTemplate]="('audit.showing' | translate) + ' {first} ' + ('common.to' | translate) + ' {last} ' + ('common.of' | translate) + ' {totalRecords} ' + ('audit.logs' | translate)"
         [sortMode]="'multiple'"
-        styleClass="p-datatable-striped"
+        class="p-datatable-striped"
       >
         <ng-template pTemplate="header">
           <tr>
@@ -176,10 +176,13 @@ interface AuditLog {
             <td class="text-sm">{{ log.ip || ('common.notAvailable' | translate) }}</td>
             <td class="text-sm">{{ log.createdAt | localeDate: 'short' }}</td>
             <td>
-              <span *ngIf="log.metadata" class="text-xs text-gray-600 dark:text-gray-400">
-                {{ formatMetadata(log.metadata) }}
-              </span>
-              <span *ngIf="!log.metadata" class="text-xs text-gray-400">-</span>
+              @if (log.metadata) {
+                <span class="text-xs text-gray-600 dark:text-gray-400">
+                  {{ formatMetadata(log.metadata) }}
+                </span>
+              } @else {
+                <span class="text-xs text-gray-400">-</span>
+              }
             </td>
           </tr>
         </ng-template>

@@ -98,9 +98,11 @@ import { TranslateService, TranslatePipe } from '@ngx-translate/core';
                 class="w-full"
                 [class.ng-invalid]="deleteForm.get('confirmText')?.invalid && deleteForm.get('confirmText')?.touched"
               />
-              <small class="p-error block mt-1" *ngIf="deleteForm.get('confirmText')?.invalid && deleteForm.get('confirmText')?.touched">
-                {{ 'settings.mustTypeDelete' | translate }}
-              </small>
+              @if (deleteForm.get('confirmText')?.invalid && deleteForm.get('confirmText')?.touched) {
+                <small class="p-error block mt-1">
+                  {{ 'settings.mustTypeDelete' | translate }}
+                </small>
+              }
             </div>
             <div class="flex items-center">
               <input

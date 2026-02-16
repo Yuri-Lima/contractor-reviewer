@@ -99,6 +99,17 @@
     "redline": "Redline",
     "chat": "Chat",
     "uploadFile": "Subir archivo",
+    "fileName": "Nombre del Archivo",
+    "fileType": "Tipo de Archivo",
+    "fileSize": "Tamaño del Archivo",
+    "createdAt": "Fecha de Creación",
+    "fileStatus": {
+      "available": "Disponible",
+      "processing": "Procesando",
+      "uploading": "Subiendo",
+      "error": "Error"
+    },
+    "loadFilesError": "Error al cargar archivos",
     "processing": "Procesamiento en curso",
     "titlePlaceholder": "Título del documento",
     "descriptionPlaceholder": "Descripción (opcional)",
@@ -136,7 +147,7 @@
       "error": "Error",
       "quarantined": "En Cuarentena"
     },
-    "fileSize": {
+    "fileSizeUnits": {
       "bytes": "Bytes",
       "kb": "KB",
       "mb": "MB",
@@ -340,6 +351,29 @@
     "saveSuccess": "Configuración de retención guardada con éxito",
     "saveError": "Error al guardar configuración de retención"
   },
+  "workspaceSettings": {
+    "title": "Configuración del Workspace",
+    "tabGeneral": "General",
+    "tabRetention": "Retención",
+    "tabDocumentProcessing": "Procesamiento de Documentos",
+    "generalPlaceholder": "Las configuraciones generales del workspace estarán disponibles en una actualización futura.",
+    "menuItem": "Configuración",
+    "loadError": "Error al cargar configuración del workspace"
+  },
+  "chunking": {
+    "title": "Estrategia de Chunking",
+    "description": "Elija cómo se divide el texto del documento en chunks para la recuperación por IA. El chunking por párrafo preserva los límites de cláusulas legales y se recomienda para contratos.",
+    "strategy": "Estrategia de Chunking",
+    "strategyHint": "Solo están disponibles Párrafo, Oración y Tamaño fijo. Semántico y Agéntico estarán disponibles en una actualización futura.",
+    "paragraph": "Por párrafo",
+    "sentence": "Por oración",
+    "fixedSize": "Tamaño fijo",
+    "semantic": "Semántico",
+    "agentic": "Agéntico",
+    "comingSoon": "Próximamente",
+    "saveSuccess": "Estrategia de chunking guardada con éxito",
+    "saveError": "Error al guardar estrategia de chunking"
+  },
   "workspaceMembers": {
     "title": "Miembros del espacio de trabajo",
     "addMember": "Añadir miembro",
@@ -419,5 +453,9 @@
     "clear": "Limpiar",
     "dateFormat": "dd/mm/yy",
     "firstDayOfWeek": 1
+  },
+  "baseList": {
+    "emptyMessage": "No hay datos disponibles",
+    "loading": "Cargando..."
   }
 }

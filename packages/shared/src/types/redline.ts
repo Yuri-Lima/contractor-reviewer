@@ -1,8 +1,4 @@
-export enum RedlinePlaybook {
-  BALANCED = 'balanced',
-  CONSERVATIVE = 'conservative',
-  CLIENT_FRIENDLY = 'client-friendly',
-}
+import { RedlinePlaybook } from '../enums/redline.enum';
 
 export interface DiffBlock {
   id: string;
@@ -10,7 +6,8 @@ export interface DiffBlock {
   text: string;
 }
 
-export interface Citation {
+// Contract-specific citation (used in redline changes)
+export interface ContractCitation {
   kind: 'contract';
   file?: string;
   page?: number;
@@ -32,7 +29,7 @@ export interface RedlineChange {
   diffBlocks: DiffBlock[];
   explanation: string;
   confidence: 'high' | 'medium' | 'low';
-  citations: Citation[];
+  citations: ContractCitation[];
   legalCitations: LegalCitation[];
   notFound: boolean;
 }

@@ -1,3 +1,7 @@
+import { DocumentStatus, JurisdictionStatus } from '../enums/document.enum';
+import { FileStatus } from '../enums/file.enum';
+import { JobType, JobStatus } from '../enums/job.enum';
+
 export interface Document {
   id: string;
   workspaceId: string;
@@ -12,18 +16,6 @@ export interface Document {
   jobs?: DocumentJob[];
 }
 
-export enum DocumentStatus {
-  PROCESSING = 'processing',
-  AVAILABLE = 'available',
-  ERROR = 'error',
-}
-
-export enum JurisdictionStatus {
-  EXPLICIT = 'explicit',
-  INFERRED = 'inferred',
-  UNKNOWN = 'unknown',
-}
-
 export interface DocumentFile {
   id: string;
   documentId: string;
@@ -33,14 +25,10 @@ export interface DocumentFile {
   status: FileStatus;
   storageKey: string;
   ocrText?: string;
+  errorMessage?: string;
+  pageCount?: number;
   createdAt: string;
-}
-
-export enum FileStatus {
-  UPLOADING = 'uploading',
-  PROCESSING = 'processing',
-  AVAILABLE = 'available',
-  ERROR = 'error',
+  updatedAt: string;
 }
 
 export interface DocumentJob {
@@ -51,22 +39,9 @@ export interface DocumentJob {
   progress: number;
   attempts: number;
   lastError?: string;
+  metadata?: Record<string, any>;
   createdAt: string;
   updatedAt: string;
-}
-
-export enum JobType {
-  OCR = 'ocr',
-  PARSING = 'parsing',
-  CHUNKING = 'chunking',
-  EMBEDDING = 'embedding',
-}
-
-export enum JobStatus {
-  PENDING = 'pending',
-  PROCESSING = 'processing',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
 }
 
 export interface CreateDocumentRequest {

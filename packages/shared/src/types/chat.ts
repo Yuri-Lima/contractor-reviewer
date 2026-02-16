@@ -1,3 +1,5 @@
+import { Citation } from './common';
+
 export interface ChatMessage {
   id: string;
   documentId: string;
@@ -5,22 +7,11 @@ export interface ChatMessage {
   userId: string;
   question: string;
   answerText: string | null;
-  confidence: string | null;
+  confidence: 'high' | 'medium' | 'low' | null;
   citations: Citation[] | null;
   notFound: boolean;
   jurisdiction: string | null;
   createdAt: string;
-}
-
-export interface Citation {
-  type: 'contract' | 'legal';
-  fileName?: string;
-  pageNumber?: number;
-  paragraph?: string;
-  quoteSnippet?: string;
-  sourceName?: string;
-  section?: string;
-  url?: string;
 }
 
 export interface ChatRequest {

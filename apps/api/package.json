@@ -15,6 +15,7 @@
     "migration:generate": "ts-node --project tsconfig.migration.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:generate src/migrations/Migration -d src/data-source.ts"
   },
   "dependencies": {
+    "@contractai-review/shared": "workspace:*",
     "@aws-sdk/client-s3": "^3.700.0",
     "@aws-sdk/s3-request-presigner": "^3.700.0",
     "@nestjs/bullmq": "^10.1.1",

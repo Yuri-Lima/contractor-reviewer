@@ -32,7 +32,7 @@ test-results/
 playwright-report/
 blob-report/
 .playwright/
-playwright/.auth/
+**/playwright/.auth/
 
 # E2E and script-generated documents
 privacy-export*.json

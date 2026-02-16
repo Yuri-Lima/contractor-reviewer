@@ -1,0 +1,53 @@
+---
+description: Audit logging for destructive operations - must call AuditService.createAuditLog
+globs: apps/api/**/*.ts
+---
+
+# Audit Logging for Destructive Operations — MANDATORY RULES
+
+**MANDATORY RULE**: Any API endpoint that performs a destructive operation (delete, remove, hard delete) MUST call `AuditService.createAuditLog` with the appropriate `AuditAction` and `TargetType` after the operation succeeds.
+
+## Rules
+
+1. **Destructive operations include:**
+   - Deleting documents: `DELETE /workspaces/:workspaceId/documents/:documentId`
+   - Deleting files: `DELETE /workspaces/:workspaceId/documents/:documentId/files/:fileId`
+   - Removing workspace members: `DELETE /workspaces/:workspaceId/members/:userId`
+   - Deleting workspaces (when implemented)
+   - Account deletion (when implemented)
+
+2. **Required audit log mapping:**
+   | Operation     | AuditAction     | TargetType |
+   |---------------|-----------------|------------|
+   | Document delete | `AuditAction.DELETE` | `TargetType.DOCUMENT` |
+   | File delete   | `AuditAction.DELETE` | `TargetType.FILE` |
+   | Member remove | `AuditAction.MEMBER_REMOVE` | `TargetType.USER` |
+
+3. **When adding new destructive endpoints:**
+   - Inject `AuditService` in the controller
+   - Add `@RequestInfo() requestInfo: { ip: string; userAgent: string }` parameter
+   - After the operation succeeds, call:
+     ```typescript
+     await this.auditService.createAuditLog(
+       workspaceId,
+       currentUser.id,
+       AuditAction.<ACTION>,
+       TargetType.<TYPE>,
+       targetId,
+       requestInfo.ip,
+       requestInfo.userAgent,
+       metadata,  // Safe metadata only (e.g. fileName, removedUserId)
+     );
+     ```
+
+4. **Never log sensitive content in metadata:**
+   - Do NOT log contract text, full file content, or user messages
+   - Do NOT log API keys or secrets
+   - Safe metadata: ids, file names, action type, counts
+
+## Code Review Checklist
+
+- [ ] All destructive endpoints call `createAuditLog` after success
+- [ ] Correct `AuditAction` and `TargetType` are used
+- [ ] `RequestInfo` (ip, userAgent) is passed for request context
+- [ ] Metadata contains only safe, non-sensitive data

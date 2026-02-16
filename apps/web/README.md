@@ -120,7 +120,7 @@ src/
 │   ├── privacy/           # Privacy panel
 │   ├── audit/             # Audit logs
 │   ├── workspaces/        # Workspaces, workspace-members, settings
-│   │   └── settings/      # Workspace Settings (General, Retention, Document Processing)
+│   │   └── settings/      # Workspace Settings (General, Retention, Document Processing, Document Parsers, AI Prompts)
 │   ├── app.component.ts   # Componente raiz
 │   └── app.routes.ts      # Rotas
 ├── assets/                # Assets estáticos
@@ -175,33 +175,47 @@ Crie um arquivo `.env` na raiz do projeto ou configure:
 - ✅ Autenticação (Login/Register)
 - ✅ Workspace switcher
 - ✅ Listagem de documentos
-- ✅ Upload de arquivos
+- ✅ Upload de arquivos com **seleção de parser** (Docling, PDFPlumber, DPT-2, LlamaParse, Unstructured)
+- ✅ **Failed Jobs** — bloco no document view exibindo jobs falhos com `lastError` (mensagem amigável para o usuário)
 - ✅ Chat com citações
 - ✅ Privacy panel (DSAR export, no-logs toggle)
 - ✅ Audit logs
-- ✅ Workspace Settings (Retention, Document Processing com chunking strategy)
-- ⏳ Viewer de PDF (em desenvolvimento)
-- ⏳ Redline e versões (em desenvolvimento)
-- ⏳ Progresso de jobs (em desenvolvimento)
+- ✅ Workspace Settings:
+  - **Retention** — política de retenção (arquivos, textos/embeddings)
+  - **Document Processing** — chunking strategy (paragraph, sentence, fixed_size)
+  - **Document Parsers** — parser padrão + API keys (DPT-2, LlamaParse, Unstructured)
+  - **AI Prompts** — override de prompts de chat e redline por workspace
+- ✅ Viewer de PDF
+- ✅ Redline e versões (diff side-by-side)
+- ✅ Progresso de jobs (parsing, chunking, embeddings)
+- ✅ Suporte multilíngue (EN, ES, PT-BR, DE)
 
 ## Integração com API
 
-O frontend consome a API REST em `http://localhost:3000/api` (configurável via environment).
+O frontend consome a API REST em `http://localhost:3000/api` (configurável via `VITE_API_URL` ou `NG_APP_API_URL`).
 
 Endpoints principais:
-- `/api/auth/login` - Login
-- `/api/auth/register` - Registro
-- `/api/workspaces` - Workspaces
-- `/api/workspaces/:id/documents` - Documentos
-- `/api/workspaces/:id/documents/:docId/chat` - Chat
-- `/api/workspaces/:id/privacy/export` - Export de privacidade
-- `/api/workspaces/:id/audit` - Audit logs
-- `/api/workspaces/:id/settings` - Configurações do workspace (retention, chunking)
+- `/api/auth/login` — Login
+- `/api/auth/register` — Registro
+- `/api/workspaces` — Workspaces
+- `/api/workspaces/:id/documents` — Documentos
+- `/api/workspaces/:id/documents/:docId/files` — Upload de arquivos (body: `file`, `parser` opcional)
+- `/api/workspaces/:id/documents/:docId/chat` — Chat com RAG
+- `/api/workspaces/:id/documents/:docId/redline` — Geração de redline (playbook)
+- `/api/workspaces/:id/document-parsers` — Lista parsers disponíveis (`ParserInfo[]`)
+- `/api/workspaces/:id/settings` — Configurações (retention, documentProcessing, prompts)
+- `/api/workspaces/:id/privacy/export` — Export de privacidade
+- `/api/workspaces/:id/audit` — Audit logs
+
+## Parsers de Documentos
+
+No upload, o usuário pode abrir o diálogo de seleção de parser e escolher Docling, PDFPlumber, DPT-2, LlamaParse ou Unstructured. Parsers que exigem API key mas não a possuem configurada aparecem desabilitados.
+
+Configuração de parser padrão e API keys: **Workspace Settings > Document Parsers**.
+
+Ver [DOCUMENT-PARSERS.md](../../DOCUMENT-PARSERS.md) no root do monorepo para referência completa.
 
 ## Próximos Passos
 
-1. Implementar viewer de PDF (pdf.js)
-2. Implementar redline com diff side-by-side
-3. Adicionar progresso de jobs (OCR/embeddings)
-4. Melhorar responsividade mobile
-5. Adicionar testes unitários e E2E
+1. Melhorar responsividade mobile
+2. Adicionar testes unitários e E2E

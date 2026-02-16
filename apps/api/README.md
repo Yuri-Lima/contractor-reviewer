@@ -72,6 +72,16 @@ pnpm migration:run
 pnpm migration:generate -- src/migrations/MigrationName
 ```
 
+## Migrações
+
+Migrações rodam automaticamente ao iniciar a API em produção (via `migrate-and-start.sh`).
+
+**Se você já rodou `Migration1770417369228` antes da reordenação** (dev/staging antigo): insira o novo timestamp para evitar reexecução:
+
+```sql
+INSERT INTO migrations (timestamp, name) VALUES (1700000001500, 'ConvertVarcharToEnums1700000001500');
+```
+
 ## Variáveis de Ambiente
 
 Ver `.env.example` no root. Principais para a API:

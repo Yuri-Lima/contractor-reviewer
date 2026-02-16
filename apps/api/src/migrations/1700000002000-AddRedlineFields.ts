@@ -26,7 +26,7 @@ export class AddRedlineFields1700000002000 implements MigrationInterface {
       ON UPDATE NO ACTION
     `);
 
-    // Add REDLINE_APPLY to audit_logs action enum
+    // Add REDLINE_APPLY to audit_logs action enum (no-op if ConvertVarcharToEnums already included it)
     await queryRunner.query(`
       ALTER TYPE "public"."audit_logs_action_enum" 
       ADD VALUE IF NOT EXISTS 'redline_apply'

@@ -26,3 +26,6 @@ pnpm-debug.log*
 # Test / coverage
 coverage/
 .nyc_output/
+
+# Uploaded files (user documents, generated content)
+apps/api/storage/

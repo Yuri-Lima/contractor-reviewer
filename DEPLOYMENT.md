@@ -62,11 +62,12 @@ Deploy on a VPS without source code. Uses pre-built images from Docker Hub.
 
 ### 1. Copy deployment files to VPS
 
-Copy `deploy/docker-compose.yml` and `deploy/.env.example` to your server.
+Copy the `deploy/` folder to your server (or copy `deploy/docker-compose.yml` and `deploy/.env.example` into a directory).
 
 ### 2. Create .env
 
 ```bash
+cd deploy   # or cd into the directory containing the copied files
 cp .env.example .env
 ```
 
@@ -81,15 +82,19 @@ Edit `.env` and set:
 ### 3. Run
 
 ```bash
+# From the deploy directory
 docker compose up -d
 ```
 
 ### 4. Access the app
 
-- **Web UI**: https://your-domain (or http://your-server-ip if SITE_DOMAIN not configured)
+- **Web UI**: https://your-domain (when `SITE_DOMAIN` is your domain)
+- **Web UI (IP only)**: http://your-server-ip — set `SITE_DOMAIN` to your server IP in `.env` (Let's Encrypt will not work for IPs)
 - **Superadmin login**: Use `SUPERADMIN_EMAIL` and `SUPERADMIN_PASSWORD` from `.env`
 
-**HTTPS**: Traefik obtains Let's Encrypt certificates automatically. Ensure:
+**Note**: `SITE_DOMAIN` must match the Host header used to access the app (your domain or server IP). Traefik routes requests by Host.
+
+**HTTPS** (when using a domain): Traefik obtains Let's Encrypt certificates automatically. Ensure:
 - DNS A/AAAA records for `SITE_DOMAIN` point to your server
 - Ports 80 and 443 are open. Use `ACME_STAGING=true` initially to test, then switch to production.
 
@@ -100,8 +105,8 @@ For local development or when building images on the same machine as deployment:
 ### 1. Clone and configure
 
 ```bash
-git clone <repo-url> contractor-reviwer
-cd contractor-reviwer
+git clone <repo-url> contractor-reviewer
+cd contractor-reviewer
 ```
 
 ### 2. Create production env file
@@ -191,7 +196,7 @@ To enable the dashboard on port 8080 for debugging, add to the Traefik service i
 
 ## Commands
 
-**VPS (deploy/):**
+**VPS (from `deploy/` directory):**
 
 ```bash
 docker compose logs -f api

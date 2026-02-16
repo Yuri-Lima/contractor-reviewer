@@ -97,6 +97,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      docling:
+        condition: service_healthy
+      pdfplumber:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -140,6 +144,10 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      docling:
+        condition: service_healthy
+      pdfplumber:
         condition: service_healthy
       api:
         condition: service_started

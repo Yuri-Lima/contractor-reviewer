@@ -1,0 +1,140 @@
+<div class="audit-container p-6 max-w-7xl mx-auto">
+  <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">{{ 'audit.title' | translate }}</h1>
+
+  <app-base-list
+    [data]="logs()"
+    [config]="tableConfig()"
+  >
+    <!-- Header template with column filters enabled by default -->
+    <ng-template #headerTemplate>
+      <tr>
+        <!-- Default: Column filter enabled with equals matchMode for dropdown selection -->
+        <!-- Behavior: Uses custom dropdown template with actionOptions for better UX -->
+        <!-- Match mode: equals - exact match required (dropdown selection) -->
+        <th pSortableColumn="action" pColumnFilter field="action" filterMatchMode="equals" filterType="text">
+          {{ 'audit.action' | translate }}
+        </th>
+        <!-- Default: Column filter enabled with equals matchMode for dropdown selection -->
+        <!-- Behavior: Uses custom dropdown template with targetTypeOptions for better UX -->
+        <!-- Match mode: equals - exact match required (dropdown selection) -->
+        <th pSortableColumn="targetType" pColumnFilter field="targetType" filterMatchMode="equals" filterType="text">
+          {{ 'audit.type' | translate }}
+        </th>
+        <!-- Default: Column filter enabled with contains matchMode for text input -->
+        <!-- Behavior: Shows default text input (no custom template) - user can type partial user ID -->
+        <!-- Match mode: contains - partial text match -->
+        <th pSortableColumn="actorUserId" pColumnFilter field="actorUserId" filterMatchMode="contains" filterType="text">
+          {{ 'audit.user' | translate }}
+        </th>
+        <!-- Default: Column filter enabled with contains matchMode for text input -->
+        <!-- Behavior: Shows default text input (no custom template) - user can type partial IP address -->
+        <!-- Match mode: contains - partial text match -->
+        <th pSortableColumn="ip" pColumnFilter field="ip" filterMatchMode="contains" filterType="text">
+          IP
+        </th>
+        <!-- Default: Column filter enabled with dateIs matchMode for date picker -->
+        <!-- Behavior: Uses custom date picker template - filters records from that specific date -->
+        <!-- Match mode: dateIs - exact date match -->
+        <th pSortableColumn="createdAt" pColumnFilter field="createdAt" filterMatchMode="dateIs" filterType="date">
+          {{ 'audit.date' | translate }}
+        </th>
+        <!-- Metadata column has no filter - display only -->
+        <th>{{ 'audit.metadata' | translate }}</th>
+      </tr>
+    </ng-template>
+    
+    <!-- Custom filter template - provides custom filter UI for specific columns -->
+    <!-- Default: Used by default when provided, overrides default PrimeNG filter inputs -->
+    <!-- Behavior: Conditionally renders different filter UIs based on field name -->
+    <!-- Applies when: Column has pColumnFilter directive and field matches template conditions -->
+    <ng-template #filterTemplate let-column let-filterCallback="filterCallback" let-field="field">
+      <!-- Default: Dropdown with all available action types -->
+      <!-- Behavior: Shows p-select with actionOptions, calls filterCallback when selection changes -->
+      <!-- Clear option: Allows clearing the filter -->
+      @if (field === 'action') {
+        <p-select
+          [options]="actionOptions"
+          (onChange)="filterCallback($event.value)"
+          [showClear]="true"
+          [placeholder]="'audit.allActions' | translate"
+          optionLabel="label"
+          optionValue="value"
+          styleClass="w-full"
+        ></p-select>
+      }
+      <!-- Default: Dropdown with all available target types -->
+      <!-- Behavior: Shows p-select with targetTypeOptions, calls filterCallback when selection changes -->
+      <!-- Clear option: Allows clearing the filter -->
+      @else if (field === 'targetType') {
+        <p-select
+          [options]="targetTypeOptions"
+          (onChange)="filterCallback($event.value)"
+          [showClear]="true"
+          [placeholder]="'audit.allTypes' | translate"
+          optionLabel="label"
+          optionValue="value"
+          styleClass="w-full"
+        ></p-select>
+      }
+      <!-- Default: Date picker for selecting a specific date -->
+      <!-- Behavior: Shows p-datepicker with ISO date format, calls filterCallback when date is selected -->
+      <!-- Date format: yy-mm-dd - ISO date format -->
+      <!-- Clear option: Allows clearing the date filter -->
+      @else if (field === 'createdAt') {
+        <p-datepicker
+          (onSelect)="filterCallback($event)"
+          [showIcon]="true"
+          dateFormat="yy-mm-dd"
+          [showClear]="true"
+          [placeholder]="'audit.selectDate' | translate"
+          iconDisplay="input"
+          styleClass="w-full"
+        ></p-datepicker>
+      }
+      <!-- Default: For other fields (actorUserId, ip), PrimeNG automatically shows text input -->
+      <!-- Behavior: User types text, filter applies on input (with debounce in lazy mode) -->
+      <!-- No custom template needed - PrimeNG handles it automatically -->
+    </ng-template>
+    
+    <!-- Body template -->
+    <ng-template #bodyTemplate let-log>
+      <tr>
+        <td>
+          <p-tag
+            [value]="getActionLabel(log.action)"
+            [severity]="getActionSeverity(log.action)"
+          ></p-tag>
+        </td>
+        <td>
+          <p-tag
+            [value]="getTargetTypeLabel(log.targetType)"
+            severity="secondary"
+          ></p-tag>
+        </td>
+        <td class="text-sm">{{ log.actorUserId.substring(0, 8) }}...</td>
+        <td class="text-sm">{{ log.ip || ('common.notAvailable' | translate) }}</td>
+        <td class="text-sm">{{ log.createdAt | localeDate: 'short' }}</td>
+        <td>
+          @if (log.metadata) {
+            <span class="text-xs text-gray-600 dark:text-gray-400">
+              {{ formatMetadata(log.metadata) }}
+            </span>
+          } @else {
+            <span class="text-xs text-gray-400">-</span>
+          }
+        </td>
+      </tr>
+    </ng-template>
+    
+    <!-- Empty template -->
+    <ng-template #emptyTemplate let-colspan>
+      <tr>
+        <td [attr.colspan]="colspan" class="text-center py-8 text-gray-500 dark:text-gray-400">
+          {{ 'audit.noLogsFound' | translate }}
+        </td>
+      </tr>
+    </ng-template>
+  </app-base-list>
+
+  <p-toast></p-toast>
+</div>

@@ -7,15 +7,12 @@ import {
   JoinColumn,
   Unique,
 } from 'typeorm';
+import { WorkspaceRole } from '@contractai-review/shared';
 import { User } from './user.entity';
 import { Workspace } from './workspace.entity';
 
-export enum WorkspaceRole {
-  OWNER = 'OWNER',
-  ADMIN = 'ADMIN',
-  MEMBER = 'MEMBER',
-  VIEWER = 'VIEWER',
-}
+// Re-export for backward compatibility
+export { WorkspaceRole };
 
 @Entity('workspace_members')
 @Unique(['workspaceId', 'userId'])

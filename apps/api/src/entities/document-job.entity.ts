@@ -7,22 +7,11 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
+import { JobType, JobStatus } from '@contractai-review/shared';
 import { Document } from './document.entity';
 
-export enum JobType {
-  OCR = 'ocr',
-  PARSING = 'parsing',
-  CHUNKING = 'chunking',
-  EMBEDDING = 'embedding',
-}
-
-export enum JobStatus {
-  PENDING = 'pending',
-  PROCESSING = 'processing',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
-  RETRYING = 'retrying',
-}
+// Re-export for backward compatibility
+export { JobType, JobStatus };
 
 @Entity('document_jobs')
 export class DocumentJob {

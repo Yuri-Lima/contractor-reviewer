@@ -7,15 +7,11 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
+import { FileStatus } from '@contractai-review/shared';
 import { Document } from './document.entity';
 
-export enum FileStatus {
-  UPLOADING = 'uploading',
-  PROCESSING = 'processing',
-  AVAILABLE = 'available',
-  QUARANTINED = 'quarantined',
-  ERROR = 'error',
-}
+// Re-export for backward compatibility
+export { FileStatus };
 
 @Entity('document_files')
 export class DocumentFile {

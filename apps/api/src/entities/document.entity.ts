@@ -8,6 +8,7 @@ import {
   JoinColumn,
   OneToMany,
 } from 'typeorm';
+import { DocumentStatus, JurisdictionStatus } from '@contractai-review/shared';
 import { Workspace } from './workspace.entity';
 import { DocumentFile } from './document-file.entity';
 import { Chunk } from './chunk.entity';
@@ -15,18 +16,8 @@ import { DocumentJob } from './document-job.entity';
 import { ChatMessage } from './chat-message.entity';
 import { DocumentVersion } from './document-version.entity';
 
-export enum DocumentStatus {
-  PROCESSING = 'processing',
-  AVAILABLE = 'available',
-  QUARANTINED = 'quarantined',
-  ERROR = 'error',
-}
-
-export enum JurisdictionStatus {
-  EXPLICIT = 'explicit',
-  INFERRED = 'inferred',
-  UNKNOWN = 'unknown',
-}
+// Re-export for backward compatibility
+export { DocumentStatus, JurisdictionStatus };
 
 @Entity('documents')
 export class Document {

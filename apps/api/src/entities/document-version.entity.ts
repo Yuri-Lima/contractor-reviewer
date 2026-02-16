@@ -6,13 +6,11 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
+import { RedlinePlaybook } from '@contractai-review/shared';
 import { Document } from './document.entity';
 
-export enum RedlinePlaybook {
-  BALANCED = 'balanced',
-  CONSERVATIVE = 'conservative',
-  CLIENT_FRIENDLY = 'client-friendly',
-}
+// Re-export for backward compatibility
+export { RedlinePlaybook };
 
 @Entity('document_versions')
 export class DocumentVersion {

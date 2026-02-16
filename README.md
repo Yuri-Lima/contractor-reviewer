@@ -187,6 +187,20 @@ Para começar a usar o ContractAI Review localmente, consulte o guia completo de
 6. Iniciar Worker: `pnpm --filter api start:worker`
 7. Iniciar Web: `pnpm --filter web start`
 
+### Testes E2E (Playwright)
+
+Pré-requisitos: API rodando, `docker-compose up` (Postgres + Redis).
+
+```bash
+# Com API rodando em outro terminal
+pnpm e2e
+
+# Ou com script que inicia API automaticamente
+E2E_WITH_API=1 ./scripts/e2e.sh
+```
+
+Ver [apps/web/e2e/](apps/web/e2e/) para estrutura dos testes.
+
 ## Stack Tecnológica
 
 ### Backend

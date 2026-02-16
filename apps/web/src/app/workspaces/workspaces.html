@@ -6,6 +6,7 @@
       <p class="text-sm text-gray-600 dark:text-gray-400">{{ 'workspaces.description' | translate }}</p>
     </div>
     <p-button
+      data-testid="workspaces-create-btn"
       [label]="'workspaces.create' | translate"
       icon="pi pi-plus"
       (onClick)="showCreateForm.set(true)"
@@ -30,6 +31,7 @@
         <input
           pInputText
           formControlName="name"
+          data-testid="workspace-name-input"
           [placeholder]="'workspaces.name' | translate"
           class="w-full"
           [class.ng-invalid]="createForm.get('name')?.invalid && createForm.get('name')?.touched"
@@ -43,6 +45,7 @@
       <div class="flex gap-3 pt-2">
         <p-button
           type="submit"
+          data-testid="workspace-create-submit"
           [label]="'common.create' | translate"
           icon="pi pi-check"
           [disabled]="createForm.invalid || loading()"
@@ -105,6 +108,7 @@
           <div class="p-5">
             <a
               [routerLink]="['/workspaces', workspace.id, 'documents']"
+              data-testid="workspace-view-documents"
               class="block no-underline"
               (click)="$event.stopPropagation()"
             >
@@ -131,6 +135,7 @@
         {{ 'workspaces.emptyStateDescription' | translate }}
       </p>
       <p-button
+        data-testid="workspaces-create-first"
         [label]="'workspaces.createFirst' | translate"
         icon="pi pi-plus"
         (onClick)="showCreateForm.set(true)"

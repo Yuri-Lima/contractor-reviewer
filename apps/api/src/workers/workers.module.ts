@@ -3,7 +3,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ParsingProcessor } from './parsing.processor';
 import { ChunkingProcessor } from './chunking.processor';
 import { EmbeddingsProcessor } from './embeddings.processor';
-import { OcrProcessor } from './ocr.processor';
 import { DocumentJob } from '../entities/document-job.entity';
 import { DocumentFile } from '../entities/document-file.entity';
 import { Document } from '../entities/document.entity';
@@ -12,6 +11,8 @@ import { WorkspaceSettings } from '../entities/workspace-settings.entity';
 import { StorageModule } from '../storage/storage.module';
 import { RagModule } from '../rag/rag.module';
 import { QueueModule } from '../queue/queue.module';
+import { ParsersModule } from '../parsers/parsers.module';
+import { WorkspaceModule } from '../workspace/workspace.module';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -56,13 +57,15 @@ function writeLog(location: string, message: string, data: any, hypothesisId: st
     StorageModule,
     RagModule,
     QueueModule,
+    ParsersModule,
+    WorkspaceModule,
   ],
-  providers: [ParsingProcessor, ChunkingProcessor, EmbeddingsProcessor, OcrProcessor],
+  providers: [ParsingProcessor, ChunkingProcessor, EmbeddingsProcessor],
 })
 export class WorkersModule implements OnModuleInit {
   onModuleInit() {
     // #region agent log
-    writeLog('workers.module.ts:24', 'WorkersModule initialized, processors registered', {processors:['ParsingProcessor','ChunkingProcessor','EmbeddingsProcessor','OcrProcessor']}, 'A');
+    writeLog('workers.module.ts:24', 'WorkersModule initialized, processors registered', {processors:['ParsingProcessor','ChunkingProcessor','EmbeddingsProcessor']}, 'A');
     // #endregion
   }
 }

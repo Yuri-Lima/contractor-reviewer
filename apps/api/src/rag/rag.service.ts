@@ -8,6 +8,7 @@ import { Embedding } from '../entities/embedding.entity';
 import { Document } from '../entities/document.entity';
 import { Citation, ChatResponse } from '@contractai-review/shared';
 import { EmbeddingsService } from './embeddings.service';
+import { PromptService } from '../prompts/prompt.service';
 import { arrayToVectorString } from '../vector-helpers';
 
 // Re-export for backward compatibility
@@ -27,6 +28,7 @@ export class RagService {
     @InjectRepository(Document)
     private documentRepository: Repository<Document>,
     private embeddingsService: EmbeddingsService,
+    private promptService: PromptService,
     private configService: ConfigService,
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
@@ -216,7 +218,8 @@ export class RagService {
       question,
       contractChunks,
       legalChunks,
-      language, // Pass language parameter
+      language,
+      workspaceId,
     );
 
     const notFound = contractChunks.length === 0 && legalChunks.length === 0;
@@ -259,7 +262,8 @@ export class RagService {
     question: string,
     contractChunks: Array<Chunk & { distance: number }>,
     legalChunks: Array<Embedding & { distance: number; sourceName?: string }>,
-    language: string = 'en', // Add language parameter
+    language: string = 'en',
+    workspaceId?: string,
   ): Promise<string> {
     // Build context from chunks
     const contractContext = contractChunks
@@ -272,41 +276,22 @@ export class RagService {
 
     const context = [contractContext, legalContext].filter(Boolean).join('\n\n');
 
-    // Map language codes to language names
-    const languageMap: Record<string, string> = {
-      'en': 'English',
-      'es': 'Spanish',
-      'pt-BR': 'Portuguese (Brazil)',
-      'pt': 'Portuguese',
-      'de': 'German',
-    };
-    
-    const languageName = languageMap[language] || 'English';
-
-    const prompt = `You are a legal assistant analyzing contracts. Answer the question based ONLY on the provided context. If the context doesn't contain enough information, say "NOT FOUND" and suggest where to look.
-
-IMPORTANT: You MUST provide your answer in ${languageName}. All responses must be written in ${languageName}.
-
-Context:
-${context || 'No relevant context found.'}
-
-Question: ${question}
-
-Answer (be concise and cite specific excerpts, respond in ${languageName}):`;
+    const languageName = this.promptService.getLanguageName(language);
+    const { system, user } = await this.promptService.getChatPrompts(
+      {
+        languageName,
+        context: context || 'No relevant context found.',
+        question,
+      },
+      { workspaceId },
+    );
 
     try {
       const response = await this.openaiClient.chat.completions.create({
         model: this.chatModel,
         messages: [
-          {
-            role: 'system',
-            content:
-              'You are a legal assistant. Provide accurate, evidence-based answers. Always cite your sources. IMPORTANT: When a language is specified, provide all answers in that language.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
+          { role: 'system', content: system },
+          { role: 'user', content: user },
         ],
         temperature: 0.3, // Lower temperature for more factual responses
         max_tokens: 500,

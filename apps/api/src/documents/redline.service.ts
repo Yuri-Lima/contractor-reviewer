@@ -8,13 +8,9 @@ import { Embedding } from '../entities/embedding.entity';
 import { Document } from '../entities/document.entity';
 import { EmbeddingsService } from '../rag/embeddings.service';
 import { RagService } from '../rag/rag.service';
-import {
-  RedlineChange,
-  RedlinePlaybook,
-  ContractCitation,
-  LegalCitation,
-} from '@contractai-review/shared';
+import { RedlineChange, RedlinePlaybook } from '@contractai-review/shared';
 import { DiffService } from './diff.service';
+import { PromptService } from '../prompts/prompt.service';
 import { arrayToVectorString } from '../vector-helpers';
 
 @Injectable()
@@ -32,6 +28,7 @@ export class RedlineService {
     private embeddingsService: EmbeddingsService,
     private ragService: RagService,
     private diffService: DiffService,
+    private promptService: PromptService,
     private configService: ConfigService,
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
@@ -101,76 +98,26 @@ export class RedlineService {
 
     const context = [contractContext, legalContext].filter(Boolean).join('\n\n');
 
-    // Build prompt based on playbook
-    const playbookPrompt = this.getPlaybookPrompt(playbook);
-    const objectiveText = objective ? `\n\nObjective: ${objective}` : '';
-    const instructionsText = instructions ? `\n\nAdditional Instructions: ${instructions}` : '';
-    
-    const languageName = this.getLanguageName(language);
-
-    const prompt = `You are a legal assistant helping to revise contract clauses. Your task is to suggest improvements to the selected text while maintaining legal accuracy and professional tone.
-
-IMPORTANT: You MUST provide all responses, especially the "explanation" field, in ${languageName}. All explanations, suggestions, and comments must be written in ${languageName}.
-
-${playbookPrompt}
-
-Selected Text to Revise:
-"${selectedText}"
-
-Context from Contract and Legal Sources:
-${context || 'No additional context available.'}
-${objectiveText}${instructionsText}
-
-IMPORTANT RULES:
-- NEVER say "this is illegal", "you must", or "you should"
-- ALWAYS use conditional language ("may", "could", "depending on", "consider")
-- NEVER provide legal advice or make absolute statements
-- ALWAYS cite specific excerpts from the contract or legal sources
-- If you cannot find sufficient evidence, respond with "NOT FOUND" and explain what was searched
-- RESPOND IN ${languageName.toUpperCase()}: All explanations must be in ${languageName}
-
-Please provide:
-1. A revised version of the selected text (suggestedText) - keep original language of the contract
-2. A clear explanation of why the change was suggested (explanation) - MUST be in ${languageName}
-3. Specific citations from the contract (citations)
-4. Legal citations if relevant (legalCitations)
-
-Format your response as JSON:
-{
-  "suggestedText": "...",
-  "explanation": "...",
-  "citations": [
-    {
-      "kind": "contract",
-      "file": "...",
-      "page": 12,
-      "spanId": "...",
-      "quoteSnippet": "..."
-    }
-  ],
-  "legalCitations": [
-    {
-      "kind": "legal",
-      "source": "...",
-      "section": "...",
-      "url": "..."
-    }
-  ]
-}`;
+    const languageName = this.promptService.getLanguageName(language);
+    const playbookPrompt = await this.promptService.getPlaybookPrompt(playbook, { workspaceId });
+    const { system, user } = await this.promptService.getRedlinePrompts(
+      {
+        languageName,
+        playbookPrompt,
+        selectedText,
+        context: context || 'No additional context available.',
+        objective: objective ? `\n\nObjective: ${objective}` : '',
+        instructions: instructions ? `\n\nAdditional Instructions: ${instructions}` : '',
+      },
+      { workspaceId },
+    );
 
     try {
       const response = await this.openaiClient.chat.completions.create({
         model: this.chatModel,
         messages: [
-          {
-            role: 'system',
-            content:
-              'You are a legal assistant. Provide structured, evidence-based contract revisions. Always use conditional language and cite sources. Never provide legal advice. IMPORTANT: When a language is specified, provide all explanations in that language.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
+          { role: 'system', content: system },
+          { role: 'user', content: user },
         ],
         temperature: 0.3,
         max_tokens: 1000,
@@ -347,20 +294,6 @@ Format your response as JSON:
   }
 
   /**
-   * Map language codes to language names
-   */
-  private getLanguageName(languageCode: string): string {
-    const languageMap: Record<string, string> = {
-      'en': 'English',
-      'es': 'Spanish',
-      'pt-BR': 'Portuguese (Brazil)',
-      'pt': 'Portuguese',
-      'de': 'German',
-    };
-    return languageMap[languageCode] || 'English';
-  }
-
-  /**
    * Get NOT FOUND message in the specified language
    */
   private getNotFoundMessage(language: string): string {
@@ -386,36 +319,5 @@ Format your response as JSON:
       'de': 'NICHT GEFUNDEN: Keine Zitate gefunden. Die vorgeschlagene Änderung hat keine ausreichenden Beweise.',
     };
     return messages[language] || messages['en'];
-  }
-
-  /**
-   * Get playbook-specific prompt
-   */
-  private getPlaybookPrompt(playbook: RedlinePlaybook): string {
-    switch (playbook) {
-      case RedlinePlaybook.CONSERVATIVE:
-        return `Playbook: CONSERVATIVE
-- Minimize changes to the original text
-- Focus on clarity and precision
-- Use neutral, professional language
-- Only suggest changes that improve clarity without changing meaning
-- Avoid favoritism toward any party`;
-
-      case RedlinePlaybook.CLIENT_FRIENDLY:
-        return `Playbook: CLIENT_FRIENDLY
-- Suggest changes that are more favorable to the client/user
-- However, remain professional and defensible
-- Avoid extreme language or absolute guarantees
-- Ensure suggestions are plausible and reasonable
-- Balance client interests with legal soundness`;
-
-      case RedlinePlaybook.BALANCED:
-      default:
-        return `Playbook: BALANCED
-- Balance risks and benefits for all parties
-- Use neutral, professional language
-- Suggest improvements that enhance clarity and fairness
-- Consider both parties' interests equally`;
-    }
   }
 }

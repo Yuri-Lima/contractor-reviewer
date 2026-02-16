@@ -3,18 +3,21 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Button } from 'primeng/button';
+import { Toolbar } from 'primeng/toolbar';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Toast } from 'primeng/toast';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService, SharedModule } from 'primeng/api';
 import { TabsModule } from 'primeng/tabs';
 import { ProgressBar } from 'primeng/progressbar';
+import { Dialog } from 'primeng/dialog';
+import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 import { Tag } from 'primeng/tag';
 import { interval, Subject } from 'rxjs';
 import { takeUntil, timeout } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
-import { Document, DocumentFile, DocumentJob, JobStatus, ChatResponse, Citation } from '@contractai-review/shared';
+import { Document, DocumentFile, DocumentJob, JobStatus, ChatResponse, Citation, ParserInfo } from '@contractai-review/shared';
 import { PdfViewerComponent } from '../pdf-viewer/pdf-viewer.component';
 import { RedlineComponent } from '../redline/redline.component';
 import { VersionsComponent } from '../versions/versions.component';
@@ -25,6 +28,7 @@ import { LazyLoadEvent } from 'primeng/api';
 import { PaginationService } from '../../core/services/pagination.service';
 import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
 import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
+import { forkJoin } from 'rxjs';
 
 /** API request params for getDocumentFiles (pagination, sort, filters) */
 interface FilesRequestParams {
@@ -54,12 +58,16 @@ interface FilesResourceParams extends FilesRequestParams {
     RouterModule,
     FormsModule,
     Button,
+    Toolbar,
+    SharedModule,
     ConfirmDialog,
     Toast,
     TabsModule,
     ProgressBar,
     TableModule,
     Tag,
+    Dialog,
+    SelectModule,
     PdfViewerComponent,
     RedlineComponent,
     VersionsComponent,
@@ -73,7 +81,7 @@ interface FilesResourceParams extends FilesRequestParams {
     <div class="document-view-container p-6 max-w-7xl mx-auto">
       <div class="document-header flex justify-between items-center mb-6">
         <div>
-          <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">{{ document()?.title }}</h1>
+          <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">{{ getDisplayTitle(document()) }}</h1>
           <div class="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
             <span>{{ 'documents.status' | translate }}: 
               <span class="font-semibold" [class.text-green-600]="document()?.status === 'available'"
@@ -82,10 +90,10 @@ interface FilesResourceParams extends FilesRequestParams {
                 {{ getStatusLabel(document()?.status || '') }}
               </span>
             </span>
-            @if (document()?.resolvedJurisdiction) {
+            @if (getDisplayJurisdiction(document())) {
               <span>
-                {{ 'documents.jurisdiction' | translate }}: {{ document()?.resolvedJurisdiction }}
-                <span class="text-xs">({{ document()?.jurisdictionStatus }})</span>
+                {{ 'documents.jurisdiction' | translate }}: {{ getDisplayJurisdiction(document()) }}
+                <span class="text-xs">({{ getDisplayJurisdictionStatus(document()) }})</span>
               </span>
             }
           </div>
@@ -129,6 +137,21 @@ interface FilesResourceParams extends FilesRequestParams {
         </div>
       }
 
+      <!-- Failed Jobs -->
+      @if (hasFailedJobs()) {
+        <div class="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <h3 class="text-sm font-semibold text-red-900 dark:text-red-100 mb-3">{{ 'documents.failedJobs' | translate }}</h3>
+          <div class="space-y-3">
+            @for (job of failedJobs(); track job.id) {
+              <div class="job-error-item">
+                <span class="text-sm text-gray-700 dark:text-gray-300">{{ getJobTypeLabel(job.type) }}</span>
+                <p class="text-sm text-red-800 dark:text-red-200 mt-1">{{ job.lastError || ('documents.uploadError' | translate) }}</p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
       <p-tabs value="0">
         <p-tablist>
           <p-tab value="0">{{ 'documents.files' | translate }}</p-tab>
@@ -141,9 +164,23 @@ interface FilesResourceParams extends FilesRequestParams {
           <p-tabpanel value="0">
             <div class="files-section mt-4">
               <app-base-list [data]="files()" [config]="filesTableConfig()">
+                <ng-template #toolbarTemplate>
+                  <p-toolbar class="mb-4">
+                    <ng-template pTemplate="start">
+                      <p-button
+                        [label]="'common.delete' | translate"
+                        icon="pi pi-trash"
+                        severity="danger"
+                        [disabled]="!selectedFile()"
+                        (onClick)="selectedFile() && confirmDeleteFile(selectedFile()!)"
+                      ></p-button>
+                    </ng-template>
+                  </p-toolbar>
+                </ng-template>
                 <!-- Header template with sorting and filtering -->
                 <ng-template #headerTemplate>
                   <tr>
+                    <th style="width: 3rem"></th>
                     <th pSortableColumn="fileName" pColumnFilter field="fileName" filterMatchMode="contains" filterType="text">
                       {{ 'documents.fileName' | translate }}
                     </th>
@@ -165,7 +202,8 @@ interface FilesResourceParams extends FilesRequestParams {
                 
                 <!-- Body template -->
                 <ng-template #bodyTemplate let-file>
-                  <tr>
+                  <tr [pSelectableRow]="file">
+                    <td></td>
                     <td>{{ file.fileName }}</td>
                     <td>{{ file.mimeType }}</td>
                     <td>{{ formatFileSize(file.sizeBytes) }}</td>
@@ -293,27 +331,27 @@ interface FilesResourceParams extends FilesRequestParams {
         </p-tabpanels>
       </p-tabs>
 
-      <!-- File Viewer Modal -->
-      @if (selectedFile()) {
+      <!-- File Viewer Modal (only when user clicks View button) -->
+      @if (fileToView()) {
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" (click)="closeFileViewer()">
           <div class="bg-white dark:bg-gray-800 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-auto" (click)="$event.stopPropagation()">
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ selectedFile()?.fileName }}</h3>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ fileToView()?.fileName }}</h3>
               <p-button icon="pi pi-times" [text]="true" (onClick)="closeFileViewer()" severity="secondary"></p-button>
             </div>
             <div class="p-4">
-              @if (isPdfFile(selectedFile()!)) {
+              @if (fileToView() && isPdfFile(fileToView()!)) {
                 <app-pdf-viewer
-                  [fileUrl]="getFileObjectUrl(selectedFile()!.id)"
-                  [fileName]="selectedFile()!.fileName"
+                  [fileUrl]="getFileObjectUrl(fileToView()!.id)"
+                  [fileName]="fileToView()!.fileName"
                 ></app-pdf-viewer>
               }
-              @if (isImageFile(selectedFile()!)) {
+              @if (fileToView() && isImageFile(fileToView()!)) {
                 <div class="flex justify-center">
-                  <img [src]="getFileObjectUrl(selectedFile()!.id)" [alt]="selectedFile()!.fileName" class="max-w-full h-auto" />
+                  <img [src]="getFileObjectUrl(fileToView()!.id)" [alt]="fileToView()!.fileName" class="max-w-full h-auto" />
                 </div>
               }
-              @if (isTextFile(selectedFile()!)) {
+              @if (fileToView() && isTextFile(fileToView()!)) {
                 <div class="p-4 bg-gray-50 dark:bg-gray-900 rounded">
                   <pre class="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200">{{ textFileContent() }}</pre>
                 </div>
@@ -322,6 +360,49 @@ interface FilesResourceParams extends FilesRequestParams {
           </div>
         </div>
       }
+
+      <!-- Parser Selection Dialog -->
+      <p-dialog
+        [visible]="showParserDialog()"
+        [modal]="true"
+        [header]="getParserDialogHeader()"
+        [style]="{ width: '400px' }"
+        (onHide)="cancelParserDialog()"
+      >
+        <div class="space-y-4">
+          <p class="text-sm text-gray-700 dark:text-gray-300">
+            {{ 'documents.selectParser' | translate }}: <strong>{{ pendingFile()?.name }}</strong>
+          </p>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ 'parsers.selectParser' | translate }}
+            </label>
+            <p-select
+              [options]="parserOptionsWithDisabled()"
+              [ngModel]="selectedParser()"
+              (ngModelChange)="selectedParser.set($event)"
+              optionLabel="name"
+              optionValue="id"
+              optionDisabled="disabled"
+              [placeholder]="'parsers.selectParser' | translate"
+              class="w-full"
+              styleClass="w-full"
+            >
+              <ng-template let-p pTemplate="item">
+                <span [class.opacity-50]="p.disabled">{{ p.name }}</span>
+                @if (p.requiresApiKey && !p.hasApiKeyConfigured) {
+                  <span class="text-xs text-amber-600 ml-2">({{ 'parsers.apiKeyRequired' | translate }})</span>
+                }
+              </ng-template>
+            </p-select>
+          </div>
+        </div>
+        <ng-template pTemplate="footer">
+          <p-button [label]="'common.cancel' | translate" severity="secondary" [outlined]="true" (onClick)="cancelParserDialog()"></p-button>
+          <p-button [label]="'parsers.uploadWithParser' | translate" (onClick)="confirmParserSelection()"
+            [disabled]="!canConfirmUpload()"></p-button>
+        </ng-template>
+      </p-dialog>
 
       <p-confirmDialog></p-confirmDialog>
       <p-toast></p-toast>
@@ -356,8 +437,13 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   question = signal('');
   loading = signal(false);
   chatMessages = signal<Array<{ question: string; answerText?: string; confidence?: string; citations?: Citation[] }>>([]);
-  selectedFile = signal<DocumentFile | null>(null);
+  selectedFile = signal<DocumentFile | null>(null); // For table row selection (enables Delete button only)
+  fileToView = signal<DocumentFile | null>(null);   // For file viewer dialog (opened by View button only)
   textFileContent = signal<string>('');
+  parsers = signal<ParserInfo[]>([]);
+  showParserDialog = signal(false);
+  selectedParser = signal<string>('docling');
+  pendingFile = signal<File | null>(null);
   fileObjectUrls = signal<Map<string, string>>(new Map());
   jobs = signal<DocumentJob[]>([]);
   private destroyAggressive$ = new Subject<void>();
@@ -427,9 +513,13 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     sortMode: 'multiple',
     striped: true,
     emptyMessageKey: 'documents.noFiles',
-    colspan: 6,
+    colspan: 7,
     filters: {},
     onLazyLoad: (event: LazyLoadEvent) => this.updateFilesParamsFromLazyEvent(event),
+    selectionMode: 'single' as const,
+    selection: this.selectedFile(),
+    dataKey: 'id',
+    onSelectionChange: (v: DocumentFile | null) => this.selectedFile.set(v),
   }));
 
   constructor() {
@@ -441,6 +531,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       const docId = this.documentId();
       if (wsId && docId) {
         untracked(() => {
+          this.loadParsers();
           // Load cached jobs immediately for instant UI display
           const cachedJobs = this.getJobs(docId);
           if (cachedJobs.length > 0) {
@@ -503,6 +594,15 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.workspaceId.set(this.route.snapshot.paramMap.get('workspaceId') || '');
     this.documentId.set(this.route.snapshot.paramMap.get('documentId') || '');
+  }
+
+  loadParsers(): void {
+    const wsId = this.workspaceId();
+    if (!wsId) return;
+    this.apiService.getDocumentParsers(wsId).subscribe({
+      next: (list) => this.parsers.set(list),
+      error: () => {},
+    });
   }
 
   loadDocument(): void {
@@ -778,6 +878,33 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     return this.translateService.instant(`documents.statusLabels.${status}`) || status;
   }
 
+  /** Ensures title is displayed as string (avoids [object Object] if API returns object) */
+  getDisplayTitle(doc: Document | null): string {
+    if (!doc?.title) return '';
+    const t = doc.title;
+    return typeof t === 'string' ? t : String(t);
+  }
+
+  /** Ensures jurisdiction is displayed as string */
+  getDisplayJurisdiction(doc: Document | null): string {
+    if (!doc?.resolvedJurisdiction) return '';
+    const j = doc.resolvedJurisdiction;
+    return typeof j === 'string' ? j : (typeof j === 'object' && j !== null && 'jurisdiction' in j ? String((j as { jurisdiction?: string }).jurisdiction ?? '') : String(j));
+  }
+
+  /** Ensures jurisdiction status is displayed as string */
+  getDisplayJurisdictionStatus(doc: Document | null): string {
+    if (!doc?.jurisdictionStatus) return '';
+    const s = doc.jurisdictionStatus;
+    return typeof s === 'string' ? s : String(s);
+  }
+
+  /** Parser dialog header as string (avoids [object Object] from translate) */
+  getParserDialogHeader(): string {
+    const h = this.translateService.instant('documents.parserDialogTitle');
+    return typeof h === 'string' ? h : 'Choose Document Parser';
+  }
+
   getConfidenceLabel(confidence: string): string {
     if (!confidence) return '';
     return this.translateService.instant(`redline.confidence.${confidence}`) || confidence;
@@ -800,40 +927,79 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
-      this.apiService.uploadFile(this.workspaceId(), this.documentId(), input.files[0]).subscribe({
-        next: () => {
-          // loadJobs() now handles localStorage automatically
-          this.loadJobs();
-          // After a short delay, check for pending jobs and start aggressive polling
-          setTimeout(() => {
-            const currentJobs = this.jobs();
-            const pendingJobIds = currentJobs
-              .filter(j => j.status === 'pending' || j.status === 'processing')
-              .map(j => j.id);
-            if (pendingJobIds.length > 0) {
-              this.startAggressivePolling();
-            }
-          }, 100);
-          this.loadDocument();
-          // Reload files: set request so resource re-runs
-          const reloadParams: FilesRequestParams = {
-            offset: 0,
-            limit: this.paginationService.pageSize(),
-          };
-          this.filesParams.set(reloadParams);
-          this.filesRequest.set({
-            workspaceId: this.workspaceId(),
-            documentId: this.documentId(),
-            ...reloadParams,
-          });
-          this.paginationService.updateQueryParams({
-            page: 0,
-            limit: this.paginationService.pageSize(),
-          });
+      const file = input.files[0];
+      this.pendingFile.set(file);
+      const wsId = this.workspaceId();
+      forkJoin({
+        parsers: this.apiService.getDocumentParsers(wsId),
+        settings: this.apiService.getWorkspaceSettings(wsId),
+      }).subscribe({
+        next: ({ parsers: list, settings }) => {
+          this.parsers.set(list);
+          const defaultParser = settings.documentProcessing?.defaultDocumentParser ?? 'docling';
+          const defaultP = list.find(p => p.id === defaultParser);
+          const defaultIsEnabled = defaultP ? this.isParserEnabled(defaultP) : false;
+          const fallback = list.find(p => this.isParserEnabled(p))?.id ?? 'docling';
+          this.selectedParser.set(defaultIsEnabled ? defaultParser : fallback);
         },
-        error: (err) => console.error('Error uploading file:', err),
+        error: () => {
+          this.selectedParser.set('docling');
+        },
       });
+      this.showParserDialog.set(true);
+      input.value = '';
     }
+  }
+
+  cancelParserDialog(): void {
+    this.showParserDialog.set(false);
+    this.pendingFile.set(null);
+  }
+
+  confirmParserSelection(): void {
+    const file = this.pendingFile();
+    const parser = this.selectedParser();
+    if (!file) return;
+    this.apiService.uploadFile(this.workspaceId(), this.documentId(), file, parser).subscribe({
+      next: () => {
+        this.showParserDialog.set(false);
+        this.pendingFile.set(null);
+        this.loadJobs();
+        setTimeout(() => {
+          const currentJobs = this.jobs();
+          if (currentJobs.some(j => j.status === 'pending' || j.status === 'processing')) {
+            this.startAggressivePolling();
+          }
+        }, 100);
+        this.loadDocument();
+        const reloadParams: FilesRequestParams = { offset: 0, limit: this.paginationService.pageSize() };
+        this.filesParams.set(reloadParams);
+        this.filesRequest.set({ workspaceId: this.workspaceId(), documentId: this.documentId(), ...reloadParams });
+        this.paginationService.updateQueryParams({ page: 0, limit: this.paginationService.pageSize() });
+      },
+      error: (err) => {
+        console.error('Error uploading file:', err);
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translateService.instant('common.error'),
+          detail: err.error?.message || this.translateService.instant('documents.uploadError'),
+        });
+      },
+    });
+  }
+
+  isParserEnabled(p: ParserInfo): boolean {
+    if (!p.requiresApiKey) return true;
+    return !!p.hasApiKeyConfigured;
+  }
+
+  parserOptionsWithDisabled = computed(() =>
+    this.parsers().map(p => ({ ...p, disabled: !this.isParserEnabled(p) }))
+  );
+
+  canConfirmUpload(): boolean {
+    const p = this.parsers().find(x => x.id === this.selectedParser());
+    return !!p && this.isParserEnabled(p);
   }
 
   sendQuestion(): void {
@@ -911,8 +1077,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   }
 
   viewFile(file: DocumentFile): void {
-    this.selectedFile.set(file);
-    
+    this.fileToView.set(file);
+
     if (this.isTextFile(file)) {
       // Load text content using HttpClient with authentication
       this.apiService.downloadFileAsBlob(this.workspaceId(), this.documentId(), file.id).subscribe({
@@ -957,7 +1123,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   }
 
   closeFileViewer(): void {
-    this.selectedFile.set(null);
+    this.fileToView.set(null);
     this.textFileContent.set('');
   }
 
@@ -1049,6 +1215,56 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       rejectLabel: this.translateService.instant('common.cancel'),
       accept: () => {
         this.deleteDocument();
+      },
+    });
+  }
+
+  confirmDeleteFile(file: DocumentFile): void {
+    this.confirmationService.confirm({
+      message: this.translateService.instant('documents.confirmDeleteFileMessage', { fileName: file.fileName }),
+      header: this.translateService.instant('documents.confirmDeleteFile'),
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      acceptLabel: this.translateService.instant('common.delete'),
+      rejectLabel: this.translateService.instant('common.cancel'),
+      accept: () => {
+        this.deleteFile(file.id);
+      },
+    });
+  }
+
+  deleteFile(fileId: string): void {
+    this.apiService.deleteFile(this.workspaceId(), this.documentId(), fileId).subscribe({
+      next: () => {
+        this.messageService.add({
+          severity: 'success',
+          summary: this.translateService.instant('common.success'),
+          detail: this.translateService.instant('documents.deleteFileSuccess'),
+        });
+        this.selectedFile.set(null);
+        if (this.fileToView()?.id === fileId) {
+          this.closeFileViewer();
+        }
+        const reloadParams: FilesRequestParams = {
+          ...this.filesParams(),
+          offset: 0,
+          limit: this.paginationService.pageSize(),
+        };
+        this.filesParams.set(reloadParams);
+        this.filesRequest.set({
+          workspaceId: this.workspaceId(),
+          documentId: this.documentId(),
+          ...reloadParams,
+        });
+        this.paginationService.updateQueryParams({ page: 0, limit: this.paginationService.pageSize() });
+      },
+      error: (err) => {
+        console.error('Error deleting file:', err);
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translateService.instant('common.error'),
+          detail: err.error?.message || this.translateService.instant('documents.deleteFileError'),
+        });
       },
     });
   }

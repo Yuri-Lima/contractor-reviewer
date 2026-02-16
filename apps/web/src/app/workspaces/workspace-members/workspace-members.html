@@ -1,14 +1,24 @@
 <div class="workspace-members-container p-6 max-w-6xl mx-auto">
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ 'workspaceMembers.title' | translate }}</h1>
-    @if (canManageMembers()) {
-      <p-button
-        [label]="'workspaceMembers.addMember' | translate"
-        icon="pi pi-user-plus"
-        (onClick)="showAddForm.set(true)"
-      ></p-button>
-    }
-  </div>
+  <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">{{ 'workspaceMembers.title' | translate }}</h1>
+
+  @if (canManageMembers()) {
+    <p-toolbar class="mb-6">
+      <ng-template pTemplate="start">
+        <p-button
+          [label]="'workspaceMembers.addMember' | translate"
+          icon="pi pi-user-plus"
+          (onClick)="showAddForm.set(true)"
+        ></p-button>
+        <p-button
+          [label]="'workspaceMembers.remove' | translate"
+          icon="pi pi-trash"
+          severity="danger"
+          [disabled]="!selectedMember() || selectedMember()?.userId === currentUserId() || selectedMember()?.role === 'OWNER'"
+          (onClick)="selectedMember() && confirmRemove(selectedMember()!)"
+        ></p-button>
+      </ng-template>
+    </p-toolbar>
+  }
 
   <!-- Add Member Form -->
   @if (showAddForm() && canManageMembers()) {
@@ -76,22 +86,25 @@
     [data]="members()"
     [config]="tableConfig()"
   >
-    <!-- Header template -->
+    <!-- Header template (selection column when canManageMembers) -->
     <ng-template #headerTemplate>
       <tr>
+        @if (canManageMembers()) {
+          <th style="width: 3rem"></th>
+        }
         <th>{{ 'workspaceMembers.name' | translate }}</th>
         <th>{{ 'workspaceMembers.email' | translate }}</th>
         <th>{{ 'workspaceMembers.role' | translate }}</th>
         <th>{{ 'workspaceMembers.joinedAt' | translate }}</th>
-        @if (canManageMembers()) {
-          <th>{{ 'workspaceMembers.actions' | translate }}</th>
-        }
       </tr>
     </ng-template>
     
     <!-- Body template -->
     <ng-template #bodyTemplate let-member>
-      <tr>
+      <tr [pSelectableRow]="member">
+        @if (canManageMembers()) {
+          <td></td>
+        }
         <td>{{ member.user?.name || ('common.notAvailable' | translate) }}</td>
         <td>{{ member.user?.email || member.userId }}</td>
         <td>
@@ -101,19 +114,6 @@
           ></p-tag>
         </td>
         <td>{{ member.joinedAt | localeDate: 'short' }}</td>
-        @if (canManageMembers()) {
-          <td>
-            <p-button
-              icon="pi pi-trash"
-              [text]="true"
-              severity="danger"
-              [disabled]="member.userId === currentUserId() || member.role === 'OWNER'"
-              (onClick)="confirmRemove(member)"
-              [rounded]="true"
-              [pTooltip]="'workspaceMembers.remove' | translate"
-            ></p-button>
-          </td>
-        }
       </tr>
     </ng-template>
     

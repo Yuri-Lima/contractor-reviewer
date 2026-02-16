@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Button } from 'primeng/button';
+import { Toolbar } from 'primeng/toolbar';
 import { InputText } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
+import { TableModule } from 'primeng/table';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Toast } from 'primeng/toast';
 import { Tag } from 'primeng/tag';
-import { Tooltip } from 'primeng/tooltip';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService, SharedModule } from 'primeng/api';
 import { ApiService } from '../../core/services/api.service';
 import { WorkspaceMember, WorkspaceRole, AddMemberRequest } from '@contractai-review/shared';
 import { AuthService } from '../../core/services/auth.service';
@@ -26,12 +27,14 @@ import { BaseListConfig } from '../../core/components/base-list/base-list.config
     CommonModule,
     ReactiveFormsModule,
     Button,
+    Toolbar,
+    SharedModule,
     InputText,
     SelectModule,
+    TableModule,
     ConfirmDialog,
     Toast,
     Tag,
-    Tooltip,
     LocaleDatePipe,
     TranslatePipe,
     BaseListComponent
@@ -60,21 +63,31 @@ export class WorkspaceMembersComponent implements OnInit {
   addingMember = signal(false);
   showAddForm = signal(false);
   currentUserId = signal<string>('');
+  selectedMember = signal<WorkspaceMember | null>(null);
 
-  // Table configuration (client-side pagination)
-  tableConfig = computed<BaseListConfig>(() => ({
-    data: this.members(),
-    loading: this.loading(),
-    lazy: false, // Client-side pagination
-    paginator: true,
-    rows: 10,
-    rowsPerPageOptions: [10, 25, 50],
-    showCurrentPageReport: true,
-    currentPageReportTemplate: (this.translateService.instant('common.showing') || 'Showing') + ' {first} ' + (this.translateService.instant('common.to') || 'to') + ' {last} ' + (this.translateService.instant('common.of') || 'of') + ' {totalRecords} ' + (this.translateService.instant('workspaceMembers.members') || 'members'),
-    striped: true,
-    emptyMessageKey: 'workspaceMembers.noMembersFound',
-    colspan: this.canManageMembers() ? 5 : 4,
-  }));
+  // Table configuration (client-side pagination with selection when canManageMembers)
+  tableConfig = computed<BaseListConfig>(() => {
+    const cfg: BaseListConfig = {
+      data: this.members(),
+      loading: this.loading(),
+      lazy: false,
+      paginator: true,
+      rows: 10,
+      rowsPerPageOptions: [10, 25, 50],
+      showCurrentPageReport: true,
+      currentPageReportTemplate: (this.translateService.instant('common.showing') || 'Showing') + ' {first} ' + (this.translateService.instant('common.to') || 'to') + ' {last} ' + (this.translateService.instant('common.of') || 'of') + ' {totalRecords} ' + (this.translateService.instant('workspaceMembers.members') || 'members'),
+      striped: true,
+      emptyMessageKey: 'workspaceMembers.noMembersFound',
+      colspan: this.canManageMembers() ? 5 : 4,
+    };
+    if (this.canManageMembers()) {
+      cfg.selectionMode = 'single';
+      cfg.selection = this.selectedMember();
+      cfg.dataKey = 'userId';
+      cfg.onSelectionChange = (v: WorkspaceMember | null) => this.selectedMember.set(v);
+    }
+    return cfg;
+  });
 
   roleOptions = computed(() => {
     // Access currentLang to create reactive dependency
@@ -277,6 +290,7 @@ export class WorkspaceMembersComponent implements OnInit {
           summary: this.translateService.instant('common.success'),
           detail: this.translateService.instant('workspaceMembers.removeMemberSuccess'),
         });
+        this.selectedMember.set(null);
         this.loadMembers();
       },
       error: (err) => {

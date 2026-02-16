@@ -44,6 +44,12 @@ export interface BaseListConfig {
   filterMode?: 'client' | 'server'; // Informational only - actual mode determined by 'lazy' property
   globalFilter?: string; // Global filter value (for tracking - not directly bound to p-table)
   globalFilterFields?: string[]; // Fields to include in global filter (for tracking - not directly bound to p-table)
+
+  // Row selection (when set, parent must add selection column in headerTemplate and pSelectableRow on body <tr>)
+  selectionMode?: 'single' | 'multiple';
+  selection?: any; // T | T[] - selected row(s)
+  dataKey?: string; // Unique field for row identity (e.g. 'id', 'userId')
+  onSelectionChange?: (value: any) => void; // Callback when selection changes
 }
 
 /**

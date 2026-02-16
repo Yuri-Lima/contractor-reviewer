@@ -18,9 +18,11 @@ import {
   RetentionConfig,
   DocumentFile,
   WorkspaceSettingsConfig,
+  UpdateWorkspaceSettingsRequest,
   PromptListItem,
   PromptResponse,
   ListPromptsResponse,
+  ParserInfo,
 } from '@contractai-review/shared';
 
 @Injectable({
@@ -79,9 +81,16 @@ export class ApiService {
     );
   }
 
-  uploadFile(workspaceId: string, documentId: string, file: File): Observable<any> {
+  getDocumentParsers(workspaceId: string): Observable<ParserInfo[]> {
+    return this.http.get<ParserInfo[]>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documentParsers(workspaceId)}`,
+    );
+  }
+
+  uploadFile(workspaceId: string, documentId: string, file: File, parser?: string): Observable<any> {
     const formData = new FormData();
     formData.append('file', file);
+    if (parser) formData.append('parser', parser);
     return this.http.post(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/files`,
       formData,
@@ -103,6 +112,12 @@ export class ApiService {
     return this.http.get<{ files: DocumentFile[]; total: number; limit: number; offset: number }>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/files`,
       { params }
+    );
+  }
+
+  deleteFile(workspaceId: string, documentId: string, fileId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/files/${fileId}`,
     );
   }
 
@@ -207,7 +222,7 @@ export class ApiService {
 
   updateWorkspaceSettings(
     workspaceId: string,
-    config: Partial<WorkspaceSettingsConfig>,
+    config: UpdateWorkspaceSettingsRequest,
   ): Observable<WorkspaceSettingsConfig> {
     return this.http.put<WorkspaceSettingsConfig>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.settings(workspaceId)}`,

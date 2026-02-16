@@ -2,9 +2,10 @@ import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Button } from 'primeng/button';
+import { Toolbar } from 'primeng/toolbar';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Toast } from 'primeng/toast';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService, SharedModule } from 'primeng/api';
 import { ApiService } from '../../core/services/api.service';
 import { TranslateService } from '@ngx-translate/core';
 import { Document } from '@contractai-review/shared';
@@ -14,20 +15,24 @@ import { TranslatePipe } from '@ngx-translate/core';
 @Component({
   selector: 'app-documents-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, Button, ConfirmDialog, Toast, LocaleDatePipe, TranslatePipe],
+  imports: [CommonModule, RouterModule, Button, Toolbar, SharedModule, ConfirmDialog, Toast, LocaleDatePipe, TranslatePipe],
   providers: [ConfirmationService, MessageService],
   template: `
     <div class="documents-container p-6">
-      <div class="documents-header mb-8">
-        <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ 'documents.title' | translate }}</h1>
-        <button 
-          data-testid="documents-create-btn"
-          class="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
-          (click)="showCreateForm.set(true)"
-        >
-          {{ 'documents.create' | translate }}
-        </button>
-      </div>
+      <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">{{ 'documents.title' | translate }}</h1>
+
+      <p-toolbar class="documents-toolbar">
+        <ng-template pTemplate="start">
+          <div class="flex flex-wrap items-center gap-2">
+            <p-button
+              data-testid="documents-create-btn"
+              [label]="'documents.create' | translate"
+              icon="pi pi-plus"
+              (onClick)="showCreateForm.set(true)"
+            ></p-button>
+          </div>
+        </ng-template>
+      </p-toolbar>
 
       @if (showCreateForm()) {
         <div class="create-form mb-8">
@@ -82,11 +87,16 @@ import { TranslatePipe } from '@ngx-translate/core';
         <div class="documents-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           @for (doc of documents(); track doc.id) {
             <div
-              class="document-card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-md dark:hover:shadow-lg transition-all duration-200 relative group"
+              class="document-card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-md dark:hover:shadow-lg transition-all duration-200 relative cursor-pointer"
+              [class.ring-2]="selectedDocument()?.id === doc.id"
+              [class.ring-blue-500]="selectedDocument()?.id === doc.id"
+              [class.dark:ring-blue-400]="selectedDocument()?.id === doc.id"
+              (click)="selectDocument(doc)"
             >
               <a
                 [routerLink]="['/workspaces', workspaceId(), 'documents', doc.id]"
                 class="block no-underline"
+                (click)="$event.stopPropagation()"
               >
                 <h3 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">{{ doc.title }}</h3>
                 @if (doc.description) {
@@ -109,17 +119,6 @@ import { TranslatePipe } from '@ngx-translate/core';
                   <span class="text-xs text-gray-500 dark:text-gray-400">{{ doc.createdAt | localeDate: 'short' }}</span>
                 </div>
               </a>
-              <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <p-button
-                  icon="pi pi-trash"
-                  [text]="true"
-                  severity="danger"
-                  [rounded]="true"
-                  (onClick)="confirmDelete(doc)"
-                  [disabled]="deletingDocId() === doc.id"
-                  class="hover:bg-red-50 dark:hover:bg-red-900/20"
-                ></p-button>
-              </div>
             </div>
           }
         </div>
@@ -135,6 +134,15 @@ import { TranslatePipe } from '@ngx-translate/core';
   `,
   styles: [`
     .documents-container { max-width: 1200px; margin: 0 auto; }
+    :host ::ng-deep .documents-toolbar.p-toolbar {
+      padding: 1rem 1.25rem;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    :host ::ng-deep .documents-toolbar .p-toolbar-start {
+      display: flex;
+      gap: 0.5rem;
+    }
   `],
 })
 export class DocumentsListComponent implements OnInit {
@@ -152,6 +160,11 @@ export class DocumentsListComponent implements OnInit {
   loading = signal(false);
   error = signal<string | null>(null);
   deletingDocId = signal<string | null>(null);
+  selectedDocument = signal<Document | null>(null);
+
+  selectDocument(doc: Document): void {
+    this.selectedDocument.set(this.selectedDocument()?.id === doc.id ? null : doc);
+  }
 
   ngOnInit(): void {
     const wsId = this.route.snapshot.paramMap.get('workspaceId') || '';
@@ -253,6 +266,7 @@ export class DocumentsListComponent implements OnInit {
           detail: this.translateService.instant('documents.deleteSuccess'),
         });
         this.deletingDocId.set(null);
+        this.selectedDocument.set(null);
         this.loadDocuments();
       },
       error: (err) => {

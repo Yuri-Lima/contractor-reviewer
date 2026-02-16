@@ -1,0 +1,112 @@
+# Angular Component Structure - MANDATORY RULES
+
+## CRITICAL: Always Use External HTML Files
+
+**MANDATORY RULE**: All Angular components MUST use external HTML template files (`.html`) instead of inline templates in the `template` property.
+
+## Rules
+
+1. **External Template Files**:
+   - ALWAYS create a `.html` file for component templates
+   - Use `templateUrl: './component-name.html'` instead of `template: \`...\``
+   - The HTML file should be in the same directory as the component TypeScript file
+   - Example: `retention.component.ts` → `retention.html`
+
+2. **Minimal Styles in HTML**:
+   - For minimal/simple styles (1-3 CSS properties), prefer inline styles directly in HTML using `style` attribute or Tailwind classes
+   - Avoid creating a `styles` array in `@Component` decorator for minimal styling
+   - Only use `styles` array or `styleUrls` when you have complex CSS (4+ properties, animations, pseudo-selectors, etc.)
+
+3. **When to Use Inline Styles in HTML**:
+   - Single property: `style="min-height: 400px"`
+   - Simple Tailwind classes: `class="min-h-[400px]"`
+   - Conditional styling: `[style.min-height.px]="400"`
+   - These are preferred over component-level styles for minimal cases
+
+4. **When to Use Component Styles**:
+   - Complex CSS with multiple properties
+   - CSS animations or transitions
+   - Pseudo-selectors (`:hover`, `:focus`, etc.)
+   - Media queries
+   - CSS variables or complex selectors
+   - When styles need to be scoped to the component
+
+## Examples
+
+### ✅ CORRECT:
+```typescript
+// retention.component.ts
+@Component({
+  selector: 'app-retention',
+  templateUrl: './retention.html',
+  // No styles array for minimal styling
+})
+```
+
+```html
+<!-- retention.html -->
+<div class="retention-container min-h-[400px]">
+  <!-- content -->
+</div>
+```
+
+### ❌ WRONG:
+```typescript
+// retention.component.ts
+@Component({
+  selector: 'app-retention',
+  template: `<div class="retention-container">...</div>`, // Inline template
+  styles: [` // Minimal styles in component
+    .retention-container {
+      min-height: 400px;
+    }
+  `],
+})
+```
+
+### ✅ CORRECT (Complex Styles):
+```typescript
+// complex.component.ts
+@Component({
+  selector: 'app-complex',
+  templateUrl: './complex.html',
+  styles: [`
+    .complex-container {
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      animation: fadeIn 0.3s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .complex-container:hover {
+      transform: translateY(-2px);
+    }
+  `],
+})
+```
+
+## File Structure
+
+```
+component-name/
+  ├── component-name.component.ts  (TypeScript)
+  ├── component-name.html           (Template - REQUIRED)
+  └── component-name.component.scss (Styles - Optional, only if complex)
+```
+
+## Code Review Checklist
+
+- [ ] Component uses `templateUrl` pointing to external `.html` file
+- [ ] No inline `template` property in `@Component` decorator
+- [ ] Minimal styles (1-3 properties) are in HTML using inline styles or Tailwind classes
+- [ ] Complex styles (4+ properties, animations) use `styles` array or `styleUrls`
+- [ ] HTML file exists in the same directory as component TypeScript file
+
+**REMEMBER**: 
+- Always create `.html` files for templates
+- Prefer inline styles/Tailwind in HTML for minimal styling
+- Use component styles only for complex CSS needs

@@ -17,6 +17,7 @@ import {
   WorkspaceSettingsConfig,
   ChunkingStrategy,
 } from '@contractai-review/shared';
+import { PromptsEditorComponent } from './prompts-editor/prompts-editor.component';
 
 interface ChunkingOption {
   value: string;
@@ -40,6 +41,7 @@ interface ChunkingOption {
     TabsModule,
     SelectModule,
     TranslatePipe,
+    PromptsEditorComponent,
   ],
   providers: [MessageService],
   templateUrl: './workspace-settings.html',

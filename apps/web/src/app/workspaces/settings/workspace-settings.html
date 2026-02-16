@@ -20,6 +20,10 @@
           <i class="pi pi-file-edit"></i>
           <span>{{ 'workspaceSettings.tabDocumentProcessing' | translate }}</span>
         </p-tab>
+        <p-tab value="prompts" class="flex items-center gap-2">
+          <i class="pi pi-pencil"></i>
+          <span>{{ 'workspaceSettings.tabPrompts' | translate }}</span>
+        </p-tab>
       </p-tablist>
       <p-tabpanels>
         <p-tabpanel value="general">
@@ -215,6 +219,12 @@
                 </div>
               </div>
             </p-card>
+          </div>
+        </p-tabpanel>
+
+        <p-tabpanel value="prompts">
+          <div class="p-4">
+            <app-prompts-editor [workspaceId]="workspaceId()"></app-prompts-editor>
           </div>
         </p-tabpanel>
       </p-tabpanels>

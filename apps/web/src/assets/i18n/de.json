@@ -356,6 +356,7 @@
     "tabGeneral": "Allgemein",
     "tabRetention": "Aufbewahrung",
     "tabDocumentProcessing": "Dokumentenverarbeitung",
+    "tabPrompts": "KI-Prompts",
     "generalPlaceholder": "Allgemeine Arbeitsbereichseinstellungen werden in einem zukünftigen Update verfügbar sein.",
     "menuItem": "Einstellungen",
     "loadError": "Fehler beim Laden der Arbeitsbereichseinstellungen"
@@ -373,6 +374,27 @@
     "comingSoon": "Demnächst",
     "saveSuccess": "Chunking-Strategie erfolgreich gespeichert",
     "saveError": "Fehler beim Speichern der Chunking-Strategie"
+  },
+  "prompts": {
+    "tabTitle": "KI-Prompts",
+    "description": "Passen Sie System-Prompts für Chat und Redline-Generierung an. Überschreiben Sie globale Standardwerte pro Workspace.",
+    "chatSystem": "Chat-System-Prompt",
+    "chatUser": "Chat-Benutzer-Prompt",
+    "redlineSystem": "Redline-System-Prompt",
+    "redlineUser": "Redline-Benutzer-Prompt",
+    "playbookBalanced": "Redline-Playbook: Ausgewogen",
+    "playbookConservative": "Redline-Playbook: Konservativ",
+    "playbookClientFriendly": "Redline-Playbook: Kundenfreundlich",
+    "sourceWorkspace": "Workspace-Überschreibung",
+    "sourceGlobal": "Globaler Standard",
+    "save": "Speichern",
+    "resetToDefault": "Auf Standard zurücksetzen",
+    "saveSuccess": "Prompt erfolgreich gespeichert",
+    "saveError": "Fehler beim Speichern des Prompts",
+    "resetSuccess": "Prompt auf globalen Standard zurückgesetzt",
+    "resetError": "Fehler beim Zurücksetzen des Prompts",
+    "templateVariablesHint": "Verwenden Sie {{varName}} für Template-Variablen (z.B. languageName, context, question)",
+    "loadError": "Fehler beim Laden der Prompts"
   },
   "workspaceMembers": {
     "title": "Arbeitsbereichsmitglieder",

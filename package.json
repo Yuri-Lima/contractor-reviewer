@@ -12,7 +12,9 @@
     "build:api": "pnpm --filter api build",
     "build:web": "pnpm --filter web build",
     "migration:run": "pnpm --filter api migration:run",
-    "migration:generate": "pnpm --filter api migration:generate"
+    "migration:generate": "pnpm --filter api migration:generate",
+    "e2e": "pnpm --filter web e2e",
+    "kill:port": "./scripts/kill-port.sh 3000 4200"
   },
   "engines": {
     "node": ">=18"

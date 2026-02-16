@@ -15,6 +15,7 @@ import { StorageModule } from '../storage/storage.module';
 import { QueueModule } from '../queue/queue.module';
 import { WorkspaceModule } from '../workspace/workspace.module';
 import { RagModule } from '../rag/rag.module';
+import { PromptsModule } from '../prompts/prompts.module';
 import { AuditModule } from '../audit/audit.module';
 import { ChatMessageService } from './chat-message.service';
 import { VersionService } from './version.service';
@@ -38,6 +39,7 @@ import { Embedding } from '../entities/embedding.entity';
     QueueModule,
     WorkspaceModule,
     RagModule,
+    PromptsModule,
     AuditModule, // For audit logging
   ],
   controllers: [DocumentsController, ChatController, RedlineController],

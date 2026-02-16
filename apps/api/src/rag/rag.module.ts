@@ -11,12 +11,14 @@ import { Embedding } from '../entities/embedding.entity';
 import { Document } from '../entities/document.entity';
 import { StorageModule } from '../storage/storage.module';
 import { ConfigModule } from '@nestjs/config';
+import { PromptsModule } from '../prompts/prompts.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Chunk, Embedding, Document]),
     StorageModule,
     ConfigModule,
+    PromptsModule,
   ],
   providers: [
     PdfParserService,

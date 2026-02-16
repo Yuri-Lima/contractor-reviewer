@@ -7,7 +7,7 @@ import { Toast } from 'primeng/toast';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ApiService } from '../../core/services/api.service';
 import { TranslateService } from '@ngx-translate/core';
-import { Document } from '../../core/models/document.model';
+import { Document } from '@contractai-review/shared';
 import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
 import { TranslatePipe } from '@ngx-translate/core';
 

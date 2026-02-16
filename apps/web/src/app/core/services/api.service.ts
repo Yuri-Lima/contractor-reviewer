@@ -18,6 +18,9 @@ import {
   RetentionConfig,
   DocumentFile,
   WorkspaceSettingsConfig,
+  PromptListItem,
+  PromptResponse,
+  ListPromptsResponse,
 } from '@contractai-review/shared';
 
 @Injectable({
@@ -209,6 +212,30 @@ export class ApiService {
     return this.http.put<WorkspaceSettingsConfig>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.settings(workspaceId)}`,
       config,
+    );
+  }
+
+  // Prompts (admin)
+  getPrompts(workspaceId: string): Observable<ListPromptsResponse> {
+    return this.http.get<ListPromptsResponse>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.prompts(workspaceId)}`);
+  }
+
+  getPrompt(workspaceId: string, key: string): Observable<PromptResponse> {
+    return this.http.get<PromptResponse>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.prompts(workspaceId)}/${encodeURIComponent(key)}`,
+    );
+  }
+
+  updatePrompt(workspaceId: string, key: string, content: string): Observable<PromptResponse> {
+    return this.http.put<PromptResponse>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.prompts(workspaceId)}/${encodeURIComponent(key)}`,
+      { content },
+    );
+  }
+
+  resetPrompt(workspaceId: string, key: string): Observable<void> {
+    return this.http.delete<void>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.prompts(workspaceId)}/${encodeURIComponent(key)}`,
     );
   }
 

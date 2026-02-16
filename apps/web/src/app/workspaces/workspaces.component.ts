@@ -10,7 +10,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { Toast } from 'primeng/toast';
 import { ApiService } from '../core/services/api.service';
 import { TranslateService } from '@ngx-translate/core';
-import { Workspace } from '../core/models/workspace.model';
+import { Workspace } from '@contractai-review/shared';
 import { LocaleDatePipe } from '../core/pipes/locale-date.pipe';
 import { TranslatePipe } from '@ngx-translate/core';
 

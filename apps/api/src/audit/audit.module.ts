@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditController } from './audit.controller';
 import { AuditService } from './audit.service';
@@ -8,7 +8,7 @@ import { WorkspaceModule } from '../workspace/workspace.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([AuditLog]),
-    WorkspaceModule, // Required for WorkspaceGuard
+    forwardRef(() => WorkspaceModule), // Required for WorkspaceGuard; forwardRef breaks circular dep with WorkspaceModule->AuditModule
   ],
   controllers: [AuditController],
   providers: [AuditService],

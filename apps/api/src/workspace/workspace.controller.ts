@@ -18,11 +18,17 @@ import { WorkspaceService } from './workspace.service';
 import { Workspace } from '../entities/workspace.entity';
 import { WorkspaceMember } from '../entities/workspace-member.entity';
 import { WorkspaceId, CurrentUser } from './decorators';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction, TargetType } from '../entities/audit-log.entity';
+import { RequestInfo } from '../common/decorators/request-info.decorator';
 
 @Controller('workspaces')
 @UseGuards(JwtAuthGuard)
 export class WorkspaceController {
-  constructor(private workspaceService: WorkspaceService) {}
+  constructor(
+    private workspaceService: WorkspaceService,
+    private auditService: AuditService,
+  ) {}
 
   @Get()
   async getWorkspaces(@CurrentUser() user: { id: string }): Promise<Workspace[]> {
@@ -105,7 +111,18 @@ export class WorkspaceController {
     @WorkspaceId() workspaceId: string,
     @Param('userId') userId: string,
     @CurrentUser() currentUser: { id: string },
+    @RequestInfo() requestInfo: { ip: string; userAgent: string },
   ): Promise<void> {
     await this.workspaceService.removeMember(workspaceId, userId, currentUser.id);
+    await this.auditService.createAuditLog(
+      workspaceId,
+      currentUser.id,
+      AuditAction.MEMBER_REMOVE,
+      TargetType.USER,
+      userId,
+      requestInfo.ip,
+      requestInfo.userAgent,
+      { removedUserId: userId },
+    );
   }
 }

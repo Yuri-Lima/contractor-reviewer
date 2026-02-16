@@ -1,7 +1,17 @@
+import { WorkspaceRole } from '../enums/workspace.enum';
+import { RetentionConfig } from './common';
+
+export interface WorkspaceSettingsConfig {
+  retention: RetentionConfig;
+  general?: Record<string, unknown>;
+  documentProcessing: { chunkingStrategy: string };
+}
+
 export interface Workspace {
   id: string;
   name: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface WorkspaceMember {
@@ -15,13 +25,6 @@ export interface WorkspaceMember {
     name: string;
     email: string;
   };
-}
-
-export enum WorkspaceRole {
-  OWNER = 'OWNER',
-  ADMIN = 'ADMIN',
-  MEMBER = 'MEMBER',
-  VIEWER = 'VIEWER',
 }
 
 export interface CreateWorkspaceRequest {

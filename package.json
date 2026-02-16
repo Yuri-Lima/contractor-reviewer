@@ -14,7 +14,8 @@
     "migration:run": "pnpm --filter api migration:run",
     "migration:generate": "pnpm --filter api migration:generate",
     "e2e": "pnpm --filter web e2e",
-    "kill:port": "./scripts/kill-port.sh 3000 4200"
+    "kill:port": "./scripts/kill-port.sh 3000 4200",
+    "docker:push": "./scripts/build-and-push.sh"
   },
   "engines": {
     "node": ">=18"

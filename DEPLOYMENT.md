@@ -34,7 +34,56 @@ Guide for deploying ContractAI Review to a remote server using Docker Compose.
 - Server with at least 2GB RAM
 - Required secrets: `POSTGRES_PASSWORD`, `JWT_SECRET`, `OPENAI_API_KEY`, `SUPERADMIN_PASSWORD`
 
-## Quick Start
+## Build and Push to Docker Hub
+
+Build all custom images and push to Docker Hub for VPS deployment. Run from the repository root.
+
+**Prerequisites**: `docker login` (authenticate to Docker Hub)
+
+```bash
+# Default: yurimatoslima (override with DOCKERHUB_USERNAME=otheruser)
+pnpm docker:push
+
+# Optional: versioned tag (default: latest)
+IMAGE_TAG=v1.0.0 pnpm docker:push
+```
+
+Pushes: `contractai-api`, `contractai-web`, `contractai-docling`, `contractai-pdfplumber`
+
+## VPS Deployment (Pull from Docker Hub)
+
+Deploy on a VPS without source code. Uses pre-built images from Docker Hub.
+
+### 1. Copy deployment files to VPS
+
+Copy `deploy/docker-compose.yml` and `deploy/.env.example` to your server.
+
+### 2. Create .env
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set:
+
+- `DOCKERHUB_USERNAME` — Docker Hub username (default: `yurimatoslima`)
+- `IMAGE_TAG` — Tag to pull (default: `latest`, or e.g. `v1.0.0`)
+- `POSTGRES_PASSWORD`, `JWT_SECRET`, `OPENAI_API_KEY`, `SUPERADMIN_PASSWORD` — Required secrets
+
+### 3. Run
+
+```bash
+docker compose up -d
+```
+
+### 4. Access the app
+
+- **Web UI**: http://your-server-ip (port 80)
+- **Superadmin login**: Use `SUPERADMIN_EMAIL` and `SUPERADMIN_PASSWORD` from `.env`
+
+## Quick Start (Local Build)
+
+For local development or when building images on the same machine as deployment:
 
 ### 1. Clone and configure
 
@@ -104,19 +153,20 @@ app.example.com {
 
 ## Commands
 
+**VPS (deploy/):**
+
 ```bash
-# Logs
+docker compose logs -f api
+docker compose restart api
+docker compose down
+```
+
+**Local build (docker-compose.yml + docker-compose.prod.yml):**
+
+```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f api
-docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f worker
-
-# Restart a service
 docker compose -f docker-compose.yml -f docker-compose.prod.yml restart api
-
-# Stop all
 docker compose -f docker-compose.yml -f docker-compose.prod.yml down
-
-# Stop and remove volumes (destructive)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml down -v
 ```
 
 ## Troubleshooting
@@ -124,13 +174,13 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml down -v
 ### API fails to start
 
 - Ensure Postgres and Redis are healthy: `docker compose ps`
-- Check API logs: `docker compose -f docker-compose.yml -f docker-compose.prod.yml logs api`
+- Check API logs: `docker compose logs api` (VPS) or `docker compose -f docker-compose.yml -f docker-compose.prod.yml logs api` (local)
 - Verify `DATABASE_URL` and `REDIS_URL` point to `postgres` and `redis` (Docker internal hostnames)
 
 ### Worker not processing jobs
 
 - Worker must connect to same Redis as API
-- Check worker logs: `docker compose -f docker-compose.yml -f docker-compose.prod.yml logs worker`
+- Check worker logs: `docker compose logs worker` (VPS) or `docker compose -f docker-compose.yml -f docker-compose.prod.yml logs worker` (local)
 
 ### Docling/PDFPlumber unavailable
 

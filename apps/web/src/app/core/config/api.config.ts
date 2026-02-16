@@ -55,6 +55,7 @@ export const API_CONFIG = {
     privacy: (workspaceId: string) => `/workspaces/${workspaceId}/privacy`,
     audit: (workspaceId: string) => `/workspaces/${workspaceId}/audit`,
     retention: (workspaceId: string) => `/workspaces/${workspaceId}/retention`,
+    settings: (workspaceId: string) => `/workspaces/${workspaceId}/settings`,
   },
 };
 

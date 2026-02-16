@@ -58,8 +58,8 @@ export const routes: Routes = [
         loadComponent: () => import('./workspaces/workspace-members/workspace-members.component').then(m => m.WorkspaceMembersComponent),
       },
       {
-        path: 'retention',
-        loadComponent: () => import('./workspaces/retention/retention.component').then(m => m.RetentionComponent),
+        path: 'settings',
+        loadComponent: () => import('./workspaces/settings/workspace-settings.component').then(m => m.WorkspaceSettingsComponent),
       },
     ],
   },

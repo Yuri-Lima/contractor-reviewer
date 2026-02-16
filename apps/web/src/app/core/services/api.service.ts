@@ -2,11 +2,23 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { API_CONFIG } from '../config/api.config';
-import { Workspace, CreateWorkspaceRequest, AddMemberRequest, WorkspaceMember } from '../models/workspace.model';
-import { Document, CreateDocumentRequest, DocumentJob } from '../models/document.model';
-import { ChatRequest, ChatResponse } from '../models/chat.model';
-import { RedlineRequest, RedlineResponse, DocumentVersion } from '../models/redline.model';
-import { RetentionConfig } from '../models/retention.model';
+import {
+  Workspace,
+  CreateWorkspaceRequest,
+  AddMemberRequest,
+  WorkspaceMember,
+  Document,
+  CreateDocumentRequest,
+  DocumentJob,
+  ChatRequest,
+  ChatResponse,
+  RedlineRequest,
+  RedlineResponse,
+  DocumentVersion,
+  RetentionConfig,
+  DocumentFile,
+  WorkspaceSettingsConfig,
+} from '@contractai-review/shared';
 
 @Injectable({
   providedIn: 'root',
@@ -81,6 +93,13 @@ export class ApiService {
     return this.http.get(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/files/${fileId}/download`,
       { responseType: 'blob' },
+    );
+  }
+
+  getDocumentFiles(workspaceId: string, documentId: string, params?: any): Observable<{ files: DocumentFile[]; total: number; limit: number; offset: number }> {
+    return this.http.get<{ files: DocumentFile[]; total: number; limit: number; offset: number }>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/files`,
+      { params }
     );
   }
 
@@ -176,6 +195,21 @@ export class ApiService {
 
   updateRetentionConfig(workspaceId: string, config: Partial<RetentionConfig>): Observable<RetentionConfig> {
     return this.http.put<RetentionConfig>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.retention(workspaceId)}`, config);
+  }
+
+  // Workspace Settings (unified: retention, document processing, etc.)
+  getWorkspaceSettings(workspaceId: string): Observable<WorkspaceSettingsConfig> {
+    return this.http.get<WorkspaceSettingsConfig>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.settings(workspaceId)}`);
+  }
+
+  updateWorkspaceSettings(
+    workspaceId: string,
+    config: Partial<WorkspaceSettingsConfig>,
+  ): Observable<WorkspaceSettingsConfig> {
+    return this.http.put<WorkspaceSettingsConfig>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.settings(workspaceId)}`,
+      config,
+    );
   }
 
   // Account

@@ -1,11 +1,12 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, TranslatePipe],
   template: `
     <aside class="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-[calc(100vh-64px)] sticky top-16 transition-colors duration-200 shadow-sm">
       <nav class="p-4 space-y-1">
@@ -51,12 +52,12 @@ import { RouterModule } from '@angular/router';
             <span class="text-sm">Membros</span>
           </a>
           <a
-            [routerLink]="['/workspaces', workspaceId, 'retention']"
+            [routerLink]="['/workspaces', workspaceId, 'settings']"
             routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400 font-medium"
             class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-150 no-underline"
           >
-            <i class="pi pi-clock text-lg"></i>
-            <span class="text-sm">Retenção</span>
+            <i class="pi pi-cog text-lg"></i>
+            <span class="text-sm">{{ 'workspaceSettings.menuItem' | translate }}</span>
           </a>
         }
         <div class="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4">

@@ -1,0 +1,225 @@
+<div class="workspace-settings-container p-6 max-w-4xl mx-auto" style="min-height: 400px;">
+  <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">
+    {{ 'workspaceSettings.title' | translate }}
+  </h1>
+
+  @if (loading()) {
+    <p class="text-gray-600 dark:text-gray-400">{{ 'common.loading' | translate }}</p>
+  } @else {
+    <p-tabs [(value)]="activeTab">
+      <p-tablist>
+        <p-tab value="general" class="flex items-center gap-2">
+          <i class="pi pi-cog"></i>
+          <span>{{ 'workspaceSettings.tabGeneral' | translate }}</span>
+        </p-tab>
+        <p-tab value="retention" class="flex items-center gap-2">
+          <i class="pi pi-clock"></i>
+          <span>{{ 'workspaceSettings.tabRetention' | translate }}</span>
+        </p-tab>
+        <p-tab value="documentProcessing" class="flex items-center gap-2">
+          <i class="pi pi-file-edit"></i>
+          <span>{{ 'workspaceSettings.tabDocumentProcessing' | translate }}</span>
+        </p-tab>
+      </p-tablist>
+      <p-tabpanels>
+        <p-tabpanel value="general">
+          <div class="p-4">
+            <p-message
+              severity="info"
+              [text]="'workspaceSettings.generalPlaceholder' | translate"
+            ></p-message>
+          </div>
+        </p-tabpanel>
+
+        <p-tabpanel value="retention">
+          <div class="p-4">
+            <p-message
+              severity="info"
+              [text]="'retention.description' | translate"
+              class="mb-6"
+            ></p-message>
+
+            <form [formGroup]="retentionForm" class="space-y-6">
+              <p-card>
+                <ng-template pTemplate="header">
+                  <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">
+                      {{ 'retention.fileRetention' | translate }}
+                    </h2>
+                  </div>
+                </ng-template>
+                <div class="p-4 space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {{ 'retention.defaultFileRetentionDays' | translate }}
+                    </label>
+                    <p-inputNumber
+                      formControlName="defaultFileRetentionDays"
+                      [min]="1"
+                      [max]="365"
+                      [showButtons]="true"
+                      [suffix]="' ' + ('common.days' | translate)"
+                      class="w-full"
+                    ></p-inputNumber>
+                    <small class="text-gray-500 dark:text-gray-400 mt-1 block">
+                      {{ 'retention.fileRetentionDescription' | translate }}
+                    </small>
+                  </div>
+                </div>
+              </p-card>
+
+              <p-card>
+                <ng-template pTemplate="header">
+                  <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">
+                      {{ 'retention.textEmbeddingsRetention' | translate }}
+                    </h2>
+                  </div>
+                </ng-template>
+                <div class="p-4 space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {{ 'retention.defaultTextEmbeddingsRetentionDays' | translate }}
+                    </label>
+                    <p-inputNumber
+                      formControlName="defaultTextEmbeddingsRetentionDays"
+                      [min]="1"
+                      [max]="730"
+                      [showButtons]="true"
+                      [suffix]="' ' + ('common.days' | translate)"
+                      class="w-full"
+                    ></p-inputNumber>
+                    <small class="text-gray-500 dark:text-gray-400 mt-1 block">
+                      {{ 'retention.textEmbeddingsRetentionDescription' | translate }}
+                    </small>
+                  </div>
+                </div>
+              </p-card>
+
+              <p-card>
+                <ng-template pTemplate="header">
+                  <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">
+                      {{ 'retention.fuzzyMatchSettings' | translate }}
+                    </h2>
+                  </div>
+                </ng-template>
+                <div class="p-4 space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {{ 'retention.fuzzyMatchThreshold' | translate }}
+                    </label>
+                    <p-inputNumber
+                      formControlName="fuzzyMatchThreshold"
+                      [min]="0"
+                      [max]="100"
+                      [showButtons]="true"
+                      [suffix]="'%'"
+                      class="w-full"
+                    ></p-inputNumber>
+                    <small class="text-gray-500 dark:text-gray-400 mt-1 block">
+                      {{ 'retention.fuzzyMatchThresholdDescription' | translate }}
+                    </small>
+                  </div>
+                </div>
+              </p-card>
+
+              <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                <h3 class="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+                  <i class="pi pi-exclamation-triangle mr-2"></i>
+                  {{ 'retention.important' | translate }}
+                </h3>
+                <ul class="text-sm text-yellow-800 dark:text-yellow-200 space-y-1 list-disc list-inside">
+                  <li>{{ 'retention.importantItems.permanent' | translate }}</li>
+                  <li>{{ 'retention.importantItems.calculated' | translate }}</li>
+                  <li>{{ 'retention.importantItems.daily' | translate }}</li>
+                  <li>{{ 'retention.importantItems.cannotUndo' | translate }}</li>
+                </ul>
+              </div>
+
+              <div class="flex gap-2 justify-end">
+                <p-button
+                  [label]="'common.cancel' | translate"
+                  icon="pi pi-times"
+                  severity="secondary"
+                  [outlined]="true"
+                  (onClick)="loadSettings()"
+                  [disabled]="saving()"
+                ></p-button>
+                <p-button
+                  [label]="'retention.saveSettings' | translate"
+                  icon="pi pi-check"
+                  [disabled]="retentionForm.invalid || saving()"
+                  [loading]="saving()"
+                  (onClick)="onSaveRetention()"
+                ></p-button>
+              </div>
+            </form>
+          </div>
+        </p-tabpanel>
+
+        <p-tabpanel value="documentProcessing">
+          <div class="p-4">
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">
+              {{ 'chunking.title' | translate }}
+            </h2>
+            <p-message
+              severity="info"
+              [text]="'chunking.description' | translate"
+              class="mb-6"
+            ></p-message>
+
+            <p-card>
+              <div class="p-4 space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {{ 'chunking.strategy' | translate }}
+                  </label>
+                  <p-select
+                    [options]="enabledChunkingOptions"
+                    [ngModel]="chunkingStrategy()"
+                    (ngModelChange)="onChunkingStrategyChange($event)"
+                    optionLabel="label"
+                    optionValue="value"
+                    [placeholder]="'chunking.strategy' | translate"
+                    class="w-full"
+                    styleClass="w-full"
+                  >
+                    <ng-template let-option pTemplate="item">
+                      {{ option.label | translate }}
+                    </ng-template>
+                    <ng-template let-selected pTemplate="selectedItem">
+                      @if (selected) {
+                        {{ selected.label | translate }}
+                      }
+                    </ng-template>
+                  </p-select>
+                  <small class="text-gray-500 dark:text-gray-400 mt-1 block">
+                    {{ 'chunking.strategyHint' | translate }}
+                  </small>
+                </div>
+
+                <div class="text-sm text-gray-600 dark:text-gray-400">
+                  <span class="font-medium">{{ 'chunking.comingSoon' | translate }}:</span>
+                  {{ 'chunking.semantic' | translate }}, {{ 'chunking.agentic' | translate }}
+                </div>
+
+                <div class="flex gap-2 justify-end">
+                  <p-button
+                    [label]="'common.save' | translate"
+                    icon="pi pi-check"
+                    [loading]="savingChunking()"
+                    [disabled]="savingChunking()"
+                    (onClick)="onSaveChunking()"
+                  ></p-button>
+                </div>
+              </div>
+            </p-card>
+          </div>
+        </p-tabpanel>
+      </p-tabpanels>
+    </p-tabs>
+  }
+
+  <p-toast></p-toast>
+</div>

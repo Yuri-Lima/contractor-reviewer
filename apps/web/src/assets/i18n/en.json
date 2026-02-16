@@ -125,6 +125,10 @@
     "createError": "Unknown error creating document",
     "confirmDelete": "Confirm Deletion",
     "confirmDeleteMessage": "Are you sure you want to delete the document \"{{title}}\"? This action cannot be undone.",
+    "confirmDeleteFile": "Confirm File Deletion",
+    "confirmDeleteFileMessage": "Are you sure you want to delete the file \"{{fileName}}\"? This action cannot be undone.",
+    "deleteFileSuccess": "File deleted successfully",
+    "deleteFileError": "Error deleting file",
     "loadFileError": "Error loading file",
     "loadPdfError": "Error loading PDF",
     "renderPageError": "Error rendering page",
@@ -153,15 +157,36 @@
       "error": "Error",
       "quarantined": "Quarantined"
     },
-    "fileSize": {
-      "bytes": "Bytes",
-      "kb": "KB",
-      "mb": "MB",
-      "gb": "GB"
-    },
     "failedJobs": "Failed Jobs",
     "error": "Error",
-    "attempts": "Attempts"
+    "attempts": "Attempts",
+    "selectParser": "Select parser for",
+    "parserDialogTitle": "Choose Document Parser"
+  },
+  "parsers": {
+    "title": "Document Parsers",
+    "description": "Configure which parser to use when converting documents to text. Self-hosted parsers (Docling, PDFPlumber) require no API keys.",
+    "defaultParser": "Default parser",
+    "defaultParserHint": "Used when uploading if no parser is selected.",
+    "apiKeys": "API Keys",
+    "apiKeysDescription": "Some parsers require an API key. Add your key below.",
+    "apiKeyConfigured": "Configured",
+    "apiKeyNotConfigured": "Not configured",
+    "apiKeyPlaceholder": "API key",
+    "apiKeySaved": "API key saved",
+    "defaultParserSaved": "Default parser saved",
+    "apiKeyRequired": "API key required",
+    "selectParser": "Document parser",
+    "uploadWithParser": "Upload",
+    "parserUnavailable": "Parser is unavailable. Try a different parser.",
+    "serviceUnavailable": "The parser service is unavailable. Start it with docker-compose or try a different parser.",
+    "tryDifferentParser": "Try a different parser.",
+    "parseError": "Parsing failed.",
+    "dpt2": "DPT-2 (LandingAI)",
+    "docling": "Docling",
+    "llamaparse": "LlamaParse",
+    "unstructured": "Unstructured.io",
+    "pdfplumber": "PDFPlumber"
   },
   "redline": {
     "title": "Generate Redline",
@@ -363,6 +388,7 @@
   },
   "workspaceSettings": {
     "title": "Workspace Settings",
+    "tabParsers": "Document Parsers",
     "tabGeneral": "General",
     "tabRetention": "Retention",
     "tabDocumentProcessing": "Document Processing",

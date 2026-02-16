@@ -12,6 +12,7 @@ import { RagModule } from './rag/rag.module';
 import { PrivacyModule } from './privacy/privacy.module';
 import { AuditModule } from './audit/audit.module';
 import { RetentionModule } from './retention/retention.module';
+import { PromptsModule } from './prompts/prompts.module';
 import { typeOrmModuleOptions } from './typeorm.options';
 
 // Conditionally import AppController - only for API server, not worker
@@ -53,6 +54,7 @@ if (!isWorker) {
     PrivacyModule,
     AuditModule,
     RetentionModule,
+    PromptsModule,
   ],
   controllers: AppController ? [AppController] : [],
 })

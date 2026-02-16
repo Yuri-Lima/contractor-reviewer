@@ -56,6 +56,7 @@ export const API_CONFIG = {
     audit: (workspaceId: string) => `/workspaces/${workspaceId}/audit`,
     retention: (workspaceId: string) => `/workspaces/${workspaceId}/retention`,
     settings: (workspaceId: string) => `/workspaces/${workspaceId}/settings`,
+    prompts: (workspaceId: string) => `/workspaces/${workspaceId}/prompts`,
   },
 };
 

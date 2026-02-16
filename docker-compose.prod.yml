@@ -6,6 +6,8 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      platform: linux/amd64
+    platform: linux/amd64
     image: contractai-api:latest
     container_name: contractai-api
     restart: unless-stopped
@@ -52,6 +54,7 @@ services:
 
   worker:
     image: contractai-api:latest
+    platform: linux/amd64
     container_name: contractai-worker
     restart: unless-stopped
     command: ["node", "dist/worker.js"]
@@ -88,6 +91,8 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      platform: linux/amd64
+    platform: linux/amd64
     image: contractai-web:latest
     container_name: contractai-web
     restart: unless-stopped

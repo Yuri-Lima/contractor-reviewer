@@ -98,6 +98,23 @@
     "files": "Files",
     "redline": "Redline",
     "chat": "Chat",
+    "fileName": "File Name",
+    "fileType": "File Type",
+    "fileSize": "File Size",
+    "fileSizeUnits": {
+      "bytes": "bytes",
+      "kb": "KB",
+      "mb": "MB",
+      "gb": "GB"
+    },
+    "createdAt": "Created At",
+    "fileStatus": {
+      "available": "Available",
+      "processing": "Processing",
+      "uploading": "Uploading",
+      "error": "Error"
+    },
+    "loadFilesError": "Error loading files",
     "uploadFile": "Upload File",
     "processing": "Processing in progress",
     "titlePlaceholder": "Document title",
@@ -344,6 +361,29 @@
     "fuzzyMatchThresholdDescription": "Minimum match percentage (0-100) for fuzzy text matching when applying redlines. Higher values require more exact matches.",
     "mustBeBetween0And100": "Value must be between 0 and 100"
   },
+  "workspaceSettings": {
+    "title": "Workspace Settings",
+    "tabGeneral": "General",
+    "tabRetention": "Retention",
+    "tabDocumentProcessing": "Document Processing",
+    "generalPlaceholder": "General workspace settings will be available here in a future update.",
+    "menuItem": "Settings",
+    "loadError": "Error loading workspace settings"
+  },
+  "chunking": {
+    "title": "Chunking Strategy",
+    "description": "Choose how document text is split into chunks for AI retrieval. Paragraph-based chunking preserves legal clause boundaries and is recommended for contracts.",
+    "strategy": "Chunking Strategy",
+    "strategyHint": "Only Paragraph, Sentence, and Fixed-size are available. Semantic and Agentic will be available in a future update.",
+    "paragraph": "Paragraph-based",
+    "sentence": "Sentence-based",
+    "fixedSize": "Fixed-size",
+    "semantic": "Semantic",
+    "agentic": "Agentic",
+    "comingSoon": "Coming soon",
+    "saveSuccess": "Chunking strategy saved successfully",
+    "saveError": "Error saving chunking strategy"
+  },
   "workspaceMembers": {
     "title": "Workspace Members",
     "addMember": "Add Member",
@@ -423,5 +463,9 @@
     "clear": "Clear",
     "dateFormat": "mm/dd/yy",
     "firstDayOfWeek": 0
+  },
+  "baseList": {
+    "emptyMessage": "No data available",
+    "loading": "Loading..."
   }
 }

@@ -101,6 +101,17 @@
     "redline": "Redline",
     "chat": "Chat",
     "uploadFile": "Upload Arquivo",
+    "fileName": "Nome do Arquivo",
+    "fileType": "Tipo de Arquivo",
+    "fileSize": "Tamanho do Arquivo",
+    "createdAt": "Data de Criação",
+    "fileStatus": {
+      "available": "Disponível",
+      "processing": "Processando",
+      "uploading": "Enviando",
+      "error": "Erro"
+    },
+    "loadFilesError": "Erro ao carregar arquivos",
     "processing": "Processamento em andamento",
     "titlePlaceholder": "Título do documento",
     "descriptionPlaceholder": "Descrição (opcional)",
@@ -138,7 +149,7 @@
       "error": "Erro",
       "quarantined": "Em Quarentena"
     },
-    "fileSize": {
+    "fileSizeUnits": {
       "bytes": "Bytes",
       "kb": "KB",
       "mb": "MB",
@@ -346,6 +357,29 @@
     "fuzzyMatchThresholdDescription": "Porcentagem mínima de correspondência (0-100) para correspondência fuzzy de texto ao aplicar redlines. Valores mais altos exigem correspondências mais exatas.",
     "mustBeBetween0And100": "Valor deve estar entre 0 e 100"
   },
+  "workspaceSettings": {
+    "title": "Configurações do Workspace",
+    "tabGeneral": "Geral",
+    "tabRetention": "Retenção",
+    "tabDocumentProcessing": "Processamento de Documentos",
+    "generalPlaceholder": "Configurações gerais do workspace estarão disponíveis em uma atualização futura.",
+    "menuItem": "Configurações",
+    "loadError": "Erro ao carregar configurações do workspace"
+  },
+  "chunking": {
+    "title": "Estratégia de Chunking",
+    "description": "Escolha como o texto do documento é dividido em chunks para recuperação por IA. Chunking por parágrafo preserva os limites de cláusulas jurídicas e é recomendado para contratos.",
+    "strategy": "Estratégia de Chunking",
+    "strategyHint": "Apenas Parágrafo, Sentença e Tamanho fixo estão disponíveis. Semântico e Agêntico estarão disponíveis em uma atualização futura.",
+    "paragraph": "Por parágrafo",
+    "sentence": "Por sentença",
+    "fixedSize": "Tamanho fixo",
+    "semantic": "Semântico",
+    "agentic": "Agêntico",
+    "comingSoon": "Em breve",
+    "saveSuccess": "Estratégia de chunking salva com sucesso",
+    "saveError": "Erro ao salvar estratégia de chunking"
+  },
   "workspaceMembers": {
     "title": "Membros do Workspace",
     "addMember": "Adicionar Membro",
@@ -425,5 +459,9 @@
     "clear": "Limpar",
     "dateFormat": "dd/mm/yy",
     "firstDayOfWeek": 0
+  },
+  "baseList": {
+    "emptyMessage": "Nenhum dado disponível",
+    "loading": "Carregando..."
   }
 }

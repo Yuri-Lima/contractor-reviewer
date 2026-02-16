@@ -99,6 +99,17 @@
     "redline": "Redline",
     "chat": "Chat",
     "uploadFile": "Datei hochladen",
+    "fileName": "Dateiname",
+    "fileType": "Dateityp",
+    "fileSize": "Dateigröße",
+    "createdAt": "Erstellt am",
+    "fileStatus": {
+      "available": "Verfügbar",
+      "processing": "Wird verarbeitet",
+      "uploading": "Wird hochgeladen",
+      "error": "Fehler"
+    },
+    "loadFilesError": "Fehler beim Laden der Dateien",
     "processing": "Verarbeitung läuft",
     "titlePlaceholder": "Dokumenttitel",
     "descriptionPlaceholder": "Beschreibung (optional)",
@@ -136,7 +147,7 @@
       "error": "Fehler",
       "quarantined": "In Quarantäne"
     },
-    "fileSize": {
+    "fileSizeUnits": {
       "bytes": "Bytes",
       "kb": "KB",
       "mb": "MB",
@@ -340,6 +351,29 @@
     "saveSuccess": "Aufbewahrungseinstellungen erfolgreich gespeichert",
     "saveError": "Fehler beim Speichern der Aufbewahrungseinstellungen"
   },
+  "workspaceSettings": {
+    "title": "Arbeitsbereichseinstellungen",
+    "tabGeneral": "Allgemein",
+    "tabRetention": "Aufbewahrung",
+    "tabDocumentProcessing": "Dokumentenverarbeitung",
+    "generalPlaceholder": "Allgemeine Arbeitsbereichseinstellungen werden in einem zukünftigen Update verfügbar sein.",
+    "menuItem": "Einstellungen",
+    "loadError": "Fehler beim Laden der Arbeitsbereichseinstellungen"
+  },
+  "chunking": {
+    "title": "Chunking-Strategie",
+    "description": "Wählen Sie, wie Dokumenttext für die KI-Wiederherstellung in Chunks aufgeteilt wird. Absatzbasiertes Chunking erhält rechtliche Klauselgrenzen und wird für Verträge empfohlen.",
+    "strategy": "Chunking-Strategie",
+    "strategyHint": "Nur Absatz, Satz und Feste Größe sind verfügbar. Semantisch und Agentisch werden in einem zukünftigen Update verfügbar sein.",
+    "paragraph": "Absatzbasiert",
+    "sentence": "Satzbasiert",
+    "fixedSize": "Feste Größe",
+    "semantic": "Semantisch",
+    "agentic": "Agentisch",
+    "comingSoon": "Demnächst",
+    "saveSuccess": "Chunking-Strategie erfolgreich gespeichert",
+    "saveError": "Fehler beim Speichern der Chunking-Strategie"
+  },
   "workspaceMembers": {
     "title": "Arbeitsbereichsmitglieder",
     "addMember": "Mitglied hinzufügen",
@@ -419,5 +453,9 @@
     "clear": "Löschen",
     "dateFormat": "dd.mm.yy",
     "firstDayOfWeek": 1
+  },
+  "baseList": {
+    "emptyMessage": "Keine Daten verfügbar",
+    "loading": "Lädt..."
   }
 }

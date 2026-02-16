@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Env (never include secrets)
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+.angular/
+*.tsbuildinfo
+
+# IDE / OS
+.idea/
+.vscode/
+.cursor/
+.DS_Store
+*.log
+
+# Git
+.git/
+.gitignore
+
+# Test / coverage
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+.playwright/
+**/e2e/
+
+# Storage (user uploads)
+apps/api/storage/
+
+# Documentation and plans (not needed for build)
+*.plan.md
+rag_pipeline_gap_analysis*.md

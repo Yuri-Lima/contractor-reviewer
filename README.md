@@ -268,6 +268,7 @@ Ver [apps/web/e2e/](apps/web/e2e/) para estrutura dos testes.
 ## Documentação
 
 - **[SETUP.md](SETUP.md)** - Guia completo de instalação e configuração local
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Deploy em produção com Docker Compose
 - **[DOCUMENT-PARSERS.md](DOCUMENT-PARSERS.md)** - Referência dos parsers de documentos (Docling, PDFPlumber, DPT-2, etc.)
 - **[planejamento-execucao-contractai.md](planejamento-execucao-contractai.md)** - Planejamento detalhado das fases de implementação
 

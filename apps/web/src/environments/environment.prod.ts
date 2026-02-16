@@ -1,10 +1,12 @@
 /**
  * Production environment configuration
- * 
- * Update this with your production API URL before building for release
+ *
+ * Uses relative /api for same-origin deployment (Nginx reverse proxy).
+ * If API is on a different domain, use fileReplacements in angular.json
+ * or NG_APP_API_URL build-time override.
  */
 export const environment = {
   production: true,
-  apiUrl: 'https://api.contractai.com/api',
+  apiUrl: '/api',
   isMobile: false, // Will be set dynamically in api.config.ts
 };

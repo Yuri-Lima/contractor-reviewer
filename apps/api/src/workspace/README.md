@@ -8,16 +8,23 @@ Este módulo implementa isolamento multi-tenant e controle de acesso baseado em 
 
 - **`WorkspaceController`**: CRUD de workspaces, membros
 - **`WorkspaceSettingsController`**: Configurações unificadas do workspace
-  - **GET** `/api/workspaces/:workspaceId/settings` — Retorna `{ retention, general, documentProcessing: { chunkingStrategy } }`
-  - **PUT** `/api/workspaces/:workspaceId/settings` — Atualiza parcialmente (retention e/ou documentProcessing)
+  - **GET** `/api/workspaces/:workspaceId/settings` — Retorna `{ retention, general, documentProcessing }`
+  - **PUT** `/api/workspaces/:workspaceId/settings` — Atualiza parcialmente (retention, documentProcessing)
   - Requer OWNER ou ADMIN
+- **`WorkspaceParsersController`**: Lista parsers disponíveis
+  - **GET** `/api/workspaces/:workspaceId/document-parsers` — Retorna `ParserInfo[]` (id, name, requiresApiKey, hasApiKey)
+  - Requer VIEWER, MEMBER, ADMIN ou OWNER
 
 ### Services
 
 - **`WorkspaceService`**: Gerencia membership, verificação de roles e hierarquia
-- **`WorkspaceSettingsService`**: Gerencia configurações (retention, chunking strategy)
-  - Retention: file retention days, text/embeddings retention, fuzzy match threshold
-  - Document Processing: chunking strategy (paragraph, sentence, fixed_size)
+- **`WorkspaceSettingsService`**: Gerencia configurações (retention, documentProcessing)
+  - **Retention:** file retention days, text/embeddings retention, fuzzy match threshold
+  - **Document Processing:**
+    - `chunkingStrategy`: paragraph | sentence | fixed_size
+    - `defaultDocumentParser`: docling | pdfplumber | dpt2 | llamaparse | unstructured
+    - `parserApiKeys`: objeto com máscaras (hasApiKey: boolean) por parser
+  - API keys de parsers (DPT-2, LlamaParse, Unstructured) são criptografadas via `EncryptionService` e armazenadas em `WorkspaceSettings.parserApiKeys`
 
 ### Guards
 

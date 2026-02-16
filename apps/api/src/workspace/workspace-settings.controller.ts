@@ -12,7 +12,10 @@ import { WorkspaceGuard, RolesGuard } from './guards';
 import { Roles } from './decorators/roles.decorator';
 import { WorkspaceRole } from '../entities/workspace-member.entity';
 import { WorkspaceId } from './decorators';
-import { WorkspaceSettingsConfig } from '@contractai-review/shared';
+import {
+  WorkspaceSettingsConfig,
+  UpdateWorkspaceSettingsRequest,
+} from '@contractai-review/shared';
 import { WorkspaceSettingsService } from './workspace-settings.service';
 
 @Controller('workspaces/:workspaceId/settings')
@@ -35,7 +38,7 @@ export class WorkspaceSettingsController {
   @HttpCode(HttpStatus.OK)
   async updateSettings(
     @WorkspaceId() workspaceId: string,
-    @Body() config: Partial<WorkspaceSettingsConfig>,
+    @Body() config: UpdateWorkspaceSettingsRequest,
   ): Promise<WorkspaceSettingsConfig> {
     return this.workspaceSettingsService.updateSettings(workspaceId, config);
   }

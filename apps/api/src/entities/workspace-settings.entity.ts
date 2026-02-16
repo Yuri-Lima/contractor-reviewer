@@ -43,6 +43,12 @@ export class WorkspaceSettings {
   @Column({ type: 'varchar', default: 'paragraph' })
   chunkingStrategy: string; // paragraph | sentence | fixed_size | semantic | agentic
 
+  @Column({ type: 'varchar', default: 'docling' })
+  defaultDocumentParser: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  parserApiKeys: Record<string, string> | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

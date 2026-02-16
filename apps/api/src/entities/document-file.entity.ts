@@ -45,6 +45,9 @@ export class DocumentFile {
   @Column({ type: 'int', nullable: true })
   pageCount: number;
 
+  @Column({ type: 'varchar', nullable: true })
+  parsedBy: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

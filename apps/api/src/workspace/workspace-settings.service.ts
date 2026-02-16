@@ -3,15 +3,26 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
   WorkspaceSettingsConfig,
+  UpdateWorkspaceSettingsRequest,
   RetentionConfig,
   ChunkingStrategy,
+  DocumentParser,
 } from '@contractai-review/shared';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
+import { EncryptionService } from '../common/encryption.service';
 
 const ALLOWED_CHUNKING_STRATEGIES = [
   ChunkingStrategy.PARAGRAPH,
   ChunkingStrategy.SENTENCE,
   ChunkingStrategy.FIXED_SIZE,
+];
+
+const ALLOWED_DOCUMENT_PARSERS = [
+  DocumentParser.DOCLING,
+  DocumentParser.PDFPLUMBER,
+  DocumentParser.DPT2,
+  DocumentParser.LLAMAPARSE,
+  DocumentParser.UNSTRUCTURED,
 ];
 
 @Injectable()
@@ -24,6 +35,7 @@ export class WorkspaceSettingsService {
   constructor(
     @InjectRepository(WorkspaceSettings)
     private workspaceSettingsRepository: Repository<WorkspaceSettings>,
+    private encryptionService: EncryptionService,
   ) {}
 
   async getSettings(workspaceId: string): Promise<WorkspaceSettingsConfig> {
@@ -37,6 +49,7 @@ export class WorkspaceSettingsService {
         defaultFileRetentionDays: 30,
         defaultTextEmbeddingsRetentionDays: 90,
         chunkingStrategy: ChunkingStrategy.PARAGRAPH,
+        defaultDocumentParser: 'docling',
       });
       settings = await this.workspaceSettingsRepository.save(settings);
     }
@@ -48,18 +61,46 @@ export class WorkspaceSettingsService {
       fuzzyMatchThreshold: settings.fuzzyMatchThreshold ?? 70,
     };
 
+    const parserApiKeysMasked: Record<string, boolean> = {};
+    if (settings.parserApiKeys && typeof settings.parserApiKeys === 'object') {
+      for (const key of Object.keys(settings.parserApiKeys)) {
+        parserApiKeysMasked[key] = !!settings.parserApiKeys[key];
+      }
+    }
+
     return {
       retention,
       general: {},
       documentProcessing: {
         chunkingStrategy: settings.chunkingStrategy ?? 'paragraph',
+        defaultDocumentParser: settings.defaultDocumentParser ?? 'docling',
+        parserApiKeys: parserApiKeysMasked,
       },
     };
   }
 
+  async getDecryptedApiKey(
+    workspaceId: string,
+    parserId: string,
+  ): Promise<string | null> {
+    const settings = await this.workspaceSettingsRepository.findOne({
+      where: { workspaceId },
+    });
+    if (!settings?.parserApiKeys?.[parserId]) {
+      return null;
+    }
+    try {
+      return this.encryptionService.decrypt(
+        settings.parserApiKeys[parserId] as string,
+      );
+    } catch {
+      return null;
+    }
+  }
+
   async updateSettings(
     workspaceId: string,
-    config: Partial<WorkspaceSettingsConfig>,
+    config: UpdateWorkspaceSettingsRequest,
   ): Promise<WorkspaceSettingsConfig> {
     let settings = await this.workspaceSettingsRepository.findOne({
       where: { workspaceId },
@@ -71,6 +112,7 @@ export class WorkspaceSettingsService {
         defaultFileRetentionDays: 30,
         defaultTextEmbeddingsRetentionDays: 90,
         chunkingStrategy: ChunkingStrategy.PARAGRAPH,
+        defaultDocumentParser: 'docling',
       });
     }
 
@@ -116,7 +158,8 @@ export class WorkspaceSettingsService {
     }
 
     if (config.documentProcessing !== undefined) {
-      const { chunkingStrategy } = config.documentProcessing;
+      const { chunkingStrategy, defaultDocumentParser, parserApiKeys } =
+        config.documentProcessing;
       if (chunkingStrategy !== undefined) {
         if (!ALLOWED_CHUNKING_STRATEGIES.includes(chunkingStrategy as ChunkingStrategy)) {
           throw new BadRequestException(
@@ -124,6 +167,27 @@ export class WorkspaceSettingsService {
           );
         }
         settings.chunkingStrategy = chunkingStrategy;
+      }
+      if (defaultDocumentParser !== undefined) {
+        if (!ALLOWED_DOCUMENT_PARSERS.includes(defaultDocumentParser as DocumentParser)) {
+          throw new BadRequestException(
+            `Default document parser must be one of: ${ALLOWED_DOCUMENT_PARSERS.join(', ')}`,
+          );
+        }
+        settings.defaultDocumentParser = defaultDocumentParser;
+      }
+      if (parserApiKeys !== undefined && typeof parserApiKeys === 'object') {
+        const encrypted: Record<string, string> = settings.parserApiKeys ?? {};
+        for (const [parserId, rawValue] of Object.entries(parserApiKeys)) {
+          const strVal = typeof rawValue === 'string' ? rawValue : '';
+          if (strVal.trim()) {
+            encrypted[parserId] = this.encryptionService.encrypt(strVal.trim());
+          } else if (rawValue === false || rawValue === null || rawValue === undefined) {
+            delete encrypted[parserId];
+          }
+        }
+        settings.parserApiKeys =
+          Object.keys(encrypted).length > 0 ? encrypted : null;
       }
     }
 

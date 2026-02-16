@@ -8,6 +8,11 @@ Guide for deploying ContractAI Review to a remote server using Docker Compose.
                     ┌─────────────┐
                     │   Browser   │
                     └──────┬──────┘
+                           │ HTTP/HTTPS
+                    ┌──────▼──────┐
+                    │   Traefik   │  TLS, Let's Encrypt, HTTP→HTTPS redirect
+                    │  :80, :443  │
+                    └──────┬──────┘
                            │
                     ┌──────▼──────┐
                     │  web :80    │  Nginx (Angular SPA + /api proxy)
@@ -33,6 +38,7 @@ Guide for deploying ContractAI Review to a remote server using Docker Compose.
 - Docker and Docker Compose v2+
 - Server with at least 2GB RAM
 - Required secrets: `POSTGRES_PASSWORD`, `JWT_SECRET`, `OPENAI_API_KEY`, `SUPERADMIN_PASSWORD`
+- For HTTPS: Domain name with A/AAAA records pointing to your server
 
 ## Build and Push to Docker Hub
 
@@ -69,6 +75,8 @@ Edit `.env` and set:
 - `DOCKERHUB_USERNAME` — Docker Hub username (default: `yurimatoslima`)
 - `IMAGE_TAG` — Tag to pull (default: `latest`, or e.g. `v1.0.0`)
 - `POSTGRES_PASSWORD`, `JWT_SECRET`, `OPENAI_API_KEY`, `SUPERADMIN_PASSWORD` — Required secrets
+- `SITE_DOMAIN` — Domain pointing to your VPS (e.g. `app.example.com`)
+- `ACME_EMAIL` — Email for Let's Encrypt certificate notifications
 
 ### 3. Run
 
@@ -78,8 +86,12 @@ docker compose up -d
 
 ### 4. Access the app
 
-- **Web UI**: http://your-server-ip (port 80)
+- **Web UI**: https://your-domain (or http://your-server-ip if SITE_DOMAIN not configured)
 - **Superadmin login**: Use `SUPERADMIN_EMAIL` and `SUPERADMIN_PASSWORD` from `.env`
+
+**HTTPS**: Traefik obtains Let's Encrypt certificates automatically. Ensure:
+- DNS A/AAAA records for `SITE_DOMAIN` point to your server
+- Ports 80 and 443 are open. Use `ACME_STAGING=true` initially to test, then switch to production.
 
 ## Quick Start (Local Build)
 
@@ -130,6 +142,11 @@ See [.env.production.example](.env.production.example) for the full list. Summar
 | `JWT_SECRET` | Yes | JWT signing key (min 32 chars) |
 | `OPENAI_API_KEY` | Yes | OpenAI API key for RAG |
 | `SUPERADMIN_PASSWORD` | Yes | Initial admin password |
+| `SITE_DOMAIN` | Yes for HTTPS | Domain pointing to VPS |
+| `ACME_EMAIL` | Yes for HTTPS | Let's Encrypt notification email |
+| `ACME_STAGING` | Optional | Set `true` for staging certs during testing |
+| `ACME_CASERVER` | When staging | Staging CA URL when `ACME_STAGING=true` |
+| `FRONTEND_URL` | For HTTPS | `https://your-domain.com` for CORS/redirects |
 | `PARSER_KEYS_ENCRYPTION_KEY` | If using DPT-2/LlamaParse/Unstructured | 32-byte hex key |
 | `S3_*` | If using S3/R2 | Storage credentials |
 | `EVENTHOG_*`, `SENTRY_DSN` | Optional | Observability |
@@ -141,15 +158,36 @@ See [.env.production.example](.env.production.example) for the full list. Summar
 
 ## TLS / HTTPS
 
-For production, place a reverse proxy (Caddy, Traefik, nginx) in front of the `web` container to handle TLS termination. The web container serves HTTP on port 80.
+The deploy stack includes **Traefik** for automatic TLS termination and Let's Encrypt certificate management.
 
-Example with Caddy (single domain):
+### Configuration
 
-```caddyfile
-app.example.com {
-    reverse_proxy localhost:80
-}
-```
+Set in `.env`:
+
+| Variable | Description |
+|----------|-------------|
+| `SITE_DOMAIN` | Domain pointing to your VPS (e.g. `app.example.com`) |
+| `ACME_EMAIL` | Email for Let's Encrypt notifications |
+| `ACME_STAGING` | Set to `true` for testing; uses staging certificates to avoid rate limits |
+| `ACME_CASERVER` | When `ACME_STAGING=true`, set to `https://acme-staging-v02.api.letsencrypt.org/directory` |
+| `FRONTEND_URL` | Set to `https://your-domain.com` so CORS and redirects work correctly |
+
+### DNS
+
+Point your domain's A/AAAA records to the server IP. Traefik uses HTTP-01 challenge; port 80 must be reachable for certificate issuance.
+
+### Staging first
+
+Use `ACME_STAGING=true` and `ACME_CASERVER=https://acme-staging-v02.api.letsencrypt.org/directory` until everything works. Then switch to production (remove or set `ACME_STAGING=false`, remove `ACME_CASERVER` or use production default) and restart.
+
+### Traefik dashboard (optional, dev only)
+
+To enable the dashboard on port 8080 for debugging, add to the Traefik service in `docker-compose.yml`:
+
+- Port: `8080:8080`
+- Command: `--api.insecure=true`
+
+**Warning**: Do not expose the dashboard in production without authentication.
 
 ## Commands
 

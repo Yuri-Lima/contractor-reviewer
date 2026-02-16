@@ -2,8 +2,32 @@
 # Usage on VPS: Copy this file and deploy/.env.example, create .env, then:
 #   docker compose up -d
 # Images pulled from Docker Hub. DOCKERHUB_USERNAME defaults to yurimatoslima.
+# Traefik handles TLS termination, Let's Encrypt, and HTTP→HTTPS redirect.
 
 services:
+  traefik:
+    image: traefik:v3.6
+    container_name: contractai-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - traefik_acme:/etc/traefik/acme
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedByDefault=false"
+      - "--providers.docker.network=contractai-network"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/etc/traefik/acme/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.caserver=${ACME_CASERVER:-https://acme-v02.api.letsencrypt.org/directory}"
+    networks:
+      - contractai
+
   postgres:
     image: pgvector/pgvector:pg16
     container_name: contractai-postgres
@@ -20,6 +44,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - contractai
 
   redis:
     image: redis:7-alpine
@@ -33,6 +59,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - contractai
 
   docling:
     image: ${DOCKERHUB_USERNAME:-yurimatoslima}/contractai-docling:${IMAGE_TAG:-latest}
@@ -44,6 +72,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - contractai
 
   pdfplumber:
     image: ${DOCKERHUB_USERNAME:-yurimatoslima}/contractai-pdfplumber:${IMAGE_TAG:-latest}
@@ -55,6 +85,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - contractai
 
   api:
     image: ${DOCKERHUB_USERNAME:-yurimatoslima}/contractai-api:${IMAGE_TAG:-latest}
@@ -96,6 +128,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - contractai
 
   worker:
     image: ${DOCKERHUB_USERNAME:-yurimatoslima}/contractai-api:${IMAGE_TAG:-latest}
@@ -126,23 +160,45 @@ services:
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
     volumes:
       - api_storage:/app/apps/api/storage
+    networks:
+      - contractai
 
   web:
     image: ${DOCKERHUB_USERNAME:-yurimatoslima}/contractai-web:${IMAGE_TAG:-latest}
     container_name: contractai-web
     restart: unless-stopped
     depends_on:
+      traefik:
+        condition: service_started
       api:
         condition: service_started
-    ports:
-      - "${WEB_PORT:-80}:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.contractai-web-https.rule=Host(`${SITE_DOMAIN}`)"
+      - "traefik.http.routers.contractai-web-https.entrypoints=websecure"
+      - "traefik.http.routers.contractai-web-https.tls=true"
+      - "traefik.http.routers.contractai-web-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.contractai-web-https.service=contractai-web-svc"
+      - "traefik.http.routers.contractai-web-http.rule=Host(`${SITE_DOMAIN}`)"
+      - "traefik.http.routers.contractai-web-http.entrypoints=web"
+      - "traefik.http.routers.contractai-web-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+      - "traefik.http.services.contractai-web-svc.loadbalancer.server.port=80"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - contractai
 
 volumes:
   postgres_data:
   redis_data:
   api_storage:
+  traefik_acme:
+
+networks:
+  contractai:
+    name: contractai-network

@@ -1,0 +1,112 @@
+<div class="parser-settings p-4">
+  <p-message
+    severity="info"
+    [text]="'parsers.description' | translate"
+    class="mb-6"
+  ></p-message>
+
+  @if (loading()) {
+    <p class="text-gray-600 dark:text-gray-400">{{ 'common.loading' | translate }}</p>
+  } @else {
+    <!-- Default parser -->
+    <p-card>
+      <ng-template pTemplate="header">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">
+            {{ 'parsers.defaultParser' | translate }}
+          </h2>
+        </div>
+      </ng-template>
+      <div class="p-4 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {{ 'parsers.defaultParser' | translate }}
+          </label>
+          <p-select
+            [options]="parserOptions()"
+            [ngModel]="defaultParser()"
+            (ngModelChange)="onDefaultParserChange($event)"
+            optionLabel="labelKey"
+            optionValue="id"
+            [placeholder]="'parsers.selectParser' | translate"
+            class="w-full"
+            styleClass="w-full"
+            [loading]="savingDefault()"
+          >
+            <ng-template let-opt pTemplate="item">
+              {{ opt.labelKey | translate }}
+            </ng-template>
+            <ng-template let-selected pTemplate="selectedItem">
+              @if (selected) {
+                {{ selected.labelKey | translate }}
+              }
+            </ng-template>
+          </p-select>
+          <small class="text-gray-500 dark:text-gray-400 mt-1 block">
+            {{ 'parsers.defaultParserHint' | translate }}
+          </small>
+        </div>
+      </div>
+    </p-card>
+
+    <!-- API keys for parsers that require them -->
+    @if (parsersRequiringApiKey().length > 0) {
+      <p-card class="mt-6">
+        <ng-template pTemplate="header">
+          <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">
+              {{ 'parsers.apiKeys' | translate }}
+            </h2>
+          </div>
+        </ng-template>
+        <div class="p-4">
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            {{ 'parsers.apiKeysDescription' | translate }}
+          </p>
+          <div class="space-y-6">
+            @for (p of parsersRequiringApiKey(); track p.id) {
+              <div class="flex flex-wrap items-end gap-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <div class="flex-1 min-w-[200px]">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {{ getParserNameKey(p) | translate }}
+                  </label>
+                  <div class="flex items-center gap-2">
+                    <p-password
+                      [ngModel]="getApiKeyInput(p.id)"
+                      (ngModelChange)="onApiKeyInputChange(p.id, $event)"
+                      [placeholder]="'parsers.apiKeyPlaceholder' | translate"
+                      [toggleMask]="true"
+                      [feedback]="false"
+                      styleClass="w-full"
+                      inputStyleClass="w-full"
+                    ></p-password>
+                    <p-button
+                      [label]="'common.save' | translate"
+                      icon="pi pi-check"
+                      [loading]="savingKey() === p.id"
+                      [disabled]="savingKey() === p.id"
+                      (onClick)="saveApiKey(p.id)"
+                    ></p-button>
+                  </div>
+                  <div class="flex items-center gap-2 mt-2">
+                    @if (p.hasApiKeyConfigured) {
+                      <span class="text-sm text-green-600 dark:text-green-400">
+                        <i class="pi pi-check-circle mr-1"></i>
+                        {{ 'parsers.apiKeyConfigured' | translate }}
+                      </span>
+                    } @else {
+                      <span class="text-sm text-amber-600 dark:text-amber-400">
+                        <i class="pi pi-exclamation-triangle mr-1"></i>
+                        {{ 'parsers.apiKeyNotConfigured' | translate }}
+                      </span>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </p-card>
+    }
+  }
+</div>

@@ -20,6 +20,10 @@
           <i class="pi pi-file-edit"></i>
           <span>{{ 'workspaceSettings.tabDocumentProcessing' | translate }}</span>
         </p-tab>
+        <p-tab value="parsers" class="flex items-center gap-2">
+          <i class="pi pi-file"></i>
+          <span>{{ 'workspaceSettings.tabParsers' | translate }}</span>
+        </p-tab>
         <p-tab value="prompts" class="flex items-center gap-2">
           <i class="pi pi-pencil"></i>
           <span>{{ 'workspaceSettings.tabPrompts' | translate }}</span>
@@ -219,6 +223,12 @@
                 </div>
               </div>
             </p-card>
+          </div>
+        </p-tabpanel>
+
+        <p-tabpanel value="parsers">
+          <div class="p-4">
+            <app-parser-settings [workspaceId]="workspaceId()"></app-parser-settings>
           </div>
         </p-tabpanel>
 

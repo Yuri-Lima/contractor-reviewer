@@ -19,6 +19,8 @@ interface EmbeddingsJobData {
 })
 @Injectable()
 export class EmbeddingsProcessor extends WorkerHost {
+  private readonly logger = new Logger(EmbeddingsProcessor.name);
+
   constructor(
     @InjectRepository(DocumentJob)
     private jobRepository: Repository<DocumentJob>,

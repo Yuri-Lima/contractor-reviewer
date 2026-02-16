@@ -1,11 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { DiffMatchPatch, DiffOp } from 'diff-match-patch-ts';
+import { DiffBlock } from '@contractai-review/shared';
 
-export interface DiffBlock {
-  id: string;
-  type: 'equal' | 'add' | 'remove';
-  text: string;
-}
+// Re-export for backward compatibility
+export type { DiffBlock };
 
 export interface Decision {
   blockId: string;

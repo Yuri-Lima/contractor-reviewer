@@ -21,7 +21,7 @@ import { Document, DocumentFile, DocumentJob, JobStatus, ChatResponse, Citation,
 import { PdfViewerComponent } from '../pdf-viewer/pdf-viewer.component';
 import { RedlineComponent } from '../redline/redline.component';
 import { VersionsComponent } from '../versions/versions.component';
-import { DocumentContentComponent } from '../document-content/document-content.component';
+import { FileContentDialogComponent } from '../file-content-dialog/file-content-dialog.component';
 import { BaseListComponent } from '../../core/components/base-list/base-list.component';
 import { BaseListConfig } from '../../core/components/base-list/base-list.config';
 import { LazyLoadEvent } from 'primeng/api';
@@ -71,7 +71,7 @@ interface FilesResourceParams extends FilesRequestParams {
     PdfViewerComponent,
     RedlineComponent,
     VersionsComponent,
-    DocumentContentComponent,
+    FileContentDialogComponent,
     BaseListComponent,
     LocaleDatePipe,
     TranslatePipe,
@@ -152,13 +152,12 @@ interface FilesResourceParams extends FilesRequestParams {
         </div>
       }
 
-      <p-tabs value="0">
+      <p-tabs [value]="activeTab()" (valueChange)="activeTab.set($event ?? '0')">
         <p-tablist>
           <p-tab value="0">{{ 'documents.files' | translate }}</p-tab>
-          <p-tab value="1">{{ 'documentContent.title' | translate }}</p-tab>
-          <p-tab value="2">{{ 'documents.redline' | translate }}</p-tab>
-          <p-tab value="3">{{ 'documents.chat' | translate }}</p-tab>
-          <p-tab value="4">{{ 'versions.title' | translate }}</p-tab>
+          <p-tab value="1">{{ 'documents.redline' | translate }}</p-tab>
+          <p-tab value="2">{{ 'documents.chat' | translate }}</p-tab>
+          <p-tab value="3">{{ 'versions.title' | translate }}</p-tab>
         </p-tablist>
         <p-tabpanels>
           <p-tabpanel value="0">
@@ -202,7 +201,7 @@ interface FilesResourceParams extends FilesRequestParams {
                 
                 <!-- Body template -->
                 <ng-template #bodyTemplate let-file>
-                  <tr [pSelectableRow]="file">
+                  <tr [pSelectableRow]="file" (dblclick)="openFileContentDialog(file, $event)">
                     <td></td>
                     <td>{{ file.fileName }}</td>
                     <td>{{ file.mimeType }}</td>
@@ -248,14 +247,10 @@ interface FilesResourceParams extends FilesRequestParams {
           </p-tabpanel>
 
           <p-tabpanel value="1">
-            <app-document-content (textSelected)="onContentTextSelected($event)"></app-document-content>
-          </p-tabpanel>
-
-          <p-tabpanel value="2">
             <app-redline #redlineComponent></app-redline>
           </p-tabpanel>
 
-          <p-tabpanel value="3">
+          <p-tabpanel value="2">
             <div class="chat-section mt-4">
               <div class="chat-messages space-y-4 mb-4 max-h-96 overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
                 @for (msg of chatMessages(); track $index) {
@@ -325,7 +320,7 @@ interface FilesResourceParams extends FilesRequestParams {
             </div>
           </p-tabpanel>
 
-          <p-tabpanel value="4">
+          <p-tabpanel value="3">
             <app-versions></app-versions>
           </p-tabpanel>
         </p-tabpanels>
@@ -404,6 +399,14 @@ interface FilesResourceParams extends FilesRequestParams {
         </ng-template>
       </p-dialog>
 
+      <app-file-content-dialog
+        [file]="fileForContentDialog()"
+        [workspaceId]="workspaceId()"
+        [documentId]="documentId()"
+        (closed)="fileForContentDialog.set(null)"
+        (closedWithSelections)="onFileContentClosedWithSelections($event)"
+      ></app-file-content-dialog>
+
       <p-confirmDialog></p-confirmDialog>
       <p-toast></p-toast>
     </div>
@@ -439,6 +442,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   chatMessages = signal<Array<{ question: string; answerText?: string; confidence?: string; citations?: Citation[] }>>([]);
   selectedFile = signal<DocumentFile | null>(null); // For table row selection (enables Delete button only)
   fileToView = signal<DocumentFile | null>(null);   // For file viewer dialog (opened by View button only)
+  fileForContentDialog = signal<DocumentFile | null>(null); // For file content dialog (opened by double-click)
+  activeTab = signal<string | number>('0');
   textFileContent = signal<string>('');
   parsers = signal<ParserInfo[]>([]);
   showParserDialog = signal(false);
@@ -1188,21 +1193,28 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     return result !== undefined ? result : 'secondary';
   }
 
-  onContentTextSelected(event: { text: string; startIndex?: number; endIndex?: number }): void {
-    // Switch to Redline tab and set selected text
+  openFileContentDialog(file: DocumentFile, event: MouseEvent): void {
+    // Ignore double-clicks on buttons (View, Download) - let button action run instead
+    if ((event.target as HTMLElement).closest('button')) {
+      return;
+    }
+    this.fileForContentDialog.set(file);
+  }
+
+  onFileContentClosedWithSelections(selections: string[]): void {
+    if (selections.length === 0) return;
+    const combinedText = selections.join('\n\n');
     const redline = this.redlineComponent();
     if (redline) {
-      // Set the selected text and position in the redline component
-      redline.onTextSelectedFromContent(event);
-      // Optionally switch to redline tab (value="2")
-      // This would require managing tab state, which is complex with PrimeNG tabs
-      // For now, just set the text and let user manually switch to redline tab
-      this.messageService.add({
-        severity: 'info',
-        summary: this.translateService.instant('common.success'),
-        detail: this.translateService.instant('documentContent.selectTextHint'),
-      });
+      redline.onTextSelectedFromContent({ text: combinedText });
     }
+    this.fileForContentDialog.set(null);
+    this.activeTab.set('1');
+    this.messageService.add({
+      severity: 'success',
+      summary: this.translateService.instant('common.success'),
+      detail: this.translateService.instant('redline.selectionsAdded'),
+    });
   }
 
   confirmDelete(): void {

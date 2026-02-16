@@ -350,6 +350,23 @@ export class DocumentsService {
   }
 
   /**
+   * Get extracted content for a single file (ocrText).
+   * Returns empty content when file is not yet processed.
+   */
+  async getFileContent(
+    fileId: string,
+    documentId: string,
+    workspaceId: string,
+  ): Promise<{ content: string; fileName: string; parsedBy?: string }> {
+    const file = await this.getFile(fileId, documentId, workspaceId);
+    return {
+      content: file.ocrText ?? '',
+      fileName: file.fileName,
+      parsedBy: file.parsedBy ?? undefined,
+    };
+  }
+
+  /**
    * Get download URL for a file
    */
   async getFileDownloadUrl(storageKey: string, expiresIn?: number): Promise<string> {
@@ -379,6 +396,20 @@ export class DocumentsService {
 
     const qb = this.documentFileRepository
       .createQueryBuilder('file')
+      .select([
+        'file.id',
+        'file.documentId',
+        'file.fileName',
+        'file.mimeType',
+        'file.sizeBytes',
+        'file.status',
+        'file.storageKey',
+        'file.errorMessage',
+        'file.pageCount',
+        'file.parsedBy',
+        'file.createdAt',
+        'file.updatedAt',
+      ])
       .where('file.documentId = :documentId', { documentId })
       .take(limit)
       .skip(offset);

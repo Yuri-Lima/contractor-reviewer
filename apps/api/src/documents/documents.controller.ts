@@ -140,6 +140,17 @@ export class DocumentsController {
     return uploadedFile;
   }
 
+  @Get(':documentId/files/:fileId/content')
+  @UseGuards(RolesGuard)
+  @Roles(WorkspaceRole.VIEWER, WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
+  async getFileContent(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+    @Param('fileId') fileId: string,
+  ): Promise<{ content: string; fileName: string; parsedBy?: string }> {
+    return this.documentsService.getFileContent(fileId, documentId, workspaceId);
+  }
+
   @Get(':documentId/files/:fileId/download')
   @UseGuards(RolesGuard)
   @Roles(WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER, WorkspaceRole.VIEWER)

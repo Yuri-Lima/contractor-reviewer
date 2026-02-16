@@ -48,3 +48,9 @@ export interface CreateDocumentRequest {
   title: string;
   description?: string;
 }
+
+export interface FileContentResponse {
+  content: string;
+  fileName: string;
+  parsedBy?: string;
+}

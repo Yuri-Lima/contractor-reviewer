@@ -17,6 +17,7 @@ import {
   DocumentVersion,
   RetentionConfig,
   DocumentFile,
+  FileContentResponse,
   WorkspaceSettingsConfig,
   UpdateWorkspaceSettingsRequest,
   PromptListItem,
@@ -112,6 +113,12 @@ export class ApiService {
     return this.http.get<{ files: DocumentFile[]; total: number; limit: number; offset: number }>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/files`,
       { params }
+    );
+  }
+
+  getFileContent(workspaceId: string, documentId: string, fileId: string): Observable<FileContentResponse> {
+    return this.http.get<FileContentResponse>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/files/${fileId}/content`,
     );
   }
 

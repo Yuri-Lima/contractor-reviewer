@@ -94,6 +94,7 @@ export class DocumentsController {
     @CurrentUser() user: { id: string },
     @RequestInfo() requestInfo: { ip: string; userAgent: string },
     @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
+    @Body() body: { parser?: string },
   ) {
     if (!file) {
       throw new BadRequestException('File is required');
@@ -117,7 +118,12 @@ export class DocumentsController {
       throw new BadRequestException(`File rejected: ${scanResult.threat || 'Malware detected'}`);
     }
 
-    const uploadedFile = await this.documentsService.uploadFile(documentId, workspaceId, file);
+    const parser = body?.parser;
+    const validParsers = ['dpt2', 'docling', 'llamaparse', 'unstructured', 'pdfplumber'];
+    if (parser && !validParsers.includes(parser)) {
+      throw new BadRequestException(`Invalid parser: ${parser}. Valid: ${validParsers.join(', ')}`);
+    }
+    const uploadedFile = await this.documentsService.uploadFile(documentId, workspaceId, file, parser);
     
     // Log upload action
     await this.auditService.createAuditLog(
@@ -128,7 +134,7 @@ export class DocumentsController {
       uploadedFile.id,
       requestInfo.ip,
       requestInfo.userAgent,
-      { fileName: file.originalname, mimeType: file.mimetype, size: file.size },
+      { fileName: file.originalname, mimeType: file.mimetype, size: file.size, parser },
     );
     
     return uploadedFile;
@@ -177,6 +183,34 @@ export class DocumentsController {
       // S3/R2: redirect to presigned URL
       res.redirect(downloadUrl);
     }
+  }
+
+  @Delete(':documentId/files/:fileId')
+  @UseGuards(RolesGuard)
+  @Roles(WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteFile(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+    @Param('fileId') fileId: string,
+    @CurrentUser() user: { id: string },
+    @RequestInfo() requestInfo: { ip: string; userAgent: string },
+  ): Promise<void> {
+    const { fileName } = await this.documentsService.deleteFile(
+      documentId,
+      fileId,
+      workspaceId,
+    );
+    await this.auditService.createAuditLog(
+      workspaceId,
+      user.id,
+      AuditAction.DELETE,
+      TargetType.FILE,
+      fileId,
+      requestInfo.ip,
+      requestInfo.userAgent,
+      { fileName },
+    );
   }
 
   @Get(':documentId/files')

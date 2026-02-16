@@ -62,8 +62,6 @@ export class DocumentsService {
     private storageService: IStorageService,
     @InjectQueue('parsing')
     private parsingQueue: Queue,
-    @InjectQueue('ocr')
-    private ocrQueue: Queue,
   ) {}
 
   /**
@@ -118,6 +116,7 @@ export class DocumentsService {
     documentId: string,
     workspaceId: string,
     file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
+    parser?: string,
   ): Promise<DocumentFile> {
     // Verify document exists and belongs to workspace
     const document = await this.findById(documentId, workspaceId);
@@ -148,6 +147,8 @@ export class DocumentsService {
       fileId: savedFile.id,
       storageKey,
       mimeType: file.mimetype,
+      parser,
+      workspaceId,
     });
 
     return savedFile;
@@ -201,9 +202,6 @@ export class DocumentsService {
           // #endregion
           throw error;
         }
-        break;
-      case JobType.OCR:
-        await this.ocrQueue.add('ocr-document', data);
         break;
       // Other queues will be added as needed
     }
@@ -425,6 +423,42 @@ export class DocumentsService {
 
     // Concatenate text from all chunks
     return chunks.map((chunk) => chunk.text).join('\n\n');
+  }
+
+  /**
+   * Delete a single file from a document (hard delete)
+   * Deletes from storage, removes file record, and removes jobs associated with this file
+   */
+  async deleteFile(
+    documentId: string,
+    fileId: string,
+    workspaceId: string,
+  ): Promise<{ fileName: string }> {
+    await this.findById(documentId, workspaceId);
+    const file = await this.documentFileRepository.findOne({
+      where: { id: fileId, documentId },
+    });
+    if (!file) {
+      throw new NotFoundException(`File ${fileId} not found`);
+    }
+    const fileName = file.fileName;
+
+    try {
+      await this.storageService.deleteFile(file.storageKey);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Failed to delete file from storage (id: ${fileId}):`, errorMessage);
+    }
+
+    await this.documentJobRepository
+      .createQueryBuilder()
+      .delete()
+      .where('documentId = :documentId', { documentId })
+      .andWhere("metadata->>'fileId' = :fileId", { fileId })
+      .execute();
+
+    await this.documentFileRepository.remove(file);
+    return { fileName };
   }
 
   /**

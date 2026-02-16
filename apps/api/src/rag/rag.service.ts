@@ -6,26 +6,13 @@ import { OpenAI } from 'openai';
 import { Chunk } from '../entities/chunk.entity';
 import { Embedding } from '../entities/embedding.entity';
 import { Document } from '../entities/document.entity';
+import { Citation, ChatResponse } from '@contractai-review/shared';
 import { EmbeddingsService } from './embeddings.service';
 import { arrayToVectorString } from '../vector-helpers';
 
-export interface Citation {
-  type: 'contract' | 'legal';
-  fileName?: string;
-  pageNumber?: number;
-  paragraphId?: string;
-  quoteSnippet: string;
-  sourceName?: string;
-  section?: string;
-  url?: string;
-}
-
-export interface RagResponse {
-  answerText: string;
-  confidence: 'high' | 'medium' | 'low';
-  citations: Citation[];
-  notFound: boolean;
-}
+// Re-export for backward compatibility
+export type { Citation };
+export type RagResponse = ChatResponse;
 
 @Injectable()
 export class RagService {

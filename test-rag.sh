@@ -2,6 +2,8 @@
 
 # Script de teste para Fase 5 — RAG e citações
 # Testa o fluxo completo: upload -> processamento -> chat com RAG
+#
+# Execute a partir da raiz do projeto (test-contract-naira.txt obrigatório).
 
 API_URL="http://localhost:3000/api"
 COLOR_GREEN='\033[0;32m'

@@ -2,6 +2,8 @@
 
 # Script de teste para Fase 8 — Privacy e Audit
 # Testa: Chat messages, Versions, DSAR export completo, No-logs configurável, Download, Audit logs
+#
+# Execute a partir da raiz do projeto (test-contract-naira.txt deve estar disponível para upload opcional).
 
 API_URL="http://localhost:3000/api"
 COLOR_GREEN='\033[0;32m'
@@ -179,15 +181,21 @@ else
   echo -e "${COLOR_YELLOW}⚠️  Redline pode não ter criado version${COLOR_RESET}"
 fi
 
-# 7. Testar No-Logs - Obter configuração atual
-echo -e "\n${COLOR_BLUE}7. Testar No-Logs - Obter configuração${COLOR_RESET}"
-PRIVACY_SETTINGS=$(curl -s -X GET "$API_URL/workspaces/$WORKSPACE_ID/privacy/export" \
-  -H "Authorization: Bearer $TOKEN" | jq -r '.workspaceId // empty')
+# 7. Testar No-Logs - Obter configuração atual via GET /privacy/no-logs
+echo -e "\n${COLOR_BLUE}7. Testar No-Logs - Obter configuração via GET /privacy/no-logs${COLOR_RESET}"
+NO_LOGS_GET_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$API_URL/workspaces/$WORKSPACE_ID/privacy/no-logs" \
+  -H "Authorization: Bearer $TOKEN" 2>&1)
+NO_LOGS_GET_HTTP=$(echo "$NO_LOGS_GET_RESPONSE" | tail -n1)
+NO_LOGS_GET=$(echo "$NO_LOGS_GET_RESPONSE" | sed '$d')
 
-if [ ! -z "$PRIVACY_SETTINGS" ]; then
-  echo -e "${COLOR_GREEN}✅ Privacy settings acessíveis${COLOR_RESET}"
+if [ "$NO_LOGS_GET_HTTP" == "200" ]; then
+  NO_LOGS_GET_ENABLED=$(echo "$NO_LOGS_GET" | jq -r '.enabled')
+  echo -e "${COLOR_GREEN}✅ No-logs config obtida${COLOR_RESET}"
+  echo "   Enabled: $NO_LOGS_GET_ENABLED"
+  echo "   Config: $(echo "$NO_LOGS_GET" | jq -c '.config // empty')"
 else
-  echo -e "${COLOR_YELLOW}⚠️  Não foi possível obter privacy settings${COLOR_RESET}"
+  echo -e "${COLOR_YELLOW}⚠️  Não foi possível obter no-logs config (HTTP $NO_LOGS_GET_HTTP)${COLOR_RESET}"
+  echo "   Resposta: $NO_LOGS_GET"
 fi
 
 # 8. Testar No-Logs - Habilitar com configuração granular

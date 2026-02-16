@@ -2,6 +2,8 @@
 
 # Script de teste para Fase 6 — Endpoints REST (mínimo)
 # Testa: Redline, Privacy, Account, Audit
+#
+# Execute a partir da raiz do projeto (test-contract-naira.txt opcional para upload).
 
 API_URL="http://localhost:3000/api"
 COLOR_GREEN='\033[0;32m'

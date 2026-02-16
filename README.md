@@ -8,7 +8,7 @@ ContractAI Review é uma plataforma completa para análise e revisão de contrat
 
 ContractAI Review é um **assistente jurídico baseado em evidências** (não apenas um chatbot). A plataforma permite que equipes jurídicas:
 
-- **Façam upload de contratos** em múltiplos formatos (PDF, DOCX, TXT, imagens)
+- **Façam upload de contratos** em múltiplos formatos (PDF, DOC, DOCX, TXT, imagens)
 - **Façam perguntas** sobre os contratos e recebam respostas com **citações precisas** dos documentos
 - **Gerem redlines** (sugestões de alteração) com diferentes estratégias (equilibrada, conservadora, favorável ao cliente)
 - **Acompanhem versões** de documentos com visualização de diferenças
@@ -19,9 +19,9 @@ A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que 
 ## Principais Funcionalidades
 
 ### 📄 Gestão de Documentos
-- Upload e visualização de contratos (PDF, DOCX, TXT, PNG, JPG)
+- Upload e visualização de contratos (PDF, DOC, DOCX, TXT, PNG, JPG)
 - **Parsers de documentos opcionais** — escolha o parser no upload ou configure o padrão no workspace:
-  - **Docling** (IBM) — self-hosted, sem API key. PDF, DOCX, imagens. Suporta OCR interno.
+  - **Docling** (IBM) — self-hosted, sem API key. PDF, DOC, DOCX, imagens. Suporta OCR interno.
   - **PDFPlumber** — self-hosted, PDF apenas. Abordagem clássica.
   - **DPT-2 (LandingAI)** — Document Pre-trained Transformer. Requer API key. Alta qualidade.
   - **LlamaParse** (LlamaIndex) — Requer API key. PDF, DOCX.

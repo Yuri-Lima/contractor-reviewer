@@ -34,7 +34,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         storageState: AUTH_FILE,
       },
-      testMatch: /(workspaces|documents|settings)\.spec\.ts/,
+      testMatch: /(workspaces|documents|settings|onboarding)\.spec\.ts/,
       dependencies: ['setup'],
     },
     {

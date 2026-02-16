@@ -10,6 +10,7 @@ import { TableModule } from 'primeng/table';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Toast } from 'primeng/toast';
 import { Tag } from 'primeng/tag';
+import { Card } from 'primeng/card';
 import { ConfirmationService, MessageService, SharedModule } from 'primeng/api';
 import { ApiService } from '../../core/services/api.service';
 import { WorkspaceMember, WorkspaceRole, AddMemberRequest } from '@contractai-review/shared';
@@ -35,6 +36,7 @@ import { BaseListConfig } from '../../core/components/base-list/base-list.config
     ConfirmDialog,
     Toast,
     Tag,
+    Card,
     LocaleDatePipe,
     TranslatePipe,
     BaseListComponent
@@ -83,7 +85,7 @@ export class WorkspaceMembersComponent implements OnInit {
     if (this.canManageMembers()) {
       cfg.selectionMode = 'single';
       cfg.selection = this.selectedMember();
-      cfg.dataKey = 'userId';
+      cfg.dataKey = 'id';
       cfg.onSelectionChange = (v: WorkspaceMember | null) => this.selectedMember.set(v);
     }
     return cfg;

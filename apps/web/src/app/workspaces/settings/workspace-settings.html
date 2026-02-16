@@ -6,15 +6,17 @@
   @if (loading()) {
     <p class="text-gray-600 dark:text-gray-400">{{ 'common.loading' | translate }}</p>
   } @else {
-    <p-tabs [(value)]="activeTab">
+    <p-tabs [value]="activeTab()" (valueChange)="setActiveTab($event)" data-tour="ws-settings-tabs">
       <p-tablist>
         <p-tab value="general" class="flex items-center gap-2">
           <i class="pi pi-cog"></i>
           <span>{{ 'workspaceSettings.tabGeneral' | translate }}</span>
         </p-tab>
         <p-tab value="retention" class="flex items-center gap-2">
-          <i class="pi pi-clock"></i>
-          <span>{{ 'workspaceSettings.tabRetention' | translate }}</span>
+          <span data-tour="ws-settings-retention-tab" class="flex items-center gap-2">
+            <i class="pi pi-clock"></i>
+            <span>{{ 'workspaceSettings.tabRetention' | translate }}</span>
+          </span>
         </p-tab>
         <p-tab value="documentProcessing" class="flex items-center gap-2">
           <i class="pi pi-file-edit"></i>
@@ -31,7 +33,7 @@
       </p-tablist>
       <p-tabpanels>
         <p-tabpanel value="general">
-          <div class="p-4">
+          <div class="p-4" data-tour="ws-settings-general">
             <p-message
               severity="info"
               [text]="'workspaceSettings.generalPlaceholder' | translate"
@@ -40,7 +42,7 @@
         </p-tabpanel>
 
         <p-tabpanel value="retention">
-          <div class="p-4">
+          <div class="p-4" data-tour="ws-settings-retention">
             <p-message
               severity="info"
               [text]="'retention.description' | translate"
@@ -76,6 +78,7 @@
                 </div>
               </p-card>
 
+              <div data-tour="ws-settings-retention-text-embeddings">
               <p-card>
                 <ng-template pTemplate="header">
                   <div class="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -103,7 +106,9 @@
                   </div>
                 </div>
               </p-card>
+              </div>
 
+              <div data-tour="ws-settings-retention-fuzzy-match">
               <p-card>
                 <ng-template pTemplate="header">
                   <div class="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -131,6 +136,7 @@
                   </div>
                 </div>
               </p-card>
+              </div>
 
               <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
                 <h3 class="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
@@ -167,7 +173,7 @@
         </p-tabpanel>
 
         <p-tabpanel value="documentProcessing">
-          <div class="p-4">
+          <div class="p-4" data-tour="ws-settings-document-processing">
             <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">
               {{ 'chunking.title' | translate }}
             </h2>
@@ -227,13 +233,13 @@
         </p-tabpanel>
 
         <p-tabpanel value="parsers">
-          <div class="p-4">
+          <div class="p-4" data-tour="ws-settings-parsers">
             <app-parser-settings [workspaceId]="workspaceId()"></app-parser-settings>
           </div>
         </p-tabpanel>
 
         <p-tabpanel value="prompts">
-          <div class="p-4">
+          <div class="p-4" data-tour="ws-settings-prompts">
             <app-prompts-editor [workspaceId]="workspaceId()"></app-prompts-editor>
           </div>
         </p-tabpanel>

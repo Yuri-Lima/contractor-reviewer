@@ -14,6 +14,7 @@ import { PrivacyModule } from './privacy/privacy.module';
 import { AuditModule } from './audit/audit.module';
 import { RetentionModule } from './retention/retention.module';
 import { PromptsModule } from './prompts/prompts.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import { typeOrmModuleOptions } from './typeorm.options';
 
 // Conditionally import AppController - only for API server, not worker
@@ -57,6 +58,7 @@ if (!isWorker) {
     AuditModule,
     RetentionModule,
     PromptsModule,
+    OnboardingModule,
   ],
   controllers: AppController ? [AppController] : [],
 })

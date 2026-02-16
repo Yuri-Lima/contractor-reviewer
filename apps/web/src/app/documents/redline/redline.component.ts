@@ -13,6 +13,7 @@ import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Dialog } from 'primeng/dialog';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { ApiService } from '../../core/services/api.service';
+import { OnboardingService } from '../../onboarding/onboarding.service';
 import {
   RedlineRequest,
   RedlineResponse,
@@ -59,6 +60,7 @@ export class RedlineComponent implements OnInit {
   private messageService = inject(MessageService);
   private confirmationService = inject(ConfirmationService);
   private translateService = inject(TranslateService);
+  private onboardingService = inject(OnboardingService);
   private dmp = new DiffMatchPatch();
   private cdr = inject(ChangeDetectorRef);
 
@@ -441,6 +443,7 @@ export class RedlineComponent implements OnInit {
       )
       .subscribe({
         next: (applyResult) => {
+          this.onboardingService.markChecklistItem('apply_first_redline');
           this.messageService.add({
             severity: 'success',
             summary: this.translateService.instant('common.success'),

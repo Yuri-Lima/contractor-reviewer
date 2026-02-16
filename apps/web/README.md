@@ -117,6 +117,7 @@ src/
 │   ├── core/              # Serviços, guards, interceptors, modelos
 │   ├── documents/         # Componentes de documentos
 │   ├── layout/            # Header, Sidebar
+│   ├── onboarding/       # Tour (Shepherd.js), checklist, info icons, reset
 │   ├── privacy/           # Privacy panel
 │   ├── audit/             # Audit logs
 │   ├── workspaces/        # Workspaces, workspace-members, settings
@@ -189,6 +190,7 @@ Crie um arquivo `.env` na raiz do projeto ou configure:
 - ✅ Redline e versões (diff side-by-side)
 - ✅ Progresso de jobs (parsing, chunking, embeddings)
 - ✅ Suporte multilíngue (EN, ES, PT-BR, DE)
+- ✅ **Onboarding** — tour guiado (Shepherd.js), checklist flutuante, ícones de ajuda (confidence, citações), reset em Account Settings
 
 ## Integração com API
 
@@ -206,6 +208,7 @@ Endpoints principais:
 - `/api/workspaces/:id/settings` — Configurações (retention, documentProcessing, prompts)
 - `/api/workspaces/:id/privacy/export` — Export de privacidade
 - `/api/workspaces/:id/audit` — Audit logs
+- `/api/onboarding` — Estado de onboarding (GET, PATCH checklist, PATCH tour, POST complete/dismiss/reset)
 
 ## Parsers de Documentos
 

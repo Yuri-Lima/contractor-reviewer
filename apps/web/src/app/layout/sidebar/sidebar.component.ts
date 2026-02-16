@@ -11,6 +11,7 @@ import { TranslatePipe } from '@ngx-translate/core';
     <aside class="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-[calc(100vh-64px)] sticky top-16 transition-colors duration-200 shadow-sm">
       <nav class="p-4 space-y-1">
         <a
+          data-tour="nav-workspaces"
           routerLink="/workspaces"
           routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400 font-medium"
           class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-150 no-underline"
@@ -20,6 +21,7 @@ import { TranslatePipe } from '@ngx-translate/core';
         </a>
         @if (workspaceId) {
           <a
+            data-tour="nav-documents"
             [routerLink]="['/workspaces', workspaceId, 'documents']"
             routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400 font-medium"
             class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-150 no-underline"
@@ -62,6 +64,7 @@ import { TranslatePipe } from '@ngx-translate/core';
         }
         <div class="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4">
           <a
+            data-tour="nav-settings"
             routerLink="/settings"
             routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400 font-medium"
             class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-150 no-underline"

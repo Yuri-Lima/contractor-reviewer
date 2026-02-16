@@ -1,4 +1,4 @@
-<div class="redline-container p-6">
+<div class="redline-container p-6" data-tour="redline-container">
   <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">{{ 'redline.title' | translate }}</h2>
 
   <p-message
@@ -85,6 +85,7 @@
 
     <div class="flex gap-2 justify-end">
       <p-button
+        data-tour="redline-generate-btn"
         type="submit"
         [label]="'redline.generate' | translate"
         icon="pi pi-magic"

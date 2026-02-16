@@ -21,8 +21,39 @@
     </div>
   </p-card>
 
+  <!-- Help & Onboarding -->
+  <p-card class="mb-6" data-testid="onboarding-help-card" data-tour="account-onboarding-card">
+    <ng-template pTemplate="header">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">{{ 'onboarding.helpAndOnboarding' | translate }}</h2>
+      </div>
+    </ng-template>
+    <div class="p-4">
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        {{ 'onboarding.resetDescription' | translate }}
+      </p>
+      <div class="flex gap-2">
+        <p-button
+          data-testid="onboarding-reset-btn"
+          [label]="'onboarding.resetOnboarding' | translate"
+          icon="pi pi-refresh"
+          severity="secondary"
+          [loading]="resetting()"
+          (onClick)="confirmResetOnboarding()"
+        ></p-button>
+        <p-button
+          data-testid="onboarding-start-tour-btn"
+          [label]="'onboarding.startTour' | translate"
+          icon="pi pi-play"
+          [outlined]="true"
+          (onClick)="startTourNow()"
+        ></p-button>
+      </div>
+    </div>
+  </p-card>
+
   <!-- Danger Zone -->
-  <p-card>
+  <p-card data-tour="account-danger-zone">
     <ng-template pTemplate="header">
       <div class="p-4 border-b border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
         <h2 class="text-xl font-semibold text-red-900 dark:text-red-100">{{ 'settings.dangerZone' | translate }}</h2>

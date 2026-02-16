@@ -48,6 +48,7 @@ export const API_CONFIG = {
       search: '/auth/users/search',
     },
     account: '/account',
+    onboarding: '/onboarding',
     workspaces: '/workspaces',
     documents: (workspaceId: string) => `/workspaces/${workspaceId}/documents`,
     chat: (workspaceId: string, documentId: string) => `/workspaces/${workspaceId}/documents/${documentId}/chat`,

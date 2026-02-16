@@ -1,6 +1,7 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
+    platform: linux/amd64
     container_name: contractai-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-contractai}
@@ -18,6 +19,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    platform: linux/amd64
     container_name: contractai-redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
@@ -30,7 +32,10 @@ services:
       retries: 5
 
   docling:
-    build: ./services/docling
+    build:
+      context: ./services/docling
+      platform: linux/amd64
+    platform: linux/amd64
     container_name: contractai-docling
     ports:
       - "${DOCLING_PORT:-8000}:8000"
@@ -41,7 +46,10 @@ services:
       retries: 3
 
   pdfplumber:
-    build: ./services/pdfplumber
+    build:
+      context: ./services/pdfplumber
+      platform: linux/amd64
+    platform: linux/amd64
     container_name: contractai-pdfplumber
     ports:
       - "${PDFPLUMBER_PORT:-8001}:8001"

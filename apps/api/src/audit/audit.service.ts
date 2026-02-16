@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
-import { AuditLog, AuditAction, TargetType } from '../entities/audit-log.entity';
-import { AuditLogQueryDto } from './audit.controller';
+import { AuditLog as AuditLogEntity, AuditAction, TargetType } from '../entities/audit-log.entity';
+import { AuditLogQueryDto, AuditLog } from '@contractai-review/shared';
 
 @Injectable()
 export class AuditService {
   constructor(
-    @InjectRepository(AuditLog)
-    private auditLogRepository: Repository<AuditLog>,
+    @InjectRepository(AuditLogEntity)
+    private auditLogRepository: Repository<AuditLogEntity>,
   ) {}
 
   /**
@@ -64,8 +64,22 @@ export class AuditService {
 
     const [logs, total] = await qb.getManyAndCount();
 
+    // Map entities to shared interface (convert Date to string)
+    const mappedLogs: AuditLog[] = logs.map((log) => ({
+      id: log.id,
+      workspaceId: log.workspaceId,
+      actorUserId: log.actorUserId,
+      action: log.action,
+      targetType: log.targetType,
+      targetId: log.targetId,
+      ip: log.ip,
+      userAgent: log.userAgent,
+      metadata: log.metadata,
+      createdAt: log.createdAt.toISOString(),
+    }));
+
     return {
-      logs,
+      logs: mappedLogs,
       total,
       limit,
       offset,
@@ -84,8 +98,8 @@ export class AuditService {
     ip?: string,
     userAgent?: string,
     metadata?: Record<string, any>,
-  ): Promise<AuditLog> {
-    const auditLog = new AuditLog();
+  ): Promise<AuditLogEntity> {
+    const auditLog = new AuditLogEntity();
     auditLog.workspaceId = workspaceId;
     auditLog.actorUserId = actorUserId;
     auditLog.action = action;

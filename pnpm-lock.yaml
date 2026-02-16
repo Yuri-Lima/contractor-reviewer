@@ -188,6 +188,9 @@ importers:
       diff-match-patch-ts:
         specifier: ^0.8.0
         version: 0.8.0
+      marked:
+        specifier: ^17.0.2
+        version: 17.0.2
       pdfjs-dist:
         specifier: ^4.0.0
         version: 4.10.38
@@ -4863,6 +4866,11 @@ packages:
   make-fetch-happen@15.0.3:
     resolution: {integrity: sha512-iyyEpDty1mwW3dGlYXAJqC/azFn5PPvgKVwXayOGBSmKLxhKZ9fg4qIan2ePpp1vJIwfFiO34LAPZgq9SZW9Aw==}
     engines: {node: ^20.17.0 || >=22.9.0}
+
+  marked@17.0.2:
+    resolution: {integrity: sha512-s5HZGFQea7Huv5zZcAGhJLT3qLpAfnY7v7GWkICUr0+Wd5TFEtdlRR2XUL5Gg+RH7u2Df595ifrxR03mBaw7gA==}
+    engines: {node: '>= 20'}
+    hasBin: true
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -12140,6 +12148,8 @@ snapshots:
       ssri: 13.0.0
     transitivePeerDependencies:
       - supports-color
+
+  marked@17.0.2: {}
 
   math-intrinsics@1.1.0: {}
 

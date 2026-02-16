@@ -195,6 +195,10 @@
     "selectedText": "Selected Text",
     "selectTextPlaceholder": "Select text from the document or paste it here...",
     "selectedTextHint": "Select text from the document viewer or paste the clause you want to revise",
+    "addToSelections": "Add to selections",
+    "selectionsForRedline": "Selections for Redline",
+    "selectionsEmpty": "Select text in the document and click Add to build your selection list.",
+    "selectionsAdded": "Selections added to Redline. You can now configure and generate.",
     "selectedTextRequired": "Selected text is required",
     "objective": "Objective (Optional)",
     "objectivePlaceholder": "Describe the intent of the change...",
@@ -261,6 +265,7 @@
     "loading": "Loading content...",
     "error": "Error loading content",
     "noContent": "No content available",
+    "notProcessed": "File not yet processed. Content will be available after parsing completes.",
     "refresh": "Refresh Content",
     "selectTextHint": "Select text to create redline"
   },

@@ -195,6 +195,10 @@
     "selectedText": "Ausgewählter Text",
     "selectTextPlaceholder": "Wählen Sie Text aus dem Viewer aus oder fügen Sie ihn hier ein...",
     "selectedTextHint": "Wählen Sie Text aus dem Dokumentenviewer aus oder fügen Sie die Klausel ein, die Sie überarbeiten möchten",
+    "addToSelections": "Zu Auswahl hinzufügen",
+    "selectionsForRedline": "Auswahlen für Redline",
+    "selectionsEmpty": "Wählen Sie Text im Dokument aus und klicken Sie auf Hinzufügen, um Ihre Auswahlliste zu erstellen.",
+    "selectionsAdded": "Auswahlen zu Redline hinzugefügt. Sie können jetzt konfigurieren und generieren.",
     "selectedTextRequired": "Ausgewählter Text ist erforderlich",
     "objective": "Ziel (Optional)",
     "objectivePlaceholder": "Beschreiben Sie die Absicht der Änderung...",
@@ -261,6 +265,7 @@
     "loading": "Inhalt wird geladen...",
     "error": "Fehler beim Laden des Inhalts",
     "noContent": "Kein Inhalt verfügbar",
+    "notProcessed": "Datei noch nicht verarbeitet. Inhalt ist verfügbar, sobald die Analyse abgeschlossen ist.",
     "refresh": "Inhalt aktualisieren",
     "selectTextHint": "Text auswählen, um Redline zu erstellen"
   },

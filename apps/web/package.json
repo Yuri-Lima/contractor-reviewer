@@ -47,6 +47,7 @@
     "@ngx-translate/http-loader": "^17.0.0",
     "@primeuix/themes": "^2.0.2",
     "diff-match-patch-ts": "^0.8.0",
+    "marked": "^17.0.2",
     "pdfjs-dist": "^4.0.0",
     "primeicons": "^7.0.0",
     "primeng": "^21.1.1",

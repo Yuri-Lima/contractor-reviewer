@@ -197,6 +197,10 @@
     "selectedText": "Texto Selecionado",
     "selectTextPlaceholder": "Selecione texto do visualizador ou cole aqui...",
     "selectedTextHint": "Selecione texto do visualizador de documentos ou cole a cláusula que deseja revisar",
+    "addToSelections": "Adicionar às seleções",
+    "selectionsForRedline": "Seleções para Redline",
+    "selectionsEmpty": "Selecione texto no documento e clique em Adicionar para construir sua lista de seleções.",
+    "selectionsAdded": "Seleções adicionadas ao Redline. Você pode configurar e gerar.",
     "selectedTextRequired": "Texto selecionado é obrigatório",
     "objective": "Objetivo (Opcional)",
     "objectivePlaceholder": "Descreva a intenção da mudança...",
@@ -263,6 +267,7 @@
     "loading": "Carregando conteúdo...",
     "error": "Erro ao carregar conteúdo",
     "noContent": "Nenhum conteúdo disponível",
+    "notProcessed": "Arquivo ainda não processado. O conteúdo estará disponível quando a análise for concluída.",
     "refresh": "Atualizar Conteúdo",
     "selectTextHint": "Selecione texto para criar redline"
   },

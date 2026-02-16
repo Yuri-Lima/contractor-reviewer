@@ -1,0 +1,71 @@
+---
+alwaysApply: true
+---
+
+# API Types - Request vs Response - MANDATORY RULES
+
+## CRITICAL: Separate Request and Response Types for PATCH/PUT APIs
+
+**MANDATORY RULE**: When an API accepts partial updates (PATCH-style), do NOT reuse the full response type with `Partial<>`. Define explicit request types that support partial nested updates and differing request semantics.
+
+## Rules
+
+1. **Avoid `Partial<ResponseType>` for update endpoints**:
+   - `Partial<T>` only makes top-level keys optional; nested required fields remain required
+   - This forces incorrect type assertions (`as`) to satisfy the type checker
+   - Fix: Define `UpdateXRequest` or `UpdateXDto` with optional nested fields
+
+2. **Request shape may differ from response shape**:
+   - Example: `parserApiKeys` — on write: `Record<string, string | boolean>` (raw API key or `false` to remove); on read: `Record<string, boolean>` (masked: configured/not)
+   - Use distinct request types when semantics differ; never assert to bypass the mismatch
+
+3. **Do**:
+   - Define `UpdateXRequest` in the shared package for PATCH endpoints
+   - Use optional nesting: `documentProcessing?: { chunkingStrategy?: string; ... }`
+   - Use `Partial<ChildConfig>` for nested objects that accept partial updates
+   - Document in JSDoc when request shape differs from response (e.g., API key write vs read)
+
+4. **Don't**:
+   - Use `Partial<ResponseType>` for update endpoints
+   - Use `as` type assertions to satisfy the type checker for API calls
+   - Reuse response types when request semantics differ
+
+## Example
+
+### ✅ CORRECT:
+```typescript
+// packages/shared - explicit request type
+export interface UpdateWorkspaceSettingsRequest {
+  retention?: Partial<RetentionConfig>;
+  documentProcessing?: {
+    chunkingStrategy?: string;
+    defaultDocumentParser?: string;
+    parserApiKeys?: Record<string, string | boolean>;  // string=set, false=remove
+  };
+}
+
+// Frontend - no assertions needed
+this.apiService.updateWorkspaceSettings(workspaceId, {
+  documentProcessing: { defaultDocumentParser: value },
+});
+```
+
+### ❌ WRONG:
+```typescript
+// Using Partial<ResponseType> - nested chunkingStrategy still required!
+this.apiService.updateWorkspaceSettings(workspaceId, {
+  documentProcessing: { defaultDocumentParser: value },
+});  // Type error!
+
+// Bypassing with assertion - don't do this
+} as { chunkingStrategy: string; defaultDocumentParser?: string; ... }
+```
+
+## Code Review Checklist
+
+- [ ] PATCH/PUT endpoints have explicit request types (e.g., `UpdateXRequest`)
+- [ ] No type assertions (`as`) to bypass API call type mismatches
+- [ ] Request types support partial nested updates
+- [ ] Request types reflect write semantics when they differ from read (e.g., API keys)
+
+**REMEMBER**: Fix the types at the source (shared package) — do not assert to work around incorrect type definitions!

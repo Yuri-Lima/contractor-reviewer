@@ -12,7 +12,7 @@ Este guia descreve como testar as funcionalidades implementadas até agora (Fase
 
 ## Setup Inicial
 
-### 1. Subir infraestrutura (Postgres + Redis)
+### 1. Subir infraestrutura (Postgres + Redis + Docling + PDFPlumber)
 
 ```bash
 # Na raiz do projeto
@@ -21,8 +21,15 @@ docker-compose up -d
 # Verificar se os containers estão rodando
 docker-compose ps
 
-# Ver logs do Postgres (opcional)
-docker-compose logs postgres
+# Serviços disponíveis:
+# - postgres (5432)
+# - redis (6379)
+# - docling (8000) — parser de documentos (PDF, DOCX, imagens)
+# - pdfplumber (8001) — parser PDF
+
+# Verificar saúde dos parsers (opcional, para testes de upload)
+curl http://localhost:8000/health   # Docling
+curl http://localhost:8001/health   # PDFPlumber
 ```
 
 ### 2. Instalar dependências
@@ -383,6 +390,30 @@ JOIN workspaces w ON ws."workspaceId" = w.id;
 ### Token expirado
 - Tokens têm validade de 7 dias por padrão
 - Faça login novamente para obter novo token
+
+## Testes de Document Parsers e Upload
+
+Para testar upload de documentos com parser:
+
+1. **Garantir que Docling e PDFPlumber estão rodando:**
+   ```bash
+   docker-compose up -d docling pdfplumber
+   curl http://localhost:8000/health
+   curl http://localhost:8001/health
+   ```
+
+2. **Iniciar o Worker** (processa parsing, chunking, embeddings):
+   ```bash
+   pnpm start:worker
+   ```
+
+3. **Criar documento e fazer upload via UI** ou API:
+   - `POST /api/workspaces/:workspaceId/documents` — criar documento
+   - `POST /api/workspaces/:workspaceId/documents/:docId/files` — upload com `file` + opcional `parser` (docling | pdfplumber | dpt2 | llamaparse | unstructured)
+
+4. **Parser indisponível:** Se Docling/PDFPlumber não estiverem rodando, o job falhará e a UI exibirá a mensagem em "Failed Jobs" (ex.: "Docling service is unavailable. Start it with 'docker-compose up docling' or try a different parser.").
+
+Ver [DOCUMENT-PARSERS.md](./DOCUMENT-PARSERS.md) para referência dos parsers.
 
 ## Próximos Passos
 

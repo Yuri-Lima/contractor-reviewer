@@ -20,9 +20,15 @@ A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que 
 
 ### 📄 Gestão de Documentos
 - Upload e visualização de contratos (PDF, DOCX, TXT, PNG, JPG)
-- **OCR automático** para PDFs escaneados usando Tesseract.js
-- Processamento assíncrono com filas (parsing, OCR, chunking, embeddings)
+- **Parsers de documentos opcionais** — escolha o parser no upload ou configure o padrão no workspace:
+  - **Docling** (IBM) — self-hosted, sem API key. PDF, DOCX, imagens. Suporta OCR interno.
+  - **PDFPlumber** — self-hosted, PDF apenas. Abordagem clássica.
+  - **DPT-2 (LandingAI)** — Document Pre-trained Transformer. Requer API key. Alta qualidade.
+  - **LlamaParse** (LlamaIndex) — Requer API key. PDF, DOCX.
+  - **Unstructured.io** — Requer API key. Muitos formatos.
+- Processamento assíncrono com filas (parsing, chunking, embeddings)
 - Visualização de documentos com suporte a PDF, imagens e texto
+- Mensagens amigáveis quando o parser está indisponível (ex.: "Docling service is unavailable. Start it with docker-compose up docling")
 
 ### 🤖 Chat Jurídico com RAG
 - Perguntas sobre contratos com respostas baseadas em evidências
@@ -60,13 +66,16 @@ A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que 
 - Transparência sobre o que é armazenado e por quanto tempo
 
 ### ⚙️ Workspace Settings
-- **Página de configurações** com abas: General, Retention, Document Processing
+- **Página de configurações** com abas: General, Retention, Document Processing, Document Parsers, AI Prompts
 - **Retenção de dados**: políticas configuráveis por workspace
   - Retenção padrão: arquivos (30 dias), textos/embeddings (90 dias)
   - Purge automático via job agendado (diário)
   - Hard delete completo de documentos e dados associados
 - **Estratégia de chunking**: configurável (paragraph, sentence, fixed_size)
   - Define como o texto é dividido para RAG; paragraph-based recomendado para contratos
+- **Document Parsers**: parser padrão + API keys por workspace (DPT-2, LlamaParse, Unstructured)
+  - API keys criptografadas com AES-256-GCM
+- **AI Prompts**: override de prompts de chat/redline por workspace (DB-backed, runtime tuning)
 
 ### 📊 Auditoria Completa
 - Trilha de auditoria para todas as ações importantes:
@@ -94,11 +103,11 @@ A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que 
 
 ### 1. Upload e Processamento
 ```
-Upload de Contrato
+Upload de Contrato (usuário escolhe parser ou usa padrão)
   ↓
 Validação (tamanho, tipo, malware scan)
   ↓
-Parsing (extração de texto) ou OCR (se PDF escaneado)
+Parsing (Docling, PDFPlumber, DPT-2, LlamaParse ou Unstructured — extração para markdown)
   ↓
 Chunking (divisão em partes menores; estratégia configurável por workspace)
   ↓
@@ -106,6 +115,11 @@ Geração de Embeddings (vetores para busca semântica)
   ↓
 Documento Disponível para Consulta
 ```
+
+**Parsers** (configurável em Workspace Settings > Document Parsers):
+- **Docling** (default): self-hosted, suporta PDF escaneados com OCR interno
+- **PDFPlumber**: self-hosted, PDF apenas
+- **DPT-2, LlamaParse, Unstructured**: cloud, exigem API key no workspace
 
 **Chunking strategies** (configurável em Workspace Settings > Document Processing):
 - **Paragraph-based** (recomendado): preserva limites de parágrafos/cláusulas
@@ -151,6 +165,11 @@ contractor-reviwer/
 ├── apps/
 │   ├── api/          # NestJS (API REST + Workers BullMQ)
 │   └── web/          # Angular SPA + Capacitor (web/iOS/Android)
+├── packages/
+│   └── shared/       # Tipos, enums, interfaces compartilhados
+├── services/
+│   ├── docling/      # Python microservice (PDF, DOCX, imagens → markdown)
+│   └── pdfplumber/   # Python microservice (PDF → markdown)
 ├── docker-compose.yml
 └── pnpm-workspace.yaml
 ```
@@ -161,7 +180,8 @@ contractor-reviwer/
 - **Database**: PostgreSQL + pgvector (para busca vetorial)
 - **Queue**: BullMQ + Redis (processamento assíncrono)
 - **Storage**: Interface S3/R2 compatível (implementação local para dev)
-- **Workers**: Processamento de OCR, parsing, chunking, embeddings
+- **Workers**: Parsing (via adapters), chunking, embeddings
+- **Parsers**: Adapters para Docling, PDFPlumber, DPT-2, LlamaParse, Unstructured (factory + API keys criptografadas)
 
 ### Frontend (`apps/web`)
 - **Framework**: Angular (última LTS)
@@ -172,7 +192,7 @@ contractor-reviwer/
 ### AI/ML
 - **Embeddings**: OpenAI `text-embedding-3-small` (1536 dimensões)
 - **Chat**: OpenAI Responses API
-- **OCR**: Tesseract.js (para PDFs escaneados)
+- **Prompts**: DB-backed, configuráveis por workspace (chat, redline, playbooks)
 
 ## Quick Start
 
@@ -180,12 +200,12 @@ Para começar a usar o ContractAI Review localmente, consulte o guia completo de
 
 **Resumo rápido:**
 1. Instalar dependências: `pnpm install`
-2. Configurar `.env` a partir de `.env.example`
-3. Subir Postgres e Redis: `docker-compose up -d`
-4. Rodar migrações: `pnpm --filter api migration:run`
-5. Iniciar API: `pnpm --filter api start:dev`
-6. Iniciar Worker: `pnpm --filter api start:worker`
-7. Iniciar Web: `pnpm --filter web start`
+2. Configurar `.env` a partir de `.env.example` (inclui `OPENAI_API_KEY`, `PARSER_KEYS_ENCRYPTION_KEY` se usar parsers pagos)
+3. Subir serviços: `docker-compose up -d` (Postgres, Redis, Docling, PDFPlumber)
+4. Rodar migrações: `pnpm migration:run`
+5. Iniciar API: `pnpm start:api` ou `pnpm --filter api start:dev`
+6. Iniciar Worker: `pnpm start:worker`
+7. Iniciar Web: `pnpm dev:web`
 
 ### Testes E2E (Playwright)
 
@@ -210,9 +230,9 @@ Ver [apps/web/e2e/](apps/web/e2e/) para estrutura dos testes.
 - **pgvector** - Extensão para busca vetorial
 - **BullMQ** - Sistema de filas
 - **Redis** - Cache e broker de mensagens
-- **Tesseract.js** - OCR para PDFs escaneados
-- **pdf-parse** - Parsing de PDFs
-- **pdf2pic** - Conversão PDF para imagens
+- **Docling** (Python/FastAPI) - Parser self-hosted para PDF, DOCX, imagens
+- **PDFPlumber** (Python/FastAPI) - Parser self-hosted para PDF
+- **LandingAI DPT-2** - API cloud para parsing de alta qualidade (requer API key)
 
 ### Frontend
 - **Angular** - Framework web
@@ -222,11 +242,11 @@ Ver [apps/web/e2e/](apps/web/e2e/) para estrutura dos testes.
 - **RxJS** - Programação reativa
 
 ### AI/ML
-- **OpenAI API** - Embeddings e geração de texto
-- **Tesseract.js** - OCR
+- **OpenAI API** - Embeddings e geração de texto (RAG)
+- **Prompts DB-backed** - Prompts de chat/redline configuráveis por workspace
 
 ### Infraestrutura
-- **Docker Compose** - Orquestração local (Postgres, Redis)
+- **Docker Compose** - Orquestração local (Postgres, Redis, Docling, PDFPlumber)
 - **S3/R2** - Armazenamento de arquivos (compatível)
 
 ## Status do Projeto
@@ -238,16 +258,17 @@ Ver [apps/web/e2e/](apps/web/e2e/) para estrutura dos testes.
 - ✅ Chat com RAG e citações
 - ✅ Geração de redlines com playbooks
 - ✅ Versionamento de documentos
-- ✅ OCR para PDFs escaneados
+- ✅ Parsers opcionais (Docling, PDFPlumber, DPT-2, LlamaParse, Unstructured) com suporte a PDFs escaneados
 - ✅ Painel de privacidade e export DSAR-lite
 - ✅ Políticas de retenção e purge automático
 - ✅ Trilha de auditoria completa
-- ✅ Página de Workspace Settings (Retention, Document Processing, chunking strategy)
+- ✅ Página de Workspace Settings (Retention, Document Processing, Document Parsers, AI Prompts)
 - ✅ Suporte multilíngue
 
 ## Documentação
 
 - **[SETUP.md](SETUP.md)** - Guia completo de instalação e configuração local
+- **[DOCUMENT-PARSERS.md](DOCUMENT-PARSERS.md)** - Referência dos parsers de documentos (Docling, PDFPlumber, DPT-2, etc.)
 - **[planejamento-execucao-contractai.md](planejamento-execucao-contractai.md)** - Planejamento detalhado das fases de implementação
 
 ## Licença

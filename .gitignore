@@ -27,5 +27,16 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 
+# E2E / Playwright
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+playwright/.auth/
+
+# E2E and script-generated documents
+privacy-export*.json
+test-upload.txt
+
 # Uploaded files (user documents, generated content)
 apps/api/storage/

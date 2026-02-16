@@ -21,6 +21,7 @@ import { TranslatePipe } from '@ngx-translate/core';
       <div class="documents-header mb-8">
         <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ 'documents.title' | translate }}</h1>
         <button 
+          data-testid="documents-create-btn"
           class="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
           (click)="showCreateForm.set(true)"
         >
@@ -33,6 +34,7 @@ import { TranslatePipe } from '@ngx-translate/core';
           <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm">
             <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">{{ 'documents.create' | translate }}</h3>
             <input 
+              data-testid="document-title-input"
               [value]="newDocumentTitle()" 
               (input)="onTitleInput($event)" 
               class="w-full px-4 py-2 mb-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
@@ -52,6 +54,7 @@ import { TranslatePipe } from '@ngx-translate/core';
             }
             <div class="form-actions flex gap-3">
               <button 
+                data-testid="document-create-submit"
                 class="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 (click)="createDocument()"
                 [disabled]="loading()"
@@ -121,7 +124,7 @@ import { TranslatePipe } from '@ngx-translate/core';
           }
         </div>
       } @else {
-        <div class="empty-state text-center py-12 px-8">
+        <div class="empty-state text-center py-12 px-8" data-testid="documents-empty-state">
           <p class="text-gray-600 dark:text-gray-400">{{ 'documents.noDocumentsFound' | translate }}</p>
         </div>
       }

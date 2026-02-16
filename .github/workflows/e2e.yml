@@ -1,0 +1,58 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Start Postgres and Redis
+        run: docker-compose up -d postgres redis
+
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            if docker exec contractai-postgres pg_isready -U contractai -d contractai; then
+              echo "Postgres ready"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Run migrations
+        run: pnpm migration:run
+        env:
+          DATABASE_URL: postgresql://contractai:contractai@localhost:5432/contractai
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+
+      - name: Install Playwright browsers
+        run: cd apps/web && pnpm exec playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: E2E_WITH_API=1 ./scripts/e2e.sh
+        env:
+          CI: true
+          DATABASE_URL: postgresql://contractai:contractai@localhost:5432/contractai
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          E2E_TEST_EMAIL: e2e-test@example.com
+          E2E_TEST_PASSWORD: password123

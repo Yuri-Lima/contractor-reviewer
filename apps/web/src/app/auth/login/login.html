@@ -19,6 +19,7 @@
           pInputText
           id="email"
           type="email"
+          data-testid="login-email"
           formControlName="email"
           [placeholder]="'auth.emailPlaceholder' | translate"
           class="w-full"
@@ -38,6 +39,7 @@
         <p-password
           id="password"
           formControlName="password"
+          data-testid="login-password"
           [placeholder]="'auth.passwordPlaceholder' | translate"
           [feedback]="false"
           [toggleMask]="true"
@@ -64,6 +66,7 @@
 
       <p-button
         type="submit"
+        data-testid="login-submit"
         [label]="'auth.signIn' | translate"
         icon="pi pi-sign-in"
         [disabled]="loginForm.invalid || loading()"
@@ -76,7 +79,7 @@
 
     <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-center text-sm">
       <span class="text-gray-600 dark:text-gray-400">{{ 'auth.noAccount' | translate }} </span>
-      <a routerLink="/register" class="text-blue-600 dark:text-blue-400 font-medium hover:underline transition-colors">
+      <a routerLink="/register" data-testid="login-register-link" class="text-blue-600 dark:text-blue-400 font-medium hover:underline transition-colors">
         {{ 'auth.register' | translate }}
       </a>
     </div>

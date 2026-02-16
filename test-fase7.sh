@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Script de teste para Fase 7 — Retention, purge e hard delete
-# Testa: Retention config, hard delete documentos, hard delete conta, purge manual
+# Testa: Retention config, Workspace Settings, hard delete documentos, hard delete conta, purge manual
+#
+# Execute a partir da raiz do projeto para garantir que paths e arquivos estejam corretos.
 
 API_URL="http://localhost:3000/api"
 COLOR_GREEN='\033[0;32m'
@@ -143,6 +145,8 @@ if [ "$RETENTION_HTTP_CODE" == "200" ]; then
 else
   echo -e "${COLOR_RED}❌ Falha ao atualizar retention (HTTP $RETENTION_HTTP_CODE)${COLOR_RESET}"
   echo "   Resposta: $RETENTION_BODY"
+  NEW_FILE_RETENTION=${NEW_FILE_RETENTION:-$FILE_RETENTION}
+  NEW_TEXT_RETENTION=${NEW_TEXT_RETENTION:-$TEXT_RETENTION}
 fi
 
 # 5. Testar Retention - Validação de limites
@@ -160,6 +164,45 @@ if [ "$INVALID_HTTP_CODE" == "400" ]; then
   echo "   Mensagem: $(echo $INVALID_BODY | jq -r '.message // "Validation error"')"
 else
   echo -e "${COLOR_YELLOW}⚠️  Esperava HTTP 400, recebeu HTTP $INVALID_HTTP_CODE${COLOR_RESET}"
+fi
+
+# 5b. Testar Workspace Settings (GET/PUT /settings)
+echo -e "\n${COLOR_BLUE}5b. Testar Workspace Settings - Obter configuração completa${COLOR_RESET}"
+SETTINGS_GET=$(curl -s -X GET "$API_URL/workspaces/$WORKSPACE_ID/settings" \
+  -H "Authorization: Bearer $TOKEN")
+
+SETTINGS_RETENTION=$(echo $SETTINGS_GET | jq -r '.retention.defaultFileRetentionDays // empty')
+SETTINGS_CHUNKING=$(echo $SETTINGS_GET | jq -r '.documentProcessing.chunkingStrategy // empty')
+
+if [ ! -z "$SETTINGS_RETENTION" ] && [ "$SETTINGS_RETENTION" != "null" ]; then
+  echo -e "${COLOR_GREEN}✅ Settings obtidas${COLOR_RESET}"
+  echo "   Retention (via settings): $SETTINGS_RETENTION dias"
+  echo "   Chunking strategy: $SETTINGS_CHUNKING"
+else
+  echo -e "${COLOR_YELLOW}⚠️  Resposta inesperada do GET /settings${COLOR_RESET}"
+  echo "$SETTINGS_GET" | jq . 2>/dev/null || echo "$SETTINGS_GET"
+fi
+
+echo -e "\n${COLOR_BLUE}5c. Testar Workspace Settings - Atualizar chunking strategy${COLOR_RESET}"
+SETTINGS_UPDATE=$(curl -s -w "\n%{http_code}" -X PUT "$API_URL/workspaces/$WORKSPACE_ID/settings" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"documentProcessing":{"chunkingStrategy":"sentence"}}' 2>&1)
+SETTINGS_HTTP_CODE=$(echo "$SETTINGS_UPDATE" | tail -n1)
+SETTINGS_UPDATE_BODY=$(echo "$SETTINGS_UPDATE" | sed '$d')
+
+if [ "$SETTINGS_HTTP_CODE" == "200" ]; then
+  NEW_CHUNKING=$(echo $SETTINGS_UPDATE_BODY | jq -r '.documentProcessing.chunkingStrategy')
+  echo -e "${COLOR_GREEN}✅ Chunking strategy atualizada${COLOR_RESET}"
+  echo "   Nova estratégia: $NEW_CHUNKING"
+  # Restore paragraph for consistency
+  curl -s -X PUT "$API_URL/workspaces/$WORKSPACE_ID/settings" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $TOKEN" \
+    -d '{"documentProcessing":{"chunkingStrategy":"paragraph"}}' > /dev/null
+else
+  echo -e "${COLOR_YELLOW}⚠️  Falha ao atualizar settings (HTTP $SETTINGS_HTTP_CODE)${COLOR_RESET}"
+  echo "$SETTINGS_UPDATE_BODY" | jq . 2>/dev/null || echo "$SETTINGS_UPDATE_BODY"
 fi
 
 # 6. Criar Documento para teste de hard delete
@@ -255,6 +298,8 @@ echo ""
 echo "Funcionalidades testadas:"
 echo "  ✅ GET /api/workspaces/:id/retention"
 echo "  ✅ PUT /api/workspaces/:id/retention"
+echo "  ✅ GET /api/workspaces/:id/settings"
+echo "  ✅ PUT /api/workspaces/:id/settings (chunking strategy)"
 echo "  ✅ Validação de limites de retention"
 echo "  ✅ DELETE /api/workspaces/:id/documents/:docId (hard delete idempotente)"
 echo "  ✅ Audit log de delete"

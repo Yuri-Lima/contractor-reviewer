@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Script de teste de upload
+# Cria test-upload.txt e testa o pipeline completo de upload e processamento.
+#
+# Execute a partir da raiz do projeto.
+
 API_URL="http://localhost:3000/api"
 
 echo "=== 1. Login ==="

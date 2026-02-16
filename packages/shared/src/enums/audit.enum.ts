@@ -10,6 +10,7 @@ export enum AuditAction {
   MEMBER_ADD = 'member_add',
   MEMBER_REMOVE = 'member_remove',
   SETTINGS_UPDATE = 'settings_update',
+  PARSER_API_KEY_UPDATE = 'parser_api_key_update',
 }
 
 export enum TargetType {

@@ -19,7 +19,7 @@ import {
   RedlinePlaybook,
   RedlineChange,
   DiffBlock,
-} from '../../core/models/redline.model';
+} from '@contractai-review/shared';
 import { TranslatePipe } from '@ngx-translate/core';
 import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../core/services/auth.service';

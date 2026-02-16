@@ -7,7 +7,7 @@ import { Toast } from 'primeng/toast';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { ApiService } from '../../core/services/api.service';
-import { DocumentVersion, RedlineChange, DiffBlock } from '../../core/models/redline.model';
+import { DocumentVersion, RedlineChange, DiffBlock } from '@contractai-review/shared';
 import { TranslatePipe } from '@ngx-translate/core';
 import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../core/services/auth.service';

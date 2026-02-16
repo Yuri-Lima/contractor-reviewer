@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, computed, effect, inject, viewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, effect, inject, viewChild, ElementRef, DestroyRef, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -8,16 +8,43 @@ import { Toast } from 'primeng/toast';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { TabsModule } from 'primeng/tabs';
 import { ProgressBar } from 'primeng/progressbar';
+import { TableModule } from 'primeng/table';
+import { Tag } from 'primeng/tag';
 import { interval, Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { takeUntil, timeout } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
-import { Document, DocumentFile, DocumentJob, JobStatus } from '../../core/models/document.model';
-import { ChatResponse, Citation } from '../../core/models/chat.model';
+import { Document, DocumentFile, DocumentJob, JobStatus, ChatResponse, Citation } from '@contractai-review/shared';
 import { PdfViewerComponent } from '../pdf-viewer/pdf-viewer.component';
 import { RedlineComponent } from '../redline/redline.component';
 import { VersionsComponent } from '../versions/versions.component';
 import { DocumentContentComponent } from '../document-content/document-content.component';
+import { BaseListComponent } from '../../core/components/base-list/base-list.component';
+import { BaseListConfig } from '../../core/components/base-list/base-list.config';
+import { LazyLoadEvent } from 'primeng/api';
+import { PaginationService } from '../../core/services/pagination.service';
+import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
+import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
+
+/** API request params for getDocumentFiles (pagination, sort, filters) */
+interface FilesRequestParams {
+  offset: number;
+  limit: number;
+  sortField?: string;
+  sortOrder?: number;
+  fileName?: string;
+  mimeType?: string;
+  status?: string;
+  sizeBytes?: number;
+  startDate?: string;
+  endDate?: string;
+}
+
+/** Params passed to the files resource loader (workspace + document + request) */
+interface FilesResourceParams extends FilesRequestParams {
+  workspaceId: string;
+  documentId: string;
+}
 
 @Component({
   selector: 'app-document-view',
@@ -31,10 +58,14 @@ import { DocumentContentComponent } from '../document-content/document-content.c
     Toast,
     TabsModule,
     ProgressBar,
+    TableModule,
+    Tag,
     PdfViewerComponent,
     RedlineComponent,
     VersionsComponent,
     DocumentContentComponent,
+    BaseListComponent,
+    LocaleDatePipe,
     TranslatePipe,
   ],
   providers: [ConfirmationService, MessageService],
@@ -109,27 +140,47 @@ import { DocumentContentComponent } from '../document-content/document-content.c
         <p-tabpanels>
           <p-tabpanel value="0">
             <div class="files-section mt-4">
-              @if (files().length === 0) {
-                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-                  {{ 'documents.noFiles' | translate }}
-                </div>
-              }
-              @if (files().length > 0) {
-                <div class="space-y-4">
-                  @for (file of files(); track file.id) {
-                    <div class="file-item p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                      <div class="flex-1">
-                        <div class="font-medium text-gray-900 dark:text-gray-100">{{ file.fileName }}</div>
-                        <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                          {{ formatFileSize(file.sizeBytes) }} • {{ file.mimeType }}
-                        </div>
-                      </div>
+              <app-base-list [data]="files()" [config]="filesTableConfig()">
+                <!-- Header template with sorting and filtering -->
+                <ng-template #headerTemplate>
+                  <tr>
+                    <th pSortableColumn="fileName" pColumnFilter field="fileName" filterMatchMode="contains" filterType="text">
+                      {{ 'documents.fileName' | translate }}
+                    </th>
+                    <th pSortableColumn="mimeType" pColumnFilter field="mimeType" filterMatchMode="equals" filterType="text">
+                      {{ 'documents.fileType' | translate }}
+                    </th>
+                    <th pSortableColumn="sizeBytes" pColumnFilter field="sizeBytes" filterMatchMode="gte" filterType="numeric">
+                      {{ 'documents.fileSize' | translate }}
+                    </th>
+                    <th pSortableColumn="status" pColumnFilter field="status" filterMatchMode="equals" filterType="text">
+                      {{ 'documents.status' | translate }}
+                    </th>
+                    <th pSortableColumn="createdAt" pColumnFilter field="createdAt" filterMatchMode="dateIs" filterType="date">
+                      {{ 'documents.createdAt' | translate }}
+                    </th>
+                    <th>{{ 'common.actions' | translate }}</th>
+                  </tr>
+                </ng-template>
+                
+                <!-- Body template -->
+                <ng-template #bodyTemplate let-file>
+                  <tr>
+                    <td>{{ file.fileName }}</td>
+                    <td>{{ file.mimeType }}</td>
+                    <td>{{ formatFileSize(file.sizeBytes) }}</td>
+                    <td>
+                      <p-tag [value]="getFileStatusLabel(file.status)" [severity]="getFileStatusSeverity(file.status)"></p-tag>
+                    </td>
+                    <td>{{ file.createdAt | localeDate: 'short' }}</td>
+                    <td>
                       <div class="flex gap-2">
                         @if (file.status === 'available') {
                           <p-button
                             [label]="'documents.viewFile' | translate"
                             icon="pi pi-eye"
                             [outlined]="true"
+                            size="small"
                             (onClick)="viewFile(file)"
                           ></p-button>
                         }
@@ -138,13 +189,23 @@ import { DocumentContentComponent } from '../document-content/document-content.c
                           icon="pi pi-download" 
                           [outlined]="true" 
                           severity="secondary"
+                          size="small"
                           (onClick)="downloadFile(file)"
                         ></p-button>
                       </div>
-                    </div>
-                  }
-                </div>
-              }
+                    </td>
+                  </tr>
+                </ng-template>
+                
+                <!-- Empty template -->
+                <ng-template #emptyTemplate let-colspan>
+                  <tr>
+                    <td [attr.colspan]="colspan" class="text-center py-8 text-gray-500 dark:text-gray-400">
+                      {{ 'documents.noFiles' | translate }}
+                    </td>
+                  </tr>
+                </ng-template>
+              </app-base-list>
             </div>
           </p-tabpanel>
 
@@ -282,6 +343,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   private confirmationService = inject(ConfirmationService);
   private messageService = inject(MessageService);
   private translateService = inject(TranslateService);
+  private paginationService = inject(PaginationService);
+  private destroyRef = inject(DestroyRef);
 
   // ViewChild como signal
   fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
@@ -297,26 +360,51 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   textFileContent = signal<string>('');
   fileObjectUrls = signal<Map<string, string>>(new Map());
   jobs = signal<DocumentJob[]>([]);
-  private destroy$ = new Subject<void>();
   private destroyAggressive$ = new Subject<void>();
   private isLoadingJobs = false; // Prevent concurrent loadJobs() calls
+  private pollingSubscription: any = null; // Track polling subscription to prevent multiple instances
+  private aggressivePollingSubscription: any = null; // Track aggressive polling subscription
 
-  files = computed(() => this.document()?.files || []);
+  // Files: stable request drives rxResource (observable-based, no firstValueFrom wrapper)
+  private filesParams = signal<FilesRequestParams>({ offset: 0, limit: 25 });
+  private filesRequest = signal<FilesResourceParams | undefined>(undefined);
+  readonly filesResource = rxResource({
+    params: () => this.filesRequest(),
+    stream: ({ params }) => {
+      // Only send defined params so backend never receives "undefined" or invalid sortField
+      const apiParams: Record<string, number | string> = {
+        offset: params.offset,
+        limit: params.limit,
+      };
+      if (params['sortField'] != null && params['sortField'] !== '') {
+        apiParams['sortField'] = params['sortField'];
+        if (params['sortOrder'] != null) apiParams['sortOrder'] = params['sortOrder'];
+      }
+      if (params['fileName'] != null && params['fileName'] !== '') apiParams['fileName'] = params['fileName'];
+      if (params['mimeType'] != null && params['mimeType'] !== '') apiParams['mimeType'] = params['mimeType'];
+      if (params['status'] != null && params['status'] !== '') apiParams['status'] = params['status'];
+      if (params['sizeBytes'] != null) apiParams['sizeBytes'] = params['sizeBytes'];
+      if (params['startDate'] != null && params['startDate'] !== '') apiParams['startDate'] = params['startDate'];
+      if (params['endDate'] != null && params['endDate'] !== '') apiParams['endDate'] = params['endDate'];
+      return this.apiService
+        .getDocumentFiles(params.workspaceId, params.documentId, apiParams)
+        .pipe(timeout(30000));
+    },
+  });
+
+  // Derived from resource for template and config compatibility
+  files = computed(() =>
+    this.filesResource.hasValue() ? this.filesResource.value().files : []
+  );
+  filesTotal = computed(() =>
+    this.filesResource.hasValue() ? this.filesResource.value().total : 0
+  );
+
   // Computed signals that automatically update when jobs signal changes
   activeJobs = computed(() => {
     const jobs = this.jobs();
-    const active = jobs.filter(j => j.status === 'pending' || j.status === 'processing');
-    // Log when active jobs change for debugging (throttled to avoid spam)
-    if (active.length > 0) {
-      const now = Date.now();
-      if (!this.lastActiveJobsLog || (now - this.lastActiveJobsLog) > 1000) {
-        console.log('[DEBUG] Active jobs computed:', active.map(j => ({id: j.id, type: j.type, status: j.status, progress: j.progress})));
-        this.lastActiveJobsLog = now;
-      }
-    }
-    return active;
+    return jobs.filter(j => j.status === 'pending' || j.status === 'processing');
   });
-  private lastActiveJobsLog = 0;
   failedJobs = computed(() => this.jobs().filter(j => j.status === 'failed'));
   hasActiveJobs = computed(() => this.activeJobs().length > 0);
   hasFailedJobs = computed(() => this.failedJobs().length > 0);
@@ -326,37 +414,86 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     return true; // Placeholder - implementar verificação de role
   });
 
+  // Default: Table configuration for files list with lazy loading and column filtering
+  filesTableConfig = computed<BaseListConfig>(() => ({
+    data: this.files(),
+    loading: this.filesResource.isLoading,
+    lazy: true,
+    totalRecords: this.filesTotal(),
+    rows: this.paginationService.pageSize(),
+    rowsPerPageOptions: [10, 25, 50, 100],
+    showCurrentPageReport: true,
+    currentPageReportTemplate: (this.translateService.instant('common.showing') || 'Showing') + ' {first} ' + (this.translateService.instant('common.to') || 'to') + ' {last} ' + (this.translateService.instant('common.of') || 'of') + ' {totalRecords} ' + (this.translateService.instant('documents.files') || 'files'),
+    sortMode: 'multiple',
+    striped: true,
+    emptyMessageKey: 'documents.noFiles',
+    colspan: 6,
+    filters: {},
+    onLazyLoad: (event: LazyLoadEvent) => this.updateFilesParamsFromLazyEvent(event),
+  }));
+
   constructor() {
-    // Effect para recarregar documento quando IDs mudarem
+    // Effect: reacts ONLY to workspaceId / documentId changes
+    // All other signal reads are wrapped in untracked() so they don't
+    // become dependencies that would re-trigger the effect and restart the resource.
     effect(() => {
       const wsId = this.workspaceId();
       const docId = this.documentId();
       if (wsId && docId) {
-        // Load cached jobs immediately for instant UI display
-        const cachedJobs = this.getJobs(docId);
-        if (cachedJobs.length > 0) {
-          console.log('[DEBUG] Found cached jobs in localStorage:', cachedJobs.length);
-          this.jobs.set(cachedJobs);
-          
-          // Check if we should resume aggressive polling
-          const hasActiveJobs = cachedJobs.some(j => 
-            j.status === 'pending' || j.status === 'processing'
-          );
-          if (hasActiveJobs) {
-            this.startAggressivePolling();
+        untracked(() => {
+          // Load cached jobs immediately for instant UI display
+          const cachedJobs = this.getJobs(docId);
+          if (cachedJobs.length > 0) {
+            this.jobs.set(cachedJobs);
+
+            const hasActiveJobs = cachedJobs.some(j =>
+              j.status === 'pending' || j.status === 'processing'
+            );
+            if (hasActiveJobs) {
+              this.startAggressivePolling();
+            }
           }
-        }
-        
-        this.loadDocument();
-        this.loadJobs(); // This will fetch fresh data and merge
-        this.startJobsPolling();
+
+          this.loadDocument();
+          this.loadJobs();
+          this.startJobsPolling();
+
+          // Read pagination from URL — untracked so these signals
+          // don't become effect dependencies
+          this.paginationService.initializeFromQueryParams();
+          const initialParams: FilesRequestParams = {
+            offset: this.paginationService.getOffset(
+              this.paginationService.currentPage(),
+              this.paginationService.pageSize()
+            ),
+            limit: this.paginationService.pageSize(),
+            sortField: this.paginationService.sortField(),
+            sortOrder: this.paginationService.sortOrder(),
+          };
+          this.filesParams.set(initialParams);
+          this.filesRequest.set({ workspaceId: wsId, documentId: docId, ...initialParams });
+        });
       }
+    });
+
+    // Show toast when files resource fails (skip 404 / timeout)
+    effect(() => {
+      const err = this.filesResource.error();
+      if (!err) return;
+      const status = (err as { status?: number }).status;
+      const name = (err as { name?: string }).name;
+      if (status === 404 || name === 'TimeoutError') return;
+      this.messageService.add({
+        severity: 'error',
+        summary: this.translateService.instant('common.error'),
+        detail:
+          this.translateService.instant('documents.loadFilesError') ||
+          'Error loading files',
+      });
     });
   }
 
   ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
     this.stopAggressivePolling();
     // Clean up object URLs to prevent memory leaks
     this.fileObjectUrls().forEach(url => URL.revokeObjectURL(url));
@@ -374,15 +511,84 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         this.document.set(doc);
         // Don't overwrite jobs here - loadJobs() handles job management with proper merge logic
         // The document entity's jobs relation might be stale or incomplete
+        // Files are now loaded separately via pagination, so we don't use doc.files
       },
       error: (err) => console.error('Error loading document:', err),
     });
   }
 
+  /** Map PrimeNG LazyLoadEvent to API request params; resource reacts to filesParams change */
+  private lazyEventToApiParams(event: LazyLoadEvent): FilesRequestParams {
+    const offset = event.first ?? 0;
+    const limit = event.rows ?? 25;
+    const params: FilesRequestParams = { offset, limit };
+
+    if (event.filters) {
+      if (event.filters['fileName']?.value) {
+        params.fileName = event.filters['fileName'].value;
+      }
+      if (event.filters['mimeType']?.value) {
+        params.mimeType = event.filters['mimeType'].value;
+      }
+      if (event.filters['status']?.value) {
+        params.status = event.filters['status'].value;
+      }
+      if (event.filters['sizeBytes']?.value) {
+        params.sizeBytes = event.filters['sizeBytes'].value;
+      }
+      if (event.filters['createdAt']?.value) {
+        const filterDate = event.filters['createdAt'].value;
+        if (filterDate instanceof Date) {
+          const startOfDay = new Date(filterDate);
+          startOfDay.setHours(0, 0, 0, 0);
+          const endOfDay = new Date(filterDate);
+          endOfDay.setHours(23, 59, 59, 999);
+          params.startDate = startOfDay.toISOString().split('T')[0];
+          params.endDate = endOfDay.toISOString().split('T')[0];
+        } else if (typeof filterDate === 'string') {
+          params.startDate = filterDate;
+          params.endDate = filterDate;
+        }
+      }
+    }
+
+    if (event.sortField) {
+      params.sortField = event.sortField as string;
+      params.sortOrder = event.sortOrder ?? 1;
+    }
+
+    return params;
+  }
+
+  private filesParamsEqual(a: FilesRequestParams, b: FilesRequestParams): boolean {
+    return (
+      a.offset === b.offset &&
+      a.limit === b.limit &&
+      (a.sortField ?? '') === (b.sortField ?? '') &&
+      (a.sortOrder ?? 0) === (b.sortOrder ?? 0) &&
+      (a.fileName ?? '') === (b.fileName ?? '') &&
+      (a.mimeType ?? '') === (b.mimeType ?? '') &&
+      (a.status ?? '') === (b.status ?? '')
+    );
+  }
+
+  /** Update files params and URL from table lazy load event; resource reloads only when params actually change */
+  updateFilesParamsFromLazyEvent(event: LazyLoadEvent): void {
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    if (!wsId || !docId) return;
+    const newParams = this.lazyEventToApiParams(event);
+    if (this.filesParamsEqual(this.filesParams(), newParams)) return; // Dedupe — avoids resource restart loop
+    this.paginationService.updateQueryParams(
+      this.paginationService.lazyLoadEventToQueryParams(event)
+    );
+    this.filesParams.set(newParams);
+    this.filesRequest.set({ workspaceId: wsId, documentId: docId, ...newParams });
+  }
+
   loadJobs(): void {
     // Prevent concurrent calls
     if (this.isLoadingJobs) {
-      console.log('[DEBUG] loadJobs already in progress, skipping');
       return;
     }
     
@@ -398,7 +604,6 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     if (currentJobs.length === 0) {
       const cachedJobs = this.getJobs(documentId);
       if (cachedJobs.length > 0) {
-        console.log('[DEBUG] Loaded cached jobs from localStorage:', cachedJobs.length);
         this.jobs.set(cachedJobs);
       }
     }
@@ -406,9 +611,6 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     // Fetch fresh jobs from API - API data always takes precedence
     this.apiService.getDocumentJobs(this.workspaceId(), documentId).subscribe({
       next: (apiJobs) => {
-        console.log('[DEBUG] loadJobs received from API:', apiJobs.length, 'jobs');
-        console.log('[DEBUG] API jobs progress:', apiJobs.map(j => ({id: j.id, type: j.type, status: j.status, progress: j.progress})));
-        
         // API jobs are the source of truth - use them directly
         // Only merge in cached jobs that aren't in API response (for edge cases)
         const apiJobsMap = new Map(apiJobs.map(j => [j.id, j]));
@@ -421,26 +623,6 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
             mergedJobs.push(cachedJob);
           }
         });
-        
-        // Detect progress changes before updating signal
-        const currentJobsMap = new Map(currentJobs.map(j => [j.id, j]));
-        const progressChanges: Array<{id: string, type: string, oldProgress: number, newProgress: number}> = [];
-        
-        mergedJobs.forEach(newJob => {
-          const oldJob = currentJobsMap.get(newJob.id);
-          if (oldJob && oldJob.progress !== newJob.progress) {
-            progressChanges.push({
-              id: newJob.id,
-              type: newJob.type,
-              oldProgress: oldJob.progress,
-              newProgress: newJob.progress
-            });
-          }
-        });
-        
-        if (progressChanges.length > 0) {
-          console.log('[DEBUG] Progress changes detected:', progressChanges);
-        }
         
         // Update signal with merged result - API data always wins
         this.jobs.set(mergedJobs);
@@ -457,7 +639,6 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
           this.stopAggressivePolling();
         }
         
-        console.log('[DEBUG] Jobs signal updated. Total:', mergedJobs.length, 'Pending:', pendingJobIds.length, 'Progress changes:', progressChanges.length);
         this.isLoadingJobs = false;
       },
       error: (err) => {
@@ -469,12 +650,15 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   }
 
   startJobsPolling(): void {
-    this.stopJobsPolling(); // Ensure cleanup first
-    console.log('[DEBUG] Starting jobs polling');
+    // Prevent multiple polling instances
+    if (this.pollingSubscription) {
+      this.stopJobsPolling();
+    }
+    
     let consecutiveNoActiveJobs = 0;
     
-    interval(500)
-      .pipe(takeUntil(this.destroy$))
+    this.pollingSubscription = interval(500)
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         // Always load jobs to get latest updates
         this.loadJobs();
@@ -483,12 +667,10 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         const hasPendingOrProcessing = currentJobs.some(
           (j) => j.status === 'pending' || j.status === 'processing',
         );
-        console.log('[DEBUG] Polling check - hasPendingOrProcessing:', hasPendingOrProcessing, 'jobs.length:', currentJobs.length, 'jobs:', currentJobs.map(j => ({id: j.id, type: j.type, status: j.status, progress: j.progress})));
         if (!hasPendingOrProcessing && currentJobs.length > 0) {
           consecutiveNoActiveJobs++;
           // Stop polling after 3 consecutive checks with no active jobs (1.5 seconds)
           if (consecutiveNoActiveJobs >= 3) {
-            console.log('[DEBUG] Stopping polling - no active jobs for 3 consecutive checks');
             this.stopJobsPolling();
           }
         } else {
@@ -498,10 +680,10 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   }
 
   stopJobsPolling(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-    // Create new Subject for next polling session
-    this.destroy$ = new Subject<void>();
+    if (this.pollingSubscription) {
+      this.pollingSubscription.unsubscribe();
+      this.pollingSubscription = null;
+    }
   }
 
   // LocalStorage helper methods for tracking jobs
@@ -509,9 +691,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     try {
       const key = `jobs_${documentId}`;
       localStorage.setItem(key, JSON.stringify(jobs));
-      console.log('[DEBUG] Saved jobs to localStorage:', jobs.length, 'jobs');
     } catch (e) {
-      console.error('[DEBUG] Failed to save jobs to localStorage:', e);
+      console.error('Failed to save jobs to localStorage:', e);
     }
   }
 
@@ -523,7 +704,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         return JSON.parse(stored) as DocumentJob[];
       }
     } catch (e) {
-      console.error('[DEBUG] Failed to get jobs from localStorage:', e);
+      console.error('Failed to get jobs from localStorage:', e);
     }
     return [];
   }
@@ -532,14 +713,16 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     try {
       const key = `jobs_${documentId}`;
       localStorage.removeItem(key);
-      console.log('[DEBUG] Cleared jobs from localStorage');
     } catch (e) {
-      console.error('[DEBUG] Failed to clear jobs from localStorage:', e);
+      console.error('Failed to clear jobs from localStorage:', e);
     }
   }
 
   startAggressivePolling(): void {
-    this.stopAggressivePolling();
+    // Prevent multiple aggressive polling instances
+    if (this.aggressivePollingSubscription) {
+      this.stopAggressivePolling();
+    }
     
     const currentJobs = this.jobs();
     const pendingJobIds = currentJobs
@@ -550,9 +733,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       return; // No jobs to track
     }
     
-    console.log('[DEBUG] Starting aggressive polling for jobs:', pendingJobIds);
-    
-    interval(200) // Poll every 200ms
+    this.aggressivePollingSubscription = interval(200) // Poll every 200ms
       .pipe(takeUntil(this.destroyAggressive$))
       .subscribe(() => {
         this.loadJobs(); // This updates localStorage automatically
@@ -564,13 +745,16 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         
         if (stillActive.length === 0) {
           // All tracked jobs completed
-          console.log('[DEBUG] All tracked jobs completed, stopping aggressive polling');
           this.stopAggressivePolling();
         }
       });
   }
 
   stopAggressivePolling(): void {
+    if (this.aggressivePollingSubscription) {
+      this.aggressivePollingSubscription.unsubscribe();
+      this.aggressivePollingSubscription = null;
+    }
     this.destroyAggressive$.next();
     this.destroyAggressive$.complete();
     this.destroyAggressive$ = new Subject<void>();
@@ -631,6 +815,21 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
             }
           }, 100);
           this.loadDocument();
+          // Reload files: set request so resource re-runs
+          const reloadParams: FilesRequestParams = {
+            offset: 0,
+            limit: this.paginationService.pageSize(),
+          };
+          this.filesParams.set(reloadParams);
+          this.filesRequest.set({
+            workspaceId: this.workspaceId(),
+            documentId: this.documentId(),
+            ...reloadParams,
+          });
+          this.paginationService.updateQueryParams({
+            page: 0,
+            limit: this.paginationService.pageSize(),
+          });
         },
         error: (err) => console.error('Error uploading file:', err),
       });
@@ -798,12 +997,29 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   }
 
   formatFileSize(bytes: number): string {
-    if (bytes === 0) return `0 ${this.translateService.instant('documents.fileSize.bytes')}`;
+    if (bytes === 0) return `0 ${this.translateService.instant('documents.fileSizeUnits.bytes')}`;
     const k = 1024;
     const sizes = ['bytes', 'kb', 'mb', 'gb'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    const sizeLabel = this.translateService.instant(`documents.fileSize.${sizes[i]}`);
+    const sizeLabel = this.translateService.instant(`documents.fileSizeUnits.${sizes[i]}`);
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizeLabel;
+  }
+
+  // Default: Get file status label from translation key
+  getFileStatusLabel(status: string): string {
+    return this.translateService.instant(`documents.fileStatus.${status}`) || status;
+  }
+
+  // Default: Get file status severity for PrimeNG Tag component
+  getFileStatusSeverity(status: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' | null | undefined {
+    const severityMap: Record<string, 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' | null | undefined> = {
+      'available': 'success',
+      'processing': 'warn',
+      'uploading': 'info',
+      'error': 'danger',
+    };
+    const result = severityMap[status];
+    return result !== undefined ? result : 'secondary';
   }
 
   onContentTextSelected(event: { text: string; startIndex?: number; endIndex?: number }): void {

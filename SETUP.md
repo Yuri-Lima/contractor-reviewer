@@ -101,4 +101,24 @@ Ver `.env.example`. Principais:
 
 Workspace → upload → chat com citações → redline com playbook → versões → export privacidade → purge.
 
+## Troubleshooting
+
+### Port already in use (EADDRINUSE)
+
+If you see `EADDRINUSE: address already in use` when starting the API (port 3000) or the web app (port 4200), a previous process may not have released the port.
+
+**Option 1:** Find and kill the process manually:
+```bash
+lsof -i :3000
+kill -9 <PID>
+```
+
+**Option 2:** Use the convenience script (kills processes on ports 3000 and 4200):
+```bash
+pnpm kill:port
+# Or for a specific port: ./scripts/kill-port.sh 3000
+```
+
+The API now uses NestJS shutdown hooks (`enableShutdownHooks`), so pressing Ctrl+C should close it properly. When running E2E with `E2E_WITH_API=1 ./scripts/e2e.sh`, the script will also kill the API process tree on exit.
+
 **Configurações do workspace:** Acesse Settings no sidebar do workspace para configurar retention e estratégia de chunking (paragraph, sentence, fixed_size).

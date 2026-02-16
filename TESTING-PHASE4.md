@@ -340,7 +340,7 @@ chmod +x test-upload.sh
 ### Upload falha com erro de validação
 
 1. Verificar tamanho do arquivo (< 25MB)
-2. Verificar extensão do arquivo (pdf, docx, txt, png, jpg)
+2. Verificar extensão do arquivo (pdf, doc, docx, txt, png, jpg)
 3. Verificar MIME type do arquivo
 
 ## Próximos Passos

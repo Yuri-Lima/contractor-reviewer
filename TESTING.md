@@ -24,7 +24,7 @@ docker-compose ps
 # Serviços disponíveis:
 # - postgres (5432)
 # - redis (6379)
-# - docling (8000) — parser de documentos (PDF, DOCX, imagens)
+# - docling (8000) — parser de documentos (PDF, DOC, DOCX, imagens)
 # - pdfplumber (8001) — parser PDF
 
 # Verificar saúde dos parsers (opcional, para testes de upload)

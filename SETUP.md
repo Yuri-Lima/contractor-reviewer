@@ -54,7 +54,7 @@ Isso sobe:
 |-------------|--------------|----------------------------------------|
 | postgres    | 5432         | Banco de dados + pgvector              |
 | redis       | 6379         | BullMQ (filas de parsing, chunking, embeddings) |
-| docling     | 8000         | Parser Python (PDF, DOCX, imagens)    |
+| docling     | 8000         | Parser Python (PDF, DOC, DOCX, imagens) |
 | pdfplumber  | 8001         | Parser Python (PDF)                   |
 
 Se Docling ou PDFPlumber não subir, a API continuará funcionando, mas o parsing falhará com mensagem amigável (ex: "Docling service is unavailable. Start it with docker-compose up docling").

@@ -1,12 +1,16 @@
 # Document Parsers — Reference
 
-ContractAI Review supports multiple document parsers for extracting text from uploaded files (PDF, DOCX, TXT, images). Users can choose the parser at upload time or rely on the workspace default.
+ContractAI Review supports multiple document parsers for extracting text from uploaded files (PDF, DOC, DOCX, TXT, images). Users can choose the parser at upload time or rely on the workspace default.
+
+## Upload Validation
+
+Before parsing, files are validated by the storage module. Allowed formats: `.pdf`, `.doc`, `.docx`, `.txt`, `.png`, `.jpg`, `.jpeg` (max 25MB). MIME type is verified via file signature (magic numbers). See [apps/api/src/storage/README.md](apps/api/src/storage/README.md) for details.
 
 ## Overview
 
 | Parser       | Type       | API Key | Formats                     | Notes                                  |
 |--------------|------------|---------|-----------------------------|----------------------------------------|
-| **Docling**  | Self-hosted| No      | PDF, DOCX, PNG, JPG         | Default. Supports scanned PDFs (OCR).   |
+| **Docling**  | Self-hosted| No      | PDF, DOC, DOCX, PNG, JPG   | Default. Supports scanned PDFs (OCR).   |
 | **PDFPlumber**| Self-hosted| No      | PDF                         | Classic extraction, PDF only.           |
 | **DPT-2**    | Cloud      | Yes     | PDF, DOCX, PNG, JPG         | LandingAI. High quality.                |
 | **LlamaParse**| Cloud     | Yes     | PDF, DOCX                   | LlamaIndex.                             |
@@ -23,6 +27,7 @@ ContractAI Review supports multiple document parsers for extracting text from up
 
 **Capabilities:**
 - PDF (including scanned with internal OCR)
+- DOC (legacy Word / OLE)
 - DOCX
 - PNG, JPG images
 
@@ -137,7 +142,7 @@ GET /api/workspaces/:workspaceId/document-parsers
     "description": "IBM Docling. Self-hosted, no API key. PDF, DOCX, images.",
     "requiresApiKey": false,
     "hasApiKey": true,
-    "supportedFormats": ["pdf", "docx", "png", "jpg"]
+    "supportedFormats": ["pdf", "doc", "docx", "png", "jpg"]
   }
 ]
 ```

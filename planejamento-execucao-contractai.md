@@ -54,7 +54,7 @@
 ## Fase 4 — Upload e pipeline em fila
 
 - [x] Módulo de storage (interface S3/R2; implementação local opcional para dev).
-- [x] Validações de upload: tamanho (ex.: 25MB), mime sniffing, extensões permitidas (pdf, docx, txt, png, jpg).
+- [x] Validações de upload: tamanho (ex.: 25MB), mime sniffing, extensões permitidas (pdf, doc, docx, txt, png, jpg).
 - [x] Integrar BullMQ + Redis no NestJS; criar filas para OCR, parsing, chunking+embeddings.
 - [x] Entity e atualização de DocumentJob (status, progress, attempts, lastError).
 - [x] Worker process: jobs de OCR (Tesseract), parsing (pdf.js, etc.), chunking e geração de embeddings; atualizar DocumentJob e marcar arquivo como "available" após sucesso.

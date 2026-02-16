@@ -8,7 +8,7 @@ import { InputText } from 'primeng/inputtext';
 import { Password } from 'primeng/password';
 import { Message } from 'primeng/message';
 import { AuthService } from '../../core/services/auth.service';
-import { LoginRequest } from '../../core/models/user.model';
+import { LoginRequest } from '@contractai-review/shared';
 import { TranslatePipe } from '@ngx-translate/core';
 import { TranslateService } from '@ngx-translate/core';
 import { LanguageSelectorComponent } from '../../layout/language-selector/language-selector.component';

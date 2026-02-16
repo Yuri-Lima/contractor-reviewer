@@ -91,8 +91,9 @@ function tableFactory(component: BaseListComponent): Table | null {
   ],
   template: `
     <div class="base-list-container">
-      <!-- Actions slot (optional) - can use ng-content for non-template content -->
-      <ng-content select="[slot=actions]"></ng-content>
+      @if (toolbarTemplate()) {
+        <ng-container *ngTemplateOutlet="toolbarTemplate()!"></ng-container>
+      }
       
       <!-- PrimeNG Table -->
       <p-table
@@ -112,6 +113,10 @@ function tableFactory(component: BaseListComponent): Table | null {
         [scrollHeight]="getScrollHeight()"
         (onLazyLoad)="onLazyLoad($event)"
         [class]="getTableClasses()"
+        [selectionMode]="config().selectionMode ?? undefined"
+        [selection]="getSelection()"
+        (selectionChange)="onSelectionChange($event)"
+        [dataKey]="config().dataKey ?? undefined"
       >
         <!-- Header template projection -->
         <ng-template pTemplate="header">
@@ -185,6 +190,7 @@ export class BaseListComponent<T = any> {
   emptyTemplate = contentChild<TemplateRef<any>>('emptyTemplate');
   footerTemplate = contentChild<TemplateRef<any>>('footerTemplate');
   filterTemplate = contentChild<TemplateRef<any>>('filterTemplate');
+  toolbarTemplate = contentChild<TemplateRef<any>>('toolbarTemplate');
 
   // Computed properties
   loading = computed(() => {
@@ -198,6 +204,14 @@ export class BaseListComponent<T = any> {
   colspan = computed(() => 
     this.config().colspan || this.detectColumnCount()
   );
+
+  getSelection(): any {
+    return this.config().selection ?? null;
+  }
+
+  onSelectionChange(event: any): void {
+    this.config().onSelectionChange?.(event);
+  }
 
   // Lazy loading handler
   onLazyLoad(event: TableLazyLoadEvent): void {

@@ -11,9 +11,10 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { WorkspaceGuard, RolesGuard } from '../workspace/guards';
 import { Roles } from '../workspace/decorators/roles.decorator';
+import { RetentionConfig } from '@contractai-review/shared';
 import { WorkspaceRole } from '../entities/workspace-member.entity';
 import { WorkspaceId } from '../workspace/decorators';
-import { RetentionService, RetentionConfig } from './retention.service';
+import { RetentionService } from './retention.service';
 
 @Controller('workspaces/:workspaceId/retention')
 @UseGuards(JwtAuthGuard, WorkspaceGuard, RolesGuard)

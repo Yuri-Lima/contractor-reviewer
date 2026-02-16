@@ -1,14 +1,8 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { RetentionConfig } from '@contractai-review/shared';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
-
-export interface RetentionConfig {
-  defaultFileRetentionDays: number;
-  defaultTextEmbeddingsRetentionDays: number;
-  retentionOverrides?: Record<string, number>;
-  fuzzyMatchThreshold?: number; // Minimum match percentage for fuzzy matching (0-100)
-}
 
 @Injectable()
 export class RetentionService {

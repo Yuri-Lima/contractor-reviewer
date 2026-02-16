@@ -99,6 +99,13 @@ A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que 
 - Busca em fontes legais específicas por país/jurisdição
 - Status: explicit (encontrado no contrato), inferred (inferido), unknown (solicita ao usuário)
 
+### 🎯 Onboarding (SaaS)
+- **Tour guiado** (Shepherd.js): tour principal mostrando workspaces, documentos, chat, redline e configurações
+- **Checklist de primeiros passos**: criar workspace, upload, primeira revisão, redline, export
+- **Auto-tracking**: checklist atualizada automaticamente ao completar cada tarefa
+- **Ícones de ajuda**: tooltips e painéis "Learn more" para conceitos (ex.: confidence score, citações)
+- **Reset**: reiniciar onboarding a qualquer momento em Account Settings > Help & Onboarding
+
 ## Como Funciona
 
 ### 1. Upload e Processamento
@@ -184,10 +191,11 @@ contractor-reviwer/
 - **Parsers**: Adapters para Docling, PDFPlumber, DPT-2, LlamaParse, Unstructured (factory + API keys criptografadas)
 
 ### Frontend (`apps/web`)
-- **Framework**: Angular (última LTS)
+- **Framework**: Angular 21
 - **Mobile**: Capacitor (iOS/Android)
 - **UI Components**: PrimeNG
 - **i18n**: ngx-translate (EN, ES, PT-BR, DE)
+- **Onboarding**: Shepherd.js (tour guiado)
 
 ### AI/ML
 - **Embeddings**: OpenAI `text-embedding-3-small` (1536 dimensões)
@@ -219,7 +227,7 @@ pnpm e2e
 E2E_WITH_API=1 ./scripts/e2e.sh
 ```
 
-Ver [apps/web/e2e/](apps/web/e2e/) para estrutura dos testes.
+Ver [TESTING.md](TESTING.md) para guia completo e [apps/web/e2e/](apps/web/e2e/) para estrutura dos testes (auth, workspaces, documents, settings, onboarding).
 
 ## Stack Tecnológica
 
@@ -264,11 +272,13 @@ Ver [apps/web/e2e/](apps/web/e2e/) para estrutura dos testes.
 - ✅ Trilha de auditoria completa
 - ✅ Página de Workspace Settings (Retention, Document Processing, Document Parsers, AI Prompts)
 - ✅ Suporte multilíngue
+- ✅ Onboarding (tour guiado, checklist, info icons, reset em Account Settings)
 
 ## Documentação
 
 - **[SETUP.md](SETUP.md)** - Guia completo de instalação e configuração local
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Deploy em produção com Docker Compose
+- **[TESTING.md](TESTING.md)** - Testes manuais e E2E (Playwright, onboarding)
 - **[DOCUMENT-PARSERS.md](DOCUMENT-PARSERS.md)** - Referência dos parsers de documentos (Docling, PDFPlumber, DPT-2, etc.)
 - **[planejamento-execucao-contractai.md](planejamento-execucao-contractai.md)** - Planejamento detalhado das fases de implementação
 

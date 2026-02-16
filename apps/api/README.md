@@ -19,6 +19,7 @@ src/
 ├── main.ts                 # Bootstrap
 ├── app.module.ts
 ├── auth/                   # Autenticação JWT, registro
+├── onboarding/             # User onboarding state (checklist, tour, reset)
 ├── workspace/              # Workspaces, membros, settings, document-parsers
 ├── documents/              # CRUD de documentos
 ├── parsers/                # Adapters de parsers (Docling, PDFPlumber, DPT-2, etc.)
@@ -41,6 +42,21 @@ Endpoints:
 - Upload aceita parâmetro `parser` opcional (docling | pdfplumber | dpt2 | llamaparse | unstructured)
 
 Ver [DOCUMENT-PARSERS.md](../../DOCUMENT-PARSERS.md) no root do monorepo.
+
+## Onboarding
+
+Estado de onboarding por usuário (checklist, tour, reset). Endpoints em `/api/onboarding` (todos autenticados):
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/onboarding` | Retorna estado atual (cria default se não existir) |
+| PATCH | `/onboarding/checklist` | Atualiza item da checklist (`key`, `value`) |
+| PATCH | `/onboarding/tour` | Atualiza estado do tour (`tourKey`, `dismissed`, `completed`, `lastStepId`) |
+| POST | `/onboarding/complete` | Marca onboarding como concluído |
+| POST | `/onboarding/dismiss` | Marca onboarding como dispensado |
+| POST | `/onboarding/reset` | Reseta estado, incrementa `resetCount`, atualiza `lastResetAt` |
+
+Tipos e constantes em `@contractai-review/shared` (`OnboardingState`, `CHECKLIST_KEYS`, etc.).
 
 ## Comandos
 

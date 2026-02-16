@@ -2,6 +2,7 @@ import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Button } from 'primeng/button';
+import { Card } from 'primeng/card';
 import { Toolbar } from 'primeng/toolbar';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Toast } from 'primeng/toast';
@@ -15,17 +16,18 @@ import { TranslatePipe } from '@ngx-translate/core';
 @Component({
   selector: 'app-documents-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, Button, Toolbar, SharedModule, ConfirmDialog, Toast, LocaleDatePipe, TranslatePipe],
+  imports: [CommonModule, RouterModule, Button, Card, Toolbar, SharedModule, ConfirmDialog, Toast, LocaleDatePipe, TranslatePipe],
   providers: [ConfirmationService, MessageService],
   template: `
-    <div class="documents-container p-6">
+    <div class="documents-container p-6 max-w-6xl mx-auto">
       <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">{{ 'documents.title' | translate }}</h1>
 
-      <p-toolbar class="documents-toolbar">
+      <p-toolbar class="documents-toolbar mb-4">
         <ng-template pTemplate="start">
           <div class="flex flex-wrap items-center gap-2">
             <p-button
               data-testid="documents-create-btn"
+              data-tour="documents-create-btn"
               [label]="'documents.create' | translate"
               icon="pi pi-plus"
               (onClick)="showCreateForm.set(true)"
@@ -35,9 +37,13 @@ import { TranslatePipe } from '@ngx-translate/core';
       </p-toolbar>
 
       @if (showCreateForm()) {
-        <div class="create-form mb-8">
-          <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm">
-            <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">{{ 'documents.create' | translate }}</h3>
+        <p-card class="mb-6">
+          <ng-template pTemplate="header">
+            <div class="p-4 pb-0">
+              <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100 m-0">{{ 'documents.create' | translate }}</h3>
+            </div>
+          </ng-template>
+          <div class="p-4 pt-2">
             <input 
               data-testid="document-title-input"
               [value]="newDocumentTitle()" 
@@ -57,7 +63,7 @@ import { TranslatePipe } from '@ngx-translate/core';
                 <p class="text-red-600 dark:text-red-400 text-sm">{{ error() }}</p>
               </div>
             }
-            <div class="form-actions flex gap-3">
+            <div class="form-actions flex gap-2">
               <button 
                 data-testid="document-create-submit"
                 class="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -80,11 +86,13 @@ import { TranslatePipe } from '@ngx-translate/core';
               </button>
             </div>
           </div>
-        </div>
+        </p-card>
       }
 
       @if (documents().length > 0) {
-        <div class="documents-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <p-card class="mt-4">
+          <div class="p-4">
+        <div class="documents-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="documents-grid">
           @for (doc of documents(); track doc.id) {
             <div
               class="document-card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-md dark:hover:shadow-lg transition-all duration-200 relative cursor-pointer"
@@ -122,10 +130,16 @@ import { TranslatePipe } from '@ngx-translate/core';
             </div>
           }
         </div>
+          </div>
+        </p-card>
       } @else {
-        <div class="empty-state text-center py-12 px-8" data-testid="documents-empty-state">
+        <p-card class="mt-4">
+          <div class="p-4 text-center">
+        <div class="empty-state py-12 px-8" data-testid="documents-empty-state">
           <p class="text-gray-600 dark:text-gray-400">{{ 'documents.noDocumentsFound' | translate }}</p>
         </div>
+          </div>
+        </p-card>
       }
 
       <p-confirmDialog></p-confirmDialog>

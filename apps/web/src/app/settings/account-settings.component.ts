@@ -11,6 +11,8 @@ import { Message } from 'primeng/message';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ApiService } from '../core/services/api.service';
 import { AuthService } from '../core/services/auth.service';
+import { OnboardingService } from '../onboarding/onboarding.service';
+import { TourService } from '../onboarding/tour/tour.service';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 
 @Component({
@@ -43,9 +45,12 @@ export class AccountSettingsComponent implements OnInit {
   private confirmationService = inject(ConfirmationService);
   private messageService = inject(MessageService);
   private translateService = inject(TranslateService);
+  private onboardingService = inject(OnboardingService);
+  private tourService = inject(TourService);
 
   currentUser = signal(this.authService.currentUser());
   deleting = signal(false);
+  resetting = signal(false);
 
   deleteForm: FormGroup;
 
@@ -58,6 +63,34 @@ export class AccountSettingsComponent implements OnInit {
 
   ngOnInit(): void {
     // Component initialized
+  }
+
+  confirmResetOnboarding(): void {
+    this.confirmationService.confirm({
+      message: this.translateService.instant('onboarding.resetConfirmMessage'),
+      header: this.translateService.instant('onboarding.resetConfirmTitle'),
+      icon: 'pi pi-refresh',
+      acceptLabel: this.translateService.instant('onboarding.resetOnboarding'),
+      rejectLabel: this.translateService.instant('common.cancel'),
+      accept: () => {
+        this.resetOnboarding();
+      },
+    });
+  }
+
+  resetOnboarding(): void {
+    this.resetting.set(true);
+    this.onboardingService.resetOnboarding();
+    this.messageService.add({
+      severity: 'success',
+      summary: this.translateService.instant('common.success'),
+      detail: this.translateService.instant('onboarding.resetSuccess'),
+    });
+    this.resetting.set(false);
+  }
+
+  startTourNow(): void {
+    this.tourService.startTour('primary');
   }
 
   validateDeleteText(control: any) {

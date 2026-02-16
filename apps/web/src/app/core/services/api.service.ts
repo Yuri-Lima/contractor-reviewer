@@ -24,6 +24,10 @@ import {
   PromptResponse,
   ListPromptsResponse,
   ParserInfo,
+  OnboardingState,
+  UpdateChecklistRequest,
+  UpdateTourRequest,
+  UpdateVisitedRouteRequest,
 } from '@contractai-review/shared';
 
 @Injectable({
@@ -258,6 +262,55 @@ export class ApiService {
   resetPrompt(workspaceId: string, key: string): Observable<void> {
     return this.http.delete<void>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.prompts(workspaceId)}/${encodeURIComponent(key)}`,
+    );
+  }
+
+  // Onboarding
+  getOnboardingState(): Observable<OnboardingState> {
+    return this.http.get<OnboardingState>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.onboarding}`,
+    );
+  }
+
+  updateOnboardingChecklist(request: UpdateChecklistRequest): Observable<OnboardingState> {
+    return this.http.patch<OnboardingState>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.onboarding}/checklist`,
+      request,
+    );
+  }
+
+  updateOnboardingTour(request: UpdateTourRequest): Observable<OnboardingState> {
+    return this.http.patch<OnboardingState>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.onboarding}/tour`,
+      request,
+    );
+  }
+
+  updateVisitedRoute(request: UpdateVisitedRouteRequest): Observable<OnboardingState> {
+    return this.http.patch<OnboardingState>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.onboarding}/visited-routes`,
+      request,
+    );
+  }
+
+  completeOnboarding(): Observable<OnboardingState> {
+    return this.http.post<OnboardingState>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.onboarding}/complete`,
+      {},
+    );
+  }
+
+  dismissOnboarding(): Observable<OnboardingState> {
+    return this.http.post<OnboardingState>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.onboarding}/dismiss`,
+      {},
+    );
+  }
+
+  resetOnboarding(): Observable<OnboardingState> {
+    return this.http.post<OnboardingState>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.onboarding}/reset`,
+      {},
     );
   }
 

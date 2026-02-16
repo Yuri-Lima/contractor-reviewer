@@ -4,13 +4,16 @@ import { CommonModule } from '@angular/common';
 import { filter } from 'rxjs';
 import { HeaderComponent } from './layout/header/header.component';
 import { SidebarComponent } from './layout/sidebar/sidebar.component';
+import { ChecklistComponent } from './onboarding/checklist/checklist.component';
 import { AuthService } from './core/services/auth.service';
 import { ThemeService } from './core/services/theme.service';
+import { OnboardingService } from './onboarding/onboarding.service';
+import { RouteGuideService } from './onboarding/tour/route-guide.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent],
+  imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent, ChecklistComponent],
   template: `
     <div class="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       @if (showHeader()) {
@@ -28,13 +31,18 @@ import { ThemeService } from './core/services/theme.service';
           <router-outlet></router-outlet>
         </main>
       }
+      @if (showChecklist()) {
+        <app-onboarding-checklist></app-onboarding-checklist>
+      }
     </div>
   `,
 })
 export class AppComponent {
   private router = inject(Router);
   private authService = inject(AuthService);
-  private themeService = inject(ThemeService); // Initialize theme service
+  private themeService = inject(ThemeService);
+  private onboardingService = inject(OnboardingService);
+  private routeGuideService = inject(RouteGuideService);
 
   currentWorkspaceId = signal<string | null>(null);
   currentUrl = signal<string>(this.router.url);
@@ -48,7 +56,21 @@ export class AppComponent {
     this.authService.isAuthenticated() && !this.isAuthRoute(this.currentUrl())
   );
 
+  showChecklist = computed(() => {
+    const state = this.onboardingService.state();
+    const visible = this.onboardingService.isChecklistVisible();
+    return (
+      this.authService.isAuthenticated() &&
+      !this.isAuthRoute(this.currentUrl()) &&
+      state != null &&
+      !state.completed &&
+      !state.dismissed &&
+      visible
+    );
+  });
+
   constructor() {
+    this.routeGuideService.init();
     // Atualizar currentWorkspaceId quando a rota mudar
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))

@@ -143,6 +143,7 @@ Ver [DOCUMENT-PARSERS.md](DOCUMENT-PARSERS.md) para detalhes.
 6. Visualizar versões e diff
 7. Export privacidade (DSAR-lite)
 8. Verificar purge de retenção
+9. **Onboarding**: checklist (floating widget), tour guiado, reset em Account Settings > Help & Onboarding
 
 ## Troubleshooting
 

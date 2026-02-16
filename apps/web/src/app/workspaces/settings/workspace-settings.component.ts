@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -19,6 +19,7 @@ import {
 } from '@contractai-review/shared';
 import { PromptsEditorComponent } from './prompts-editor/prompts-editor.component';
 import { ParserSettingsComponent } from './parser-settings/parser-settings.component';
+import { WorkspaceSettingsTabService } from '../../onboarding/tour/workspace-settings-tab.service';
 
 interface ChunkingOption {
   value: string;
@@ -54,12 +55,13 @@ export class WorkspaceSettingsComponent implements OnInit {
   private fb = inject(FormBuilder);
   private messageService = inject(MessageService);
   private translateService = inject(TranslateService);
+  private wsTabService = inject(WorkspaceSettingsTabService);
 
   workspaceId = signal('');
   saving = signal(false);
   savingChunking = signal(false);
   loading = signal(false);
-  activeTab = 'general';
+  activeTab = signal<string>('general');
 
   retentionForm: FormGroup;
   chunkingStrategy = signal<string>(ChunkingStrategy.PARAGRAPH);
@@ -87,6 +89,13 @@ export class WorkspaceSettingsComponent implements OnInit {
   );
 
   constructor() {
+    effect(() => {
+      const tab = this.wsTabService.requestedTab();
+      if (tab != null && this.workspaceId()) {
+        this.activeTab.set(tab);
+        this.wsTabService.clearRequest();
+      }
+    });
     this.retentionForm = this.fb.group({
       defaultFileRetentionDays: [
         30,
@@ -205,5 +214,9 @@ export class WorkspaceSettingsComponent implements OnInit {
     const option = this.chunkingOptions.find((o) => o.value === value);
     if (option?.disabled) return;
     this.chunkingStrategy.set(value);
+  }
+
+  setActiveTab(tab: string | number | undefined): void {
+    if (tab != null) this.activeTab.set(String(tab));
   }
 }

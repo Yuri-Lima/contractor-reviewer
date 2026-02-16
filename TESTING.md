@@ -415,6 +415,35 @@ Para testar upload de documentos com parser:
 
 Ver [DOCUMENT-PARSERS.md](./DOCUMENT-PARSERS.md) para referência dos parsers.
 
+## Testes E2E — Onboarding (Playwright)
+
+O projeto inclui testes E2E Playwright para onboarding em `apps/web/e2e/src/onboarding.spec.ts`:
+
+**Requisitos:** Usuário autenticado (projeto `chromium-authenticated`).
+
+**Testes:**
+- Account Settings exibe a seção "Help & Onboarding" com botões Reset e Start Tour
+- Reset onboarding: clicar em Reset, confirmar no diálogo, verificar toast de sucesso
+- Checklist reaparece após reset e reload da página
+- Tour pode ser iniciado e percorrido
+
+**Execução:**
+```bash
+# Com API e web rodando
+pnpm e2e
+# ou: pnpm --filter web e2e:run
+
+# Com script que inicia API automaticamente
+E2E_WITH_API=1 ./scripts/e2e.sh
+```
+
+**Data-testid** usados nos testes:
+- `onboarding-help-card` — card Help & Onboarding em Account Settings
+- `onboarding-reset-btn` — botão Reset Onboarding
+- `onboarding-start-tour-btn` — botão Start Tour
+- `onboarding-checklist` — checklist flutuante
+- `tour-step-{id}` — etapas do tour (welcome, workspaces, etc.)
+
 ## Próximos Passos
 
 Após validar estes testes, podemos prosseguir para:

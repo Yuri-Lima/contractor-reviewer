@@ -13,9 +13,12 @@ import { Dialog } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 import { Tag } from 'primeng/tag';
+import { Card } from 'primeng/card';
 import { interval, Subject } from 'rxjs';
 import { takeUntil, timeout } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
+import { OnboardingService } from '../../onboarding/onboarding.service';
+import { DocumentViewTabService } from '../../onboarding/tour/document-view-tab.service';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { Document, DocumentFile, DocumentJob, JobStatus, ChatResponse, Citation, ParserInfo } from '@contractai-review/shared';
 import { PdfViewerComponent } from '../pdf-viewer/pdf-viewer.component';
@@ -66,6 +69,7 @@ interface FilesResourceParams extends FilesRequestParams {
     ProgressBar,
     TableModule,
     Tag,
+    Card,
     Dialog,
     SelectModule,
     PdfViewerComponent,
@@ -101,6 +105,7 @@ interface FilesResourceParams extends FilesRequestParams {
         <div class="document-actions flex gap-2">
           <input type="file" #fileInput (change)="onFileSelected($event)" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" style="display: none" />
           <p-button
+            data-tour="upload-btn"
             [label]="'documents.uploadFile' | translate"
             icon="pi pi-upload"
             [outlined]="true"
@@ -161,11 +166,13 @@ interface FilesResourceParams extends FilesRequestParams {
         </p-tablist>
         <p-tabpanels>
           <p-tabpanel value="0">
-            <div class="files-section mt-4">
+            <p-card class="files-section mt-4">
+              <div class="p-4">
               <app-base-list [data]="files()" [config]="filesTableConfig()">
                 <ng-template #toolbarTemplate>
                   <p-toolbar class="mb-4">
                     <ng-template pTemplate="start">
+                      <div class="flex gap-2">
                       <p-button
                         [label]="'common.delete' | translate"
                         icon="pi pi-trash"
@@ -173,6 +180,7 @@ interface FilesResourceParams extends FilesRequestParams {
                         [disabled]="!selectedFile()"
                         (onClick)="selectedFile() && confirmDeleteFile(selectedFile()!)"
                       ></p-button>
+                      </div>
                     </ng-template>
                   </p-toolbar>
                 </ng-template>
@@ -222,6 +230,7 @@ interface FilesResourceParams extends FilesRequestParams {
                           ></p-button>
                         }
                         <p-button 
+                          data-tour="download-btn"
                           [label]="'common.download' | translate" 
                           icon="pi pi-download" 
                           [outlined]="true" 
@@ -243,7 +252,8 @@ interface FilesResourceParams extends FilesRequestParams {
                   </tr>
                 </ng-template>
               </app-base-list>
-            </div>
+              </div>
+            </p-card>
           </p-tabpanel>
 
           <p-tabpanel value="1">
@@ -301,7 +311,7 @@ interface FilesResourceParams extends FilesRequestParams {
                   </div>
                 }
               </div>
-              <div class="chat-input flex gap-2">
+              <div class="chat-input flex gap-2" data-tour="chat-input">
                 <input
                   [value]="question()"
                   (input)="onQuestionInput($event)"
@@ -429,6 +439,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   private translateService = inject(TranslateService);
   private paginationService = inject(PaginationService);
   private destroyRef = inject(DestroyRef);
+  private onboardingService = inject(OnboardingService);
+  private documentViewTabService = inject(DocumentViewTabService);
 
   // ViewChild como signal
   fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
@@ -569,6 +581,15 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
           this.filesParams.set(initialParams);
           this.filesRequest.set({ workspaceId: wsId, documentId: docId, ...initialParams });
         });
+      }
+    });
+
+    // React to tour tab request (switch to chat/redline tab when tour advances)
+    effect(() => {
+      const tab = this.documentViewTabService.requestedTab();
+      if (tab != null && this.workspaceId() && this.documentId()) {
+        this.activeTab.set(tab);
+        this.documentViewTabService.clearRequest();
       }
     });
 
@@ -967,6 +988,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     if (!file) return;
     this.apiService.uploadFile(this.workspaceId(), this.documentId(), file, parser).subscribe({
       next: () => {
+        this.onboardingService.markChecklistItem('upload_contract');
         this.showParserDialog.set(false);
         this.pendingFile.set(null);
         this.loadJobs();
@@ -1022,6 +1044,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       language: currentLang // Add language to request
     }).subscribe({
       next: (response: ChatResponse) => {
+        const wasFirstMessage = this.chatMessages().length === 0;
         this.chatMessages.update((messages) => [
           ...messages,
           {
@@ -1031,6 +1054,9 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
             citations: response.citations,
           },
         ]);
+        if (wasFirstMessage) {
+          this.onboardingService.markChecklistItem('run_first_review');
+        }
         this.loading.set(false);
       },
       error: (err) => {
@@ -1135,6 +1161,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   downloadFile(file: DocumentFile): void {
     this.apiService.downloadFileAsBlob(this.workspaceId(), this.documentId(), file.id).subscribe({
       next: (blob) => {
+        this.onboardingService.markChecklistItem('export_document');
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;

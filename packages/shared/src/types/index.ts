@@ -7,3 +7,4 @@ export * from './privacy';
 export * from './common';
 export * from './prompts';
 export * from './parsers';
+export * from './onboarding';

@@ -9,6 +9,7 @@ import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { Toast } from 'primeng/toast';
 import { ApiService } from '../core/services/api.service';
+import { OnboardingService } from '../onboarding/onboarding.service';
 import { TranslateService } from '@ngx-translate/core';
 import { Workspace } from '@contractai-review/shared';
 import { LocaleDatePipe } from '../core/pipes/locale-date.pipe';
@@ -49,6 +50,7 @@ export class WorkspacesComponent implements OnInit {
   private confirmationService = inject(ConfirmationService);
   private messageService = inject(MessageService);
   private translateService = inject(TranslateService);
+  private onboardingService = inject(OnboardingService);
 
   workspaces = signal<Workspace[]>([]);
   showCreateForm = signal(false);
@@ -115,6 +117,7 @@ export class WorkspacesComponent implements OnInit {
           summary: this.translateService.instant('common.success'),
           detail: this.translateService.instant('workspaces.createSuccess'),
         });
+        this.onboardingService.markChecklistItem('create_workspace');
         this.showCreateForm.set(false);
         this.createForm.reset();
         // Also reload to ensure we have the latest data

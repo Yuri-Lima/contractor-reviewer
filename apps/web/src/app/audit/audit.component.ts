@@ -18,6 +18,7 @@ import { DatePickerModule } from 'primeng/datepicker';
 // Rationale: Required for column sorting and filtering functionality
 import { TableModule } from 'primeng/table';
 import { Tag } from 'primeng/tag';
+import { Card } from 'primeng/card';
 import { Toast } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { ApiService } from '../core/services/api.service';
@@ -56,6 +57,7 @@ import { AuditLog } from '@contractai-review/shared';
     // Rationale: Required for column sorting and filtering functionality
     TableModule,
     Tag,
+    Card,
     Toast,
     LocaleDatePipe,
     TranslatePipe,

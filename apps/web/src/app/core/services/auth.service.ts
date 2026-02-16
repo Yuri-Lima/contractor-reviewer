@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { API_CONFIG } from '../config/api.config';
-import { LoginRequest, LoginResponse, RegisterRequest, User } from '../models/user.model';
+import { LoginRequest, LoginResponse, RegisterRequest, User } from '@contractai-review/shared';
 
 @Injectable({
   providedIn: 'root',

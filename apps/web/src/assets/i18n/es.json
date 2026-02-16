@@ -356,6 +356,7 @@
     "tabGeneral": "General",
     "tabRetention": "Retención",
     "tabDocumentProcessing": "Procesamiento de Documentos",
+    "tabPrompts": "Prompts de IA",
     "generalPlaceholder": "Las configuraciones generales del workspace estarán disponibles en una actualización futura.",
     "menuItem": "Configuración",
     "loadError": "Error al cargar configuración del workspace"
@@ -373,6 +374,27 @@
     "comingSoon": "Próximamente",
     "saveSuccess": "Estrategia de chunking guardada con éxito",
     "saveError": "Error al guardar estrategia de chunking"
+  },
+  "prompts": {
+    "tabTitle": "Prompts de IA",
+    "description": "Personalice los prompts del sistema para chat y generación de redlines. Sobrescriba los valores globales por workspace.",
+    "chatSystem": "Prompt del sistema para chat",
+    "chatUser": "Prompt de usuario para chat",
+    "redlineSystem": "Prompt del sistema para redline",
+    "redlineUser": "Prompt de usuario para redline",
+    "playbookBalanced": "Playbook redline: Equilibrado",
+    "playbookConservative": "Playbook redline: Conservador",
+    "playbookClientFriendly": "Playbook redline: Favorable al cliente",
+    "sourceWorkspace": "Sobrescritura del workspace",
+    "sourceGlobal": "Valor global",
+    "save": "Guardar",
+    "resetToDefault": "Restablecer predeterminado",
+    "saveSuccess": "Prompt guardado con éxito",
+    "saveError": "Error al guardar el prompt",
+    "resetSuccess": "Prompt restablecido al valor global",
+    "resetError": "Error al restablecer el prompt",
+    "templateVariablesHint": "Use {{varName}} para variables de plantilla (ej. languageName, context, question)",
+    "loadError": "Error al cargar los prompts"
   },
   "workspaceMembers": {
     "title": "Miembros del espacio de trabajo",

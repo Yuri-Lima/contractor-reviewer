@@ -1,0 +1,76 @@
+<div class="prompts-editor p-4">
+  <p-message
+    severity="info"
+    [text]="'prompts.description' | translate"
+    class="mb-6"
+  ></p-message>
+
+  @if (loading()) {
+    <p class="text-gray-600 dark:text-gray-400">{{ 'common.loading' | translate }}</p>
+  } @else {
+    <p-accordion [value]="[]" [multiple]="true">
+      @for (prompt of prompts(); track prompt.key) {
+        <p-accordion-panel [value]="prompt.key">
+          <p-accordion-header>
+            <span class="flex items-center gap-2 w-full">
+              <span>{{ getLabelKey(prompt.key) | translate }}</span>
+              <span
+                class="text-xs px-2 py-0.5 rounded ml-auto"
+                [class.bg-blue-100]="prompt.source === 'workspace'"
+                [class.text-blue-800]="prompt.source === 'workspace'"
+                [class.dark:bg-blue-900]="prompt.source === 'workspace'"
+                [class.dark:text-blue-200]="prompt.source === 'workspace'"
+                [class.bg-gray-100]="prompt.source === 'global'"
+                [class.text-gray-600]="prompt.source === 'global'"
+                [class.dark:bg-gray-700]="prompt.source === 'global'"
+                [class.dark:text-gray-300]="prompt.source === 'global'"
+              >
+                {{ (prompt.source === 'workspace' ? 'prompts.sourceWorkspace' : 'prompts.sourceGlobal') | translate }}
+              </span>
+            </span>
+          </p-accordion-header>
+          <p-accordion-content>
+            <div class="space-y-4">
+              @if (prompt.description) {
+                <small class="text-gray-500 dark:text-gray-400 block">
+                  {{ prompt.description }}
+                </small>
+              }
+              <small class="text-gray-500 dark:text-gray-400 block">
+                {{ 'prompts.templateVariablesHint' | translate }}
+              </small>
+              <textarea
+                pTextarea
+                [ngModel]="getContent(prompt.key)"
+                (ngModelChange)="onContentChange(prompt.key, $event)"
+                rows="10"
+                [autoResize]="true"
+                class="w-full font-mono text-sm"
+              ></textarea>
+              <div class="flex gap-2 justify-end">
+                @if (prompt.source === 'workspace') {
+                  <p-button
+                    [label]="'prompts.resetToDefault' | translate"
+                    icon="pi pi-refresh"
+                    severity="secondary"
+                    [outlined]="true"
+                    [loading]="savingKey() === prompt.key"
+                    [disabled]="savingKey() === prompt.key"
+                    (onClick)="onReset(prompt.key)"
+                  ></p-button>
+                }
+                <p-button
+                  [label]="'prompts.save' | translate"
+                  icon="pi pi-check"
+                  [loading]="savingKey() === prompt.key"
+                  [disabled]="!hasChanges(prompt.key) || savingKey() === prompt.key"
+                  (onClick)="onSave(prompt.key)"
+                ></p-button>
+              </div>
+            </div>
+          </p-accordion-content>
+        </p-accordion-panel>
+      }
+    </p-accordion>
+  }
+</div>

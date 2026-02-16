@@ -366,6 +366,7 @@
     "tabGeneral": "General",
     "tabRetention": "Retention",
     "tabDocumentProcessing": "Document Processing",
+    "tabPrompts": "AI Prompts",
     "generalPlaceholder": "General workspace settings will be available here in a future update.",
     "menuItem": "Settings",
     "loadError": "Error loading workspace settings"
@@ -383,6 +384,27 @@
     "comingSoon": "Coming soon",
     "saveSuccess": "Chunking strategy saved successfully",
     "saveError": "Error saving chunking strategy"
+  },
+  "prompts": {
+    "tabTitle": "AI Prompts",
+    "description": "Customize system prompts for chat and redline generation. Override global defaults per workspace.",
+    "chatSystem": "Chat system prompt",
+    "chatUser": "Chat user prompt",
+    "redlineSystem": "Redline system prompt",
+    "redlineUser": "Redline user prompt",
+    "playbookBalanced": "Redline playbook: Balanced",
+    "playbookConservative": "Redline playbook: Conservative",
+    "playbookClientFriendly": "Redline playbook: Client-friendly",
+    "sourceWorkspace": "Workspace override",
+    "sourceGlobal": "Global default",
+    "save": "Save",
+    "resetToDefault": "Reset to default",
+    "saveSuccess": "Prompt saved successfully",
+    "saveError": "Failed to save prompt",
+    "resetSuccess": "Prompt reset to global default",
+    "resetError": "Failed to reset prompt",
+    "templateVariablesHint": "Use {{varName}} for template variables (e.g. languageName, context, question)",
+    "loadError": "Error loading prompts"
   },
   "workspaceMembers": {
     "title": "Workspace Members",

@@ -3,58 +3,42 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { TranslateService } from '@ngx-translate/core';
-
-export type Language = 'de' | 'en' | 'es' | 'pt-BR';
+import { Language, LanguageConfig } from '../../core/services/i18n.service';
 
 @Component({
   selector: 'app-language-selector',
   standalone: true,
   imports: [CommonModule, FormsModule, SelectModule],
-  template: `
-    <p-select
-      [options]="languageOptions()"
-      [(ngModel)]="selectedLanguage"
-      (ngModelChange)="onLanguageChange($event)"
-      optionLabel="name"
-      optionValue="code"
-      [showClear]="false"
-      [style]="{ width: '150px' }"
-    >
-      <ng-template let-language pTemplate="item">
-        <div class="flex items-center gap-2">
-          <span>{{ language.flag }}</span>
-          <span>{{ language.name }}</span>
-        </div>
-      </ng-template>
-      <ng-template let-language pTemplate="selectedItem">
-        <div class="flex items-center gap-2">
-          <span>{{ language.flag }}</span>
-          <span class="hidden sm:inline">{{ language.name }}</span>
-        </div>
-      </ng-template>
-    </p-select>
-  `,
+  templateUrl: './language-selector.html',
 })
 export class LanguageSelectorComponent {
   private translateService = inject(TranslateService);
 
-  readonly availableLanguages = [
-    { code: 'de' as Language, locale: 'de-DE', name: 'Deutsch', flag: '🇩🇪' },
-    { code: 'en' as Language, locale: 'en-US', name: 'English', flag: '🇺🇸' },
-    { code: 'es' as Language, locale: 'es-ES', name: 'Español', flag: '🇪🇸' },
-    { code: 'pt-BR' as Language, locale: 'pt-BR', name: 'Português (BR)', flag: '🇧🇷' },
+  readonly availableLanguages: readonly LanguageConfig[] = [
+    { code: 'de', locale: 'de-DE', name: 'Deutsch', flag: '🇩🇪' },
+    { code: 'en', locale: 'en-US', name: 'English', flag: '🇺🇸' },
+    { code: 'es', locale: 'es-ES', name: 'Español', flag: '🇪🇸' },
+    { code: 'pt-BR', locale: 'pt-BR', name: 'Português (BR)', flag: '🇧🇷' },
   ];
 
-  languageOptions = computed(() => this.availableLanguages);
+  languageOptions = computed(() => [...this.availableLanguages]);
 
-  selectedLanguage: Language = (this.translateService.currentLang || 'en') as Language;
+  selectedLanguage: Language = this.getValidLanguage(this.translateService.getCurrentLang() ?? 'en');
 
   constructor() {
     // Atualizar selectedLanguage quando currentLanguage mudar
     effect(() => {
-      const lang = (this.translateService.currentLang || 'en') as Language;
+      const lang = this.getValidLanguage(this.translateService.getCurrentLang() ?? 'en');
       this.selectedLanguage = lang;
     });
+  }
+
+  private isValidLanguage(lang: string | null | undefined): lang is Language {
+    return lang !== null && lang !== undefined && ['de', 'en', 'es', 'pt-BR'].includes(lang);
+  }
+
+  private getValidLanguage(lang: string | null | undefined): Language {
+    return this.isValidLanguage(lang) ? lang : 'en';
   }
 
   onLanguageChange(lang: Language): void {

@@ -37,6 +37,8 @@ WORKDIR /app
 # Copy built artifacts preserving monorepo structure (for shared package resolution)
 COPY --from=builder /app/apps/api ./apps/api
 COPY --from=builder /app/packages/shared ./packages/shared
+# Copy root node_modules (pnpm hoists deps here; apps/api symlinks depend on it)
+COPY --from=builder /app/node_modules ./node_modules
 
 WORKDIR /app/apps/api
 

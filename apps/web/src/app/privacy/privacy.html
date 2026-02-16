@@ -1,0 +1,134 @@
+<div class="privacy-container p-6 max-w-4xl mx-auto">
+  <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">{{ 'privacy.title' | translate }}</h1>
+
+  <p-message
+    severity="info"
+    [text]="'privacy.description' | translate"
+    class="mb-6"
+  ></p-message>
+
+  <!-- No-Logs Mode -->
+  <p-card class="mb-6">
+    <ng-template pTemplate="header">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">{{ 'privacy.noLogsMode' | translate }}</h2>
+      </div>
+    </ng-template>
+    <form [formGroup]="noLogsForm" class="p-4 space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {{ 'privacy.enableNoLogs' | translate }}
+          </label>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            {{ 'privacy.noLogsDescription' | translate }}
+          </p>
+        </div>
+        <p-toggleswitch
+          formControlName="noLogsEnabled"
+          (onChange)="onNoLogsToggle()"
+        ></p-toggleswitch>
+      </div>
+
+      @if (isNoLogsEnabled()) {
+        <div class="mt-6 space-y-4 pl-4 border-l-4 border-blue-500 dark:border-blue-400">
+          <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ 'privacy.skipDocumentContent' | translate }}
+            </label>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              {{ 'privacy.skipDocumentContentDesc' | translate }}
+            </p>
+          </div>
+          <p-toggleswitch formControlName="skipDocumentContent"></p-toggleswitch>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ 'privacy.skipChatMessages' | translate }}
+            </label>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              {{ 'privacy.skipChatMessagesDesc' | translate }}
+            </p>
+          </div>
+          <p-toggleswitch formControlName="skipChatMessages"></p-toggleswitch>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ 'privacy.skipVersions' | translate }}
+            </label>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              {{ 'privacy.skipVersionsDesc' | translate }}
+            </p>
+          </div>
+          <p-toggleswitch formControlName="skipVersions"></p-toggleswitch>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {{ 'privacy.acceleratedPurge' | translate }}
+          </label>
+          <p-inputNumber
+            formControlName="acceleratedPurgeDays"
+            [min]="1"
+            [max]="30"
+            [showButtons]="true"
+            [suffix]="daysSuffix()"
+            class="w-full"
+          ></p-inputNumber>
+          <small class="text-gray-500 dark:text-gray-400 mt-1 block">
+            {{ 'privacy.acceleratedPurgeDesc' | translate }}
+          </small>
+        </div>
+        </div>
+      }
+
+      <div class="mt-4 flex justify-end">
+        <p-button
+          [label]="'privacy.saveSettings' | translate"
+          icon="pi pi-check"
+          (onClick)="saveNoLogsConfig()"
+          [loading]="saving()"
+          [disabled]="!isNoLogsEnabled()"
+        ></p-button>
+      </div>
+    </form>
+  </p-card>
+
+  <!-- Export Data -->
+  <p-card>
+    <ng-template pTemplate="header">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">{{ 'privacy.exportData' | translate }}</h2>
+      </div>
+    </ng-template>
+    <div class="p-4">
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        {{ ('privacy.exportDescription' | translate) || 'Download all your data related to this workspace in JSON format. This includes chat messages, document versions, and audit logs.' }}
+      </p>
+      <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+        <h3 class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+          {{ ('privacy.whatWillBeExported' | translate) || 'What will be exported:' }}
+        </h3>
+        <ul class="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
+          <li>{{ ('privacy.exportItems.chatMessages' | translate) || 'Chat messages (according to no-logs configuration)' }}</li>
+          <li>{{ ('privacy.exportItems.versionMetadata' | translate) || 'Document version metadata' }}</li>
+          <li>{{ ('privacy.exportItems.auditLogs' | translate) || 'Audit logs related to your user' }}</li>
+          <li>{{ ('privacy.exportItems.privacySettings' | translate) || 'Privacy settings' }}</li>
+        </ul>
+      </div>
+      <p-button
+        [label]="('privacy.export' | translate) || 'Export Data'"
+        icon="pi pi-download"
+        (onClick)="exportData()"
+        [loading]="exporting()"
+      ></p-button>
+    </div>
+  </p-card>
+
+  <p-toast></p-toast>
+</div>

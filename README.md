@@ -59,12 +59,14 @@ A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que 
 - **Modo no-logs**: Opção para não persistir conteúdos sensíveis
 - Transparência sobre o que é armazenado e por quanto tempo
 
-### 🗑️ Retenção de Dados
-- Políticas de retenção configuráveis por workspace
-- Retenção padrão: arquivos (30 dias), textos/embeddings (90 dias)
-- **Purge automático** via job agendado (diário)
-- Hard delete completo de documentos e dados associados
-- Endpoints de hard delete com idempotência e auditoria
+### ⚙️ Workspace Settings
+- **Página de configurações** com abas: General, Retention, Document Processing
+- **Retenção de dados**: políticas configuráveis por workspace
+  - Retenção padrão: arquivos (30 dias), textos/embeddings (90 dias)
+  - Purge automático via job agendado (diário)
+  - Hard delete completo de documentos e dados associados
+- **Estratégia de chunking**: configurável (paragraph, sentence, fixed_size)
+  - Define como o texto é dividido para RAG; paragraph-based recomendado para contratos
 
 ### 📊 Auditoria Completa
 - Trilha de auditoria para todas as ações importantes:
@@ -98,12 +100,18 @@ Validação (tamanho, tipo, malware scan)
   ↓
 Parsing (extração de texto) ou OCR (se PDF escaneado)
   ↓
-Chunking (divisão em partes menores)
+Chunking (divisão em partes menores; estratégia configurável por workspace)
   ↓
 Geração de Embeddings (vetores para busca semântica)
   ↓
 Documento Disponível para Consulta
 ```
+
+**Chunking strategies** (configurável em Workspace Settings > Document Processing):
+- **Paragraph-based** (recomendado): preserva limites de parágrafos/cláusulas
+- **Sentence-based**: divide por sentenças
+- **Fixed-size**: divisão por tamanho fixo de caracteres
+- *Semantic e Agentic*: planejado para versões futuras
 
 ### 2. Chat com RAG
 ```
@@ -220,6 +228,7 @@ Para começar a usar o ContractAI Review localmente, consulte o guia completo de
 - ✅ Painel de privacidade e export DSAR-lite
 - ✅ Políticas de retenção e purge automático
 - ✅ Trilha de auditoria completa
+- ✅ Página de Workspace Settings (Retention, Document Processing, chunking strategy)
 - ✅ Suporte multilíngue
 
 ## Documentação

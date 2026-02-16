@@ -119,7 +119,8 @@ src/
 │   ├── layout/            # Header, Sidebar
 │   ├── privacy/           # Privacy panel
 │   ├── audit/             # Audit logs
-│   ├── workspaces/        # Workspaces
+│   ├── workspaces/        # Workspaces, workspace-members, settings
+│   │   └── settings/      # Workspace Settings (General, Retention, Document Processing)
 │   ├── app.component.ts   # Componente raiz
 │   └── app.routes.ts      # Rotas
 ├── assets/                # Assets estáticos
@@ -178,6 +179,7 @@ Crie um arquivo `.env` na raiz do projeto ou configure:
 - ✅ Chat com citações
 - ✅ Privacy panel (DSAR export, no-logs toggle)
 - ✅ Audit logs
+- ✅ Workspace Settings (Retention, Document Processing com chunking strategy)
 - ⏳ Viewer de PDF (em desenvolvimento)
 - ⏳ Redline e versões (em desenvolvimento)
 - ⏳ Progresso de jobs (em desenvolvimento)
@@ -194,6 +196,7 @@ Endpoints principais:
 - `/api/workspaces/:id/documents/:docId/chat` - Chat
 - `/api/workspaces/:id/privacy/export` - Export de privacidade
 - `/api/workspaces/:id/audit` - Audit logs
+- `/api/workspaces/:id/settings` - Configurações do workspace (retention, chunking)
 
 ## Próximos Passos
 

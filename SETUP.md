@@ -100,3 +100,5 @@ Ver `.env.example`. Principais:
 ## Fluxo de teste completo (após implementação)
 
 Workspace → upload → chat com citações → redline com playbook → versões → export privacidade → purge.
+
+**Configurações do workspace:** Acesse Settings no sidebar do workspace para configurar retention e estratégia de chunking (paragraph, sentence, fixed_size).

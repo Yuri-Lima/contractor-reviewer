@@ -61,6 +61,21 @@ Endpoints REST para gerenciar retention:
   - Valida limites antes de salvar
   - RBAC: OWNER, ADMIN
 
+### 4b. WorkspaceSettingsController (`apps/api/src/workspace/workspace-settings.controller.ts`)
+
+Endpoint unificado para configurações do workspace (inclui retention e document processing):
+
+- **GET `/api/workspaces/:workspaceId/settings`**
+  - Retorna `{ retention, general, documentProcessing: { chunkingStrategy } }`
+  - RBAC: OWNER, ADMIN
+
+- **PUT `/api/workspaces/:id/settings`**
+  - Atualiza parcialmente (retention e/ou documentProcessing)
+  - Chunking strategy: paragraph, sentence, fixed_size (semantic e agentic planejados para versões futuras)
+  - RBAC: OWNER, ADMIN
+
+A UI de Workspace Settings usa este endpoint e exibe abas: General, Retention, Document Processing (chunking).
+
 ### 5. Hard Delete Melhorado
 
 #### DocumentsService.delete()

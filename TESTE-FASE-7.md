@@ -121,6 +121,8 @@ curl -X PUT "http://localhost:3000/api/workspaces/$WORKSPACE_ID/retention" \
 
 **RBAC:** Apenas OWNER e ADMIN podem atualizar retention.
 
+**Nota:** O endpoint unificado `GET/PUT /api/workspaces/:workspaceId/settings` também expõe retention e document processing (chunking strategy). O endpoint `/retention` permanece disponível para compatibilidade.
+
 ### 5. Testar Validação de Limites
 
 ```bash

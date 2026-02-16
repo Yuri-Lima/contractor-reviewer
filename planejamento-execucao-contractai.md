@@ -88,6 +88,7 @@
 ## Fase 7 — Retention, purge e hard delete
 
 - [x] Configuração de retention por workspace (file retention, text/embeddings retention, overrides dentro de limites).
+- [x] Página Workspace Settings com abas: General, Retention, Document Processing (chunking strategy).
 - [x] Scheduled job diário: purge de arquivos expirados (hard delete no storage), textos/chunks/embeddings expirados, mensagens/versões conforme política.
 - [x] Endpoints de hard delete idempotentes; registrar evento de delete no audit log.
 

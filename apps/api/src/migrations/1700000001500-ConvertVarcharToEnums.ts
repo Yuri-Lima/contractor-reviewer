@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Migration1770417369228 implements MigrationInterface {
-    name = 'Migration1770417369228'
+export class ConvertVarcharToEnums1700000001500 implements MigrationInterface {
+    name = 'ConvertVarcharToEnums1700000001500';
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`ALTER TABLE "workspace_members" DROP CONSTRAINT "FK_workspace_members_workspaceId"`);
@@ -52,11 +52,8 @@ export class Migration1770417369228 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "chunks" ADD "embedding" text`);
         await queryRunner.query(`ALTER TABLE "document_jobs" DROP COLUMN "type"`);
         await queryRunner.query(`CREATE TYPE "public"."document_jobs_type_enum" AS ENUM('ocr', 'parsing', 'chunking', 'embedding')`);
-        // Add column as nullable first, then update existing rows, then set NOT NULL
         await queryRunner.query(`ALTER TABLE "document_jobs" ADD "type" "public"."document_jobs_type_enum"`);
-        // Set default value for existing rows (use 'parsing' as a safe default)
         await queryRunner.query(`UPDATE "document_jobs" SET "type" = 'parsing' WHERE "type" IS NULL`);
-        // Now make it NOT NULL
         await queryRunner.query(`ALTER TABLE "document_jobs" ALTER COLUMN "type" SET NOT NULL`);
         await queryRunner.query(`ALTER TABLE "document_jobs" DROP COLUMN "status"`);
         await queryRunner.query(`CREATE TYPE "public"."document_jobs_status_enum" AS ENUM('pending', 'processing', 'completed', 'failed', 'retrying')`);
@@ -68,29 +65,21 @@ export class Migration1770417369228 implements MigrationInterface {
         await queryRunner.query(`CREATE TYPE "public"."documents_jurisdictionstatus_enum" AS ENUM('explicit', 'inferred', 'unknown')`);
         await queryRunner.query(`ALTER TABLE "documents" ADD "jurisdictionStatus" "public"."documents_jurisdictionstatus_enum"`);
         await queryRunner.query(`ALTER TABLE "audit_logs" DROP COLUMN "action"`);
-        await queryRunner.query(`CREATE TYPE "public"."audit_logs_action_enum" AS ENUM('open_view', 'download', 'chat_query', 'redline_generate', 'delete', 'export_privacy', 'upload', 'member_add', 'member_remove', 'settings_update')`);
-        // Add action column as nullable first, update existing rows, then set NOT NULL
+        await queryRunner.query(`CREATE TYPE "public"."audit_logs_action_enum" AS ENUM('open_view', 'download', 'chat_query', 'redline_generate', 'redline_apply', 'delete', 'export_privacy', 'upload', 'member_add', 'member_remove', 'settings_update')`);
         await queryRunner.query(`ALTER TABLE "audit_logs" ADD "action" "public"."audit_logs_action_enum"`);
         await queryRunner.query(`UPDATE "audit_logs" SET "action" = 'open_view' WHERE "action" IS NULL`);
         await queryRunner.query(`ALTER TABLE "audit_logs" ALTER COLUMN "action" SET NOT NULL`);
         await queryRunner.query(`ALTER TABLE "audit_logs" DROP COLUMN "targetType"`);
         await queryRunner.query(`CREATE TYPE "public"."audit_logs_targettype_enum" AS ENUM('document', 'file', 'workspace', 'user', 'chat', 'version')`);
-        // Add targetType column as nullable first, update existing rows, then set NOT NULL
         await queryRunner.query(`ALTER TABLE "audit_logs" ADD "targetType" "public"."audit_logs_targettype_enum"`);
         await queryRunner.query(`UPDATE "audit_logs" SET "targetType" = 'document' WHERE "targetType" IS NULL`);
         await queryRunner.query(`ALTER TABLE "audit_logs" ALTER COLUMN "targetType" SET NOT NULL`);
-        // Convert vector to text (vector data will be stored as JSON string via transformer)
-        // Note: If there are existing vector values, they need to be converted to JSON format
         await queryRunner.query(`ALTER TABLE "embeddings" DROP COLUMN "embedding"`);
-        // Add as nullable first to handle existing data, then update and set NOT NULL
         await queryRunner.query(`ALTER TABLE "embeddings" ADD "embedding" text`);
-        // Convert existing vector data to JSON string format (if any exists)
-        // This assumes vector data can be cast to text, otherwise manual conversion needed
         await queryRunner.query(`UPDATE "embeddings" SET "embedding" = '[]' WHERE "embedding" IS NULL`);
         await queryRunner.query(`ALTER TABLE "embeddings" ALTER COLUMN "embedding" SET NOT NULL`);
         await queryRunner.query(`ALTER TABLE "legal_sources" DROP COLUMN "sourceType"`);
         await queryRunner.query(`CREATE TYPE "public"."legal_sources_sourcetype_enum" AS ENUM('law', 'regulation', 'guidance', 'case_law', 'other')`);
-        // Add sourceType column as nullable first, update existing rows, then set NOT NULL
         await queryRunner.query(`ALTER TABLE "legal_sources" ADD "sourceType" "public"."legal_sources_sourcetype_enum"`);
         await queryRunner.query(`UPDATE "legal_sources" SET "sourceType" = 'other' WHERE "sourceType" IS NULL`);
         await queryRunner.query(`ALTER TABLE "legal_sources" ALTER COLUMN "sourceType" SET NOT NULL`);
@@ -187,5 +176,4 @@ export class Migration1770417369228 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "workspace_members" ADD CONSTRAINT "FK_workspace_members_userId" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "workspace_members" ADD CONSTRAINT "FK_workspace_members_workspaceId" FOREIGN KEY ("workspaceId") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
     }
-
 }

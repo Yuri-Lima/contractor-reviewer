@@ -5,6 +5,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -23,6 +24,7 @@ import { WorkspaceId, CurrentUser } from '../workspace/decorators';
 import { DocumentsService } from './documents.service';
 import { VersionService } from './version.service';
 import { Document } from '../entities/document.entity';
+import { DocumentFile } from '../entities/document-file.entity';
 import { DocumentVersion } from '../entities/document-version.entity';
 import { UploadValidator } from '../storage/upload-validator';
 import { NoopMalwareScanner } from '../storage/malware-scanner.interface';
@@ -175,6 +177,19 @@ export class DocumentsController {
       // S3/R2: redirect to presigned URL
       res.redirect(downloadUrl);
     }
+  }
+
+  @Get(':documentId/files')
+  @UseGuards(RolesGuard)
+  @Roles(WorkspaceRole.VIEWER, WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
+  async getDocumentFiles(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+    @Query() query: { offset?: number; limit?: number; sortField?: string; sortOrder?: number; fileName?: string; mimeType?: string; status?: string },
+  ): Promise<{ files: DocumentFile[]; total: number; limit: number; offset: number }> {
+    // Verify document exists and belongs to workspace
+    await this.documentsService.findById(documentId, workspaceId);
+    return this.documentsService.getDocumentFilesPaginated(documentId, query);
   }
 
   @Get(':documentId/jobs')

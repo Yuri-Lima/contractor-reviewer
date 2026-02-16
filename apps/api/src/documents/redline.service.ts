@@ -8,32 +8,14 @@ import { Embedding } from '../entities/embedding.entity';
 import { Document } from '../entities/document.entity';
 import { EmbeddingsService } from '../rag/embeddings.service';
 import { RagService } from '../rag/rag.service';
-import { DiffService, DiffBlock } from './diff.service';
-import { RedlinePlaybook } from './redline.controller';
+import {
+  RedlineChange,
+  RedlinePlaybook,
+  ContractCitation,
+  LegalCitation,
+} from '@contractai-review/shared';
+import { DiffService } from './diff.service';
 import { arrayToVectorString } from '../vector-helpers';
-
-export interface RedlineChange {
-  section: string;
-  originalText: string;
-  suggestedText: string;
-  diffBlocks: DiffBlock[];
-  explanation: string;
-  confidence: 'high' | 'medium' | 'low';
-  citations: Array<{
-    kind: 'contract';
-    file?: string;
-    page?: number;
-    spanId?: string;
-    quoteSnippet?: string;
-  }>;
-  legalCitations: Array<{
-    kind: 'legal';
-    source?: string;
-    section?: string;
-    url?: string;
-  }>;
-  notFound: boolean;
-}
 
 @Injectable()
 export class RedlineService {

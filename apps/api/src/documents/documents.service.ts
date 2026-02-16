@@ -366,6 +366,48 @@ export class DocumentsService {
   }
 
   /**
+   * Get paginated files for a document with filtering, sorting, and pagination
+   */
+  async getDocumentFilesPaginated(
+    documentId: string,
+    query: { offset?: number; limit?: number; sortField?: string; sortOrder?: number; fileName?: string; mimeType?: string; status?: string },
+  ): Promise<{ files: DocumentFile[]; total: number; limit: number; offset: number }> {
+    const limit = Math.min(query.limit || 25, 100);
+    const offset = query.offset || 0;
+
+    // Treat missing or serialized "undefined" as not provided (avoids ORDER BY file.undefined and WHERE with "undefined")
+    const has = (v: string | number | undefined): v is string | number =>
+      v != null && v !== '' && String(v) !== 'undefined';
+
+    const qb = this.documentFileRepository
+      .createQueryBuilder('file')
+      .where('file.documentId = :documentId', { documentId })
+      .take(limit)
+      .skip(offset);
+
+    if (has(query.fileName)) {
+      qb.andWhere('file.fileName ILIKE :fileName', { fileName: `%${query.fileName}%` });
+    }
+    if (has(query.mimeType)) {
+      qb.andWhere('file.mimeType = :mimeType', { mimeType: query.mimeType });
+    }
+    if (has(query.status)) {
+      qb.andWhere('file.status = :status', { status: query.status });
+    }
+
+    if (has(query.sortField)) {
+      const order = query.sortOrder === -1 ? 'DESC' : 'ASC';
+      qb.orderBy(`file.${query.sortField}`, order);
+    } else {
+      qb.orderBy('file.createdAt', 'DESC');
+    }
+
+    const [files, total] = await qb.getManyAndCount();
+
+    return { files, total, limit, offset };
+  }
+
+  /**
    * Get original text from document chunks
    */
   async getOriginalText(documentId: string, workspaceId: string): Promise<string> {

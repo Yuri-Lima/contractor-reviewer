@@ -1,34 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not, IsNull } from 'typeorm';
-import { DocumentVersion, RedlinePlaybook } from '../entities/document-version.entity';
+import { RedlineChange, RedlinePlaybook } from '@contractai-review/shared';
+import { DocumentVersion } from '../entities/document-version.entity';
 import { Document } from '../entities/document.entity';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
-import { DiffService, type DiffBlock } from './diff.service';
+import { DiffService } from './diff.service';
 import { DocumentsService } from './documents.service';
 
-export interface RedlineChange {
-  section: string;
-  originalText: string;
-  suggestedText: string;
-  diffBlocks: DiffBlock[];
-  explanation: string;
-  confidence: 'high' | 'medium' | 'low';
-  citations: Array<{
-    kind: 'contract';
-    file?: string;
-    page?: number;
-    spanId?: string;
-    quoteSnippet?: string;
-  }>;
-  legalCitations: Array<{
-    kind: 'legal';
-    source?: string;
-    section?: string;
-    url?: string;
-  }>;
-  notFound: boolean;
-}
+// Re-export for backward compatibility
+export type { RedlineChange };
 
 @Injectable()
 export class VersionService {

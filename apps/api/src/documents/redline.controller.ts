@@ -10,6 +10,15 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { WorkspaceGuard, RolesGuard } from '../workspace/guards';
 import { Roles } from '../workspace/decorators/roles.decorator';
+import {
+  RedlinePlaybook,
+  RedlineRequest,
+  RedlineResponse,
+  RedlineChange,
+  DiffBlock,
+  ContractCitation,
+  LegalCitation,
+} from '@contractai-review/shared';
 import { WorkspaceRole } from '../entities/workspace-member.entity';
 import { WorkspaceId, CurrentUser } from '../workspace/decorators';
 import { DocumentsService } from './documents.service';
@@ -19,64 +28,6 @@ import { RequestInfo } from '../common/decorators/request-info.decorator';
 import { VersionService } from './version.service';
 import { RedlineService } from './redline.service';
 import { DiffService } from './diff.service';
-
-export enum RedlinePlaybook {
-  BALANCED = 'balanced',
-  CONSERVATIVE = 'conservative',
-  CLIENT_FRIENDLY = 'client-friendly',
-}
-
-export interface DiffBlock {
-  id: string;
-  type: 'equal' | 'add' | 'remove';
-  text: string;
-}
-
-export interface Citation {
-  kind: 'contract';
-  file?: string;
-  page?: number;
-  spanId?: string;
-  quoteSnippet?: string;
-}
-
-export interface LegalCitation {
-  kind: 'legal';
-  source?: string;
-  section?: string;
-  url?: string;
-}
-
-export interface RedlineChange {
-  section: string;
-  originalText: string;
-  suggestedText: string;
-  diffBlocks: DiffBlock[];
-  explanation: string;
-  confidence: 'high' | 'medium' | 'low';
-  citations: Citation[];
-  legalCitations: LegalCitation[];
-  notFound: boolean;
-}
-
-export interface RedlineRequest {
-  selectedText: string;
-  playbook: RedlinePlaybook;
-  instructions?: string;
-  objective?: string;
-  pageNumber?: number;
-  spanId?: string;
-  language?: string; // ISO 639-1 code (en, es, pt-BR, de)
-  startIndex?: number; // Character position in full document (optional)
-  endIndex?: number; // Character position in full document (optional)
-}
-
-export interface RedlineResponse {
-  versionId: string;
-  changes: RedlineChange[];
-  playbook: RedlinePlaybook;
-  createdAt: Date;
-}
 
 @Controller('workspaces/:workspaceId/documents/:documentId/redline')
 @UseGuards(JwtAuthGuard, WorkspaceGuard, RolesGuard)
@@ -136,7 +87,7 @@ export class RedlineController {
       versionId: version.id,
       changes: [redlineChange],
       playbook,
-      createdAt: version.createdAt,
+      createdAt: version.createdAt.toISOString(),
     };
 
     // Log redline generation

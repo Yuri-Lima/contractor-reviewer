@@ -7,9 +7,10 @@ export interface FileValidationResult {
 
 export class UploadValidator {
   private static readonly MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
-  private static readonly ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.txt', '.png', '.jpg', '.jpeg'];
+  private static readonly ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.txt', '.png', '.jpg', '.jpeg'];
   private static readonly ALLOWED_MIME_TYPES = [
     'application/pdf',
+    'application/msword', // .doc (legacy Word)
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'text/plain',
     'image/png',
@@ -99,6 +100,16 @@ export class UploadValidator {
     // JPEG: FF D8 FF
     if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
       return 'image/jpeg';
+    }
+
+    // DOC (OLE/CFB): D0 CF 11 E0 A1 B1 1A E1
+    if (
+      buffer[0] === 0xd0 &&
+      buffer[1] === 0xcf &&
+      buffer[2] === 0x11 &&
+      buffer[3] === 0xe0
+    ) {
+      return 'application/msword';
     }
 
     // DOCX: PK (ZIP signature, DOCX is a ZIP file)

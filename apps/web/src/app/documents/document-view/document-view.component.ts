@@ -99,7 +99,7 @@ interface FilesResourceParams extends FilesRequestParams {
           </div>
         </div>
         <div class="document-actions flex gap-2">
-          <input type="file" #fileInput (change)="onFileSelected($event)" accept=".pdf,.docx,.txt,.png,.jpg" style="display: none" />
+          <input type="file" #fileInput (change)="onFileSelected($event)" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" style="display: none" />
           <p-button
             [label]="'documents.uploadFile' | translate"
             icon="pi pi-upload"

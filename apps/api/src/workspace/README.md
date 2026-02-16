@@ -4,6 +4,21 @@ Este módulo implementa isolamento multi-tenant e controle de acesso baseado em 
 
 ## Componentes
 
+### Controllers
+
+- **`WorkspaceController`**: CRUD de workspaces, membros
+- **`WorkspaceSettingsController`**: Configurações unificadas do workspace
+  - **GET** `/api/workspaces/:workspaceId/settings` — Retorna `{ retention, general, documentProcessing: { chunkingStrategy } }`
+  - **PUT** `/api/workspaces/:workspaceId/settings` — Atualiza parcialmente (retention e/ou documentProcessing)
+  - Requer OWNER ou ADMIN
+
+### Services
+
+- **`WorkspaceService`**: Gerencia membership, verificação de roles e hierarquia
+- **`WorkspaceSettingsService`**: Gerencia configurações (retention, chunking strategy)
+  - Retention: file retention days, text/embeddings retention, fuzzy match threshold
+  - Document Processing: chunking strategy (paragraph, sentence, fixed_size)
+
 ### Guards
 
 - **`WorkspaceGuard`**: Verifica se o usuário é membro do workspace extraído da rota

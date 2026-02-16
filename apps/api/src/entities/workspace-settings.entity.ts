@@ -40,6 +40,9 @@ export class WorkspaceSettings {
   @Column({ type: 'int', default: 70 })
   fuzzyMatchThreshold: number; // Minimum match percentage for fuzzy matching (0-100)
 
+  @Column({ type: 'varchar', default: 'paragraph' })
+  chunkingStrategy: string; // paragraph | sentence | fixed_size | semantic | agentic
+
   @CreateDateColumn()
   createdAt: Date;
 

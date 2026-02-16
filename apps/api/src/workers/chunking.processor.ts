@@ -5,6 +5,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DocumentJob, JobStatus, JobType } from '../entities/document-job.entity';
 import { Chunk } from '../entities/chunk.entity';
+import { Document } from '../entities/document.entity';
+import { WorkspaceSettings } from '../entities/workspace-settings.entity';
 import { ChunkingService } from '../rag/chunking.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -30,6 +32,10 @@ export class ChunkingProcessor extends WorkerHost {
     private jobRepository: Repository<DocumentJob>,
     @InjectRepository(Chunk)
     private chunkRepository: Repository<Chunk>,
+    @InjectRepository(Document)
+    private documentRepository: Repository<Document>,
+    @InjectRepository(WorkspaceSettings)
+    private workspaceSettingsRepository: Repository<WorkspaceSettings>,
     private chunkingService: ChunkingService,
     @InjectQueue('embeddings')
     private embeddingsQueue: Queue,
@@ -103,8 +109,28 @@ export class ChunkingProcessor extends WorkerHost {
       await this.updateJobStatus(jobId, JobStatus.PROCESSING, 20);
       this.logger.debug(`Job ${jobId}: Starting text chunking, progress 20%`);
 
+      // Load workspace settings for chunking strategy
+      const document = await this.documentRepository.findOne({
+        where: { id: documentId },
+        select: ['workspaceId'],
+      });
+      let chunkingStrategy = 'paragraph';
+      if (document?.workspaceId) {
+        const settings = await this.workspaceSettingsRepository.findOne({
+          where: { workspaceId: document.workspaceId },
+          select: ['chunkingStrategy'],
+        });
+        if (settings?.chunkingStrategy) {
+          chunkingStrategy = settings.chunkingStrategy;
+        }
+      }
+
       // Chunk the text
-      const chunks = this.chunkingService.chunkText(text, pageCount || undefined);
+      const chunks = this.chunkingService.chunkText(
+        text,
+        pageCount || undefined,
+        chunkingStrategy,
+      );
 
       await this.updateJobStatus(jobId, JobStatus.PROCESSING, 40);
       this.logger.debug(`Job ${jobId}: Created ${chunks.length} chunks, progress 40%`);

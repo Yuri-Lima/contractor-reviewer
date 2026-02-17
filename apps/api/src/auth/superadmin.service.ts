@@ -51,13 +51,15 @@ export class SuperadminService implements OnModuleInit {
 
     if (superadmin) {
       this.logger.log(`Superadmin already exists: ${superadmin.email}`);
-      
+
       // Update name if provided
       if (name && superadmin.name !== name) {
         superadmin.name = name;
-        await this.userRepository.save(superadmin);
-        this.logger.log(`Updated superadmin name to: ${name}`);
       }
+
+      // Sync password from env so SUPERADMIN_PASSWORD changes take effect on restart
+      superadmin.passwordHash = await bcrypt.hash(password, 10);
+      await this.userRepository.save(superadmin);
     } else {
       // Create superadmin
       const passwordHash = await bcrypt.hash(password, 10);

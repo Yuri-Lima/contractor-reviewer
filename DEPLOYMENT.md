@@ -44,6 +44,13 @@ Guide for deploying ContractAI Review to a remote server using Docker Compose.
 
 Build all custom images and push to Docker Hub for VPS deployment. Run from the repository root.
 
+**Important**: If you see "Welcome to nginx!" instead of the app, the `contractai-web` image needs to be rebuilt and pushed (Angular 17+ outputs to a `browser` subdirectory). Rebuild and push:
+
+```bash
+pnpm docker:push
+# Or to rebuild only web: docker build -f apps/web/Dockerfile -t yurimatoslima/contractai-web:latest . && docker push yurimatoslima/contractai-web:latest
+```
+
 **Prerequisites**: `docker login` (authenticate to Docker Hub)
 
 ```bash
@@ -241,3 +248,14 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml down
 
 - Parsers run in separate containers. Ensure `docker-compose.yml` services (docling, pdfplumber) are up.
 - API and Worker use `DOCLING_URL=http://docling:8000` and `PDFPLUMBER_URL=http://pdfplumber:8001`
+
+### Redis "READONLY You can't write against a read only replica"
+
+- Redis was running as a **replica** (read-only) instead of master. BullMQ requires writes.
+- **Fix**: Remove the Redis volume and restart so Redis starts fresh as master:
+  ```bash
+  docker compose stop redis
+  docker volume rm deploy_redis_data   # or the redis_data volume name
+  docker compose up -d redis
+  docker compose restart api worker
+  ```

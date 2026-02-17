@@ -20,7 +20,16 @@ import { ApiService } from '../../core/services/api.service';
 import { OnboardingService } from '../../onboarding/onboarding.service';
 import { DocumentViewTabService } from '../../onboarding/tour/document-view-tab.service';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
-import { Document, DocumentFile, DocumentJob, JobStatus, ChatResponse, Citation, ParserInfo } from '@contractai-review/shared';
+import {
+  Document,
+  DocumentFile,
+  DocumentJob,
+  JobStatus,
+  ChatResponse,
+  Citation,
+  ParserInfo,
+  FILE_INPUT_ACCEPT,
+} from '@contractai-review/shared';
 import { PdfViewerComponent } from '../pdf-viewer/pdf-viewer.component';
 import { RedlineComponent } from '../redline/redline.component';
 import { VersionsComponent } from '../versions/versions.component';
@@ -103,7 +112,7 @@ interface FilesResourceParams extends FilesRequestParams {
           </div>
         </div>
         <div class="document-actions flex gap-2">
-          <input type="file" #fileInput (change)="onFileSelected($event)" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" style="display: none" />
+          <input type="file" #fileInput (change)="onFileSelected($event)" [attr.accept]="fileInputAccept" style="display: none" />
           <p-button
             data-tour="upload-btn"
             [label]="'documents.uploadFile' | translate"
@@ -445,6 +454,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   // ViewChild como signal
   fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
   redlineComponent = viewChild<RedlineComponent>('redlineComponent');
+
+  readonly fileInputAccept = FILE_INPUT_ACCEPT;
 
   workspaceId = signal('');
   documentId = signal('');
@@ -1191,7 +1202,13 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   }
 
   isTextFile(file: DocumentFile): boolean {
-    return file.mimeType === 'text/plain' || file.fileName.toLowerCase().endsWith('.txt');
+    return (
+      file.mimeType === 'text/plain' ||
+      file.mimeType === 'text/markdown' ||
+      file.mimeType === 'text/x-markdown' ||
+      file.fileName.toLowerCase().endsWith('.txt') ||
+      file.fileName.toLowerCase().endsWith('.md')
+    );
   }
 
   formatFileSize(bytes: number): string {

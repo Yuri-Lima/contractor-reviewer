@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { ALLOWED_EXTENSIONS, ALLOWED_MIME_TYPES } from '@contractai-review/shared';
 
 export interface FileValidationResult {
   isValid: boolean;
@@ -7,15 +7,6 @@ export interface FileValidationResult {
 
 export class UploadValidator {
   private static readonly MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
-  private static readonly ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.txt', '.png', '.jpg', '.jpeg'];
-  private static readonly ALLOWED_MIME_TYPES = [
-    'application/pdf',
-    'application/msword', // .doc (legacy Word)
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'text/plain',
-    'image/png',
-    'image/jpeg',
-  ];
 
   /**
    * Validate file extension
@@ -23,10 +14,10 @@ export class UploadValidator {
   static validateExtension(fileName: string): FileValidationResult {
     const extension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
     
-    if (!this.ALLOWED_EXTENSIONS.includes(extension)) {
+    if (!(ALLOWED_EXTENSIONS as readonly string[]).includes(extension)) {
       return {
         isValid: false,
-        error: `File extension ${extension} is not allowed. Allowed extensions: ${this.ALLOWED_EXTENSIONS.join(', ')}`,
+        error: `File extension ${extension} is not allowed. Allowed extensions: ${ALLOWED_EXTENSIONS.join(', ')}`,
       };
     }
 
@@ -59,15 +50,24 @@ export class UploadValidator {
    */
   static validateMimeType(mimeType: string, buffer: Buffer): FileValidationResult {
     // Basic MIME type check
-    if (!this.ALLOWED_MIME_TYPES.includes(mimeType)) {
+    if (!(ALLOWED_MIME_TYPES as readonly string[]).includes(mimeType)) {
       return {
         isValid: false,
-        error: `MIME type ${mimeType} is not allowed. Allowed types: ${this.ALLOWED_MIME_TYPES.join(', ')}`,
+        error: `MIME type ${mimeType} is not allowed. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`,
       };
     }
 
     // File signature (magic number) validation for security
     const detectedMimeType = this.detectMimeTypeFromBuffer(buffer);
+
+    // Markdown has no magic bytes; it is plain text. Allow text/markdown and text/x-markdown
+    // when detected type is text/plain or null (no binary signature).
+    if (
+      (mimeType === 'text/markdown' || mimeType === 'text/x-markdown') &&
+      (detectedMimeType === 'text/plain' || detectedMimeType === null)
+    ) {
+      return { isValid: true };
+    }
     
     if (detectedMimeType && detectedMimeType !== mimeType) {
       return {

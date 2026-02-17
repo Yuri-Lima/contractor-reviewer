@@ -25,8 +25,8 @@ S3_SECRET_ACCESS_KEY=your-secret-key
 ## Validações de Upload
 
 - **Tamanho máximo:** 25MB
-- **Extensões permitidas:** `.pdf`, `.doc`, `.docx`, `.txt`, `.png`, `.jpg`, `.jpeg`
-- **MIME types:** `application/pdf`, `application/msword` (.doc), `application/vnd.openxmlformats-officedocument.wordprocessingml.document` (.docx), `text/plain`, `image/png`, `image/jpeg`
+- **Extensões permitidas:** `.pdf`, `.doc`, `.docx`, `.txt`, `.md`, `.png`, `.jpg`, `.jpeg`
+- **MIME types:** `application/pdf`, `application/msword` (.doc), `application/vnd.openxmlformats-officedocument.wordprocessingml.document` (.docx), `text/plain`, `text/markdown`, `text/x-markdown`, `image/png`, `image/jpeg`
 - **MIME sniffing (segurança):** Validação por assinatura de arquivo (magic numbers) — não confia no header Content-Type. Rejeita arquivos cuja assinatura não corresponda ao tipo declarado.
 - **Malware scanning:** Interface preparada para ClamAV (atualmente noop)
 

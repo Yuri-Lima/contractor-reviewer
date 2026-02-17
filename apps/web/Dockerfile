@@ -23,6 +23,12 @@ RUN pnpm install --frozen-lockfile
 # Build shared first, then web (production config)
 RUN pnpm --filter @contractai-review/shared build
 RUN pnpm --filter web build --configuration production
+# Normalize output dir: Angular 17+ uses browser/ subdir, older uses root directly
+RUN OUT="/app/apps/web/dist/contractai-web" && \
+    mkdir -p /app/dist-final && \
+    if [ -f "$OUT/browser/index.html" ]; then cp -r "$OUT/browser/." /app/dist-final/; \
+    elif [ -f "$OUT/index.html" ]; then cp -r "$OUT/." /app/dist-final/; \
+    else echo "ERROR: Angular build produced no index.html"; exit 1; fi
 
 # -----------------------------------------------------------------------------
 # Stage 2: Production (Nginx)
@@ -33,8 +39,8 @@ FROM nginx:1.27-alpine AS production
 # Remove default config
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Copy built app
-COPY --from=builder /app/apps/web/dist/contractai-web /usr/share/nginx/html
+# Copy built app (normalized in builder so our index.html overwrites nginx default)
+COPY --from=builder /app/dist-final /usr/share/nginx/html
 
 # Copy nginx configs — main for worker tuning, default.conf for server
 COPY apps/web/nginx-main.conf /etc/nginx/nginx.conf

@@ -86,6 +86,7 @@
                       [loading]="savingKey() === p.id"
                       [disabled]="savingKey() === p.id"
                       (onClick)="saveApiKey(p.id)"
+                      [pTooltip]="'common.save' | translate"
                     ></p-button>
                   </div>
                   <div class="flex items-center gap-2 mt-2">

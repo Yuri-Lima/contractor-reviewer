@@ -1,20 +1,24 @@
 import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslatePipe } from '@ngx-translate/core';
+import { TooltipModule } from 'primeng/tooltip';
 import { ThemeService } from '../../core/services/theme.service';
 
 @Component({
   selector: 'app-theme-selector',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslatePipe, TooltipModule],
   template: `
-    <div class="flex items-center gap-2 px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 transition-colors">
+    <div 
+      class="flex items-center gap-2 px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 transition-colors"
+      [pTooltip]="'tooltip.themeToggle' | translate"
+    >
       <!-- Sun Icon (Day/Light) -->
       <i 
         class="pi pi-sun text-base transition-all duration-200"
         [class.text-yellow-500]="!isDarkMode()"
         [class.text-gray-400]="isDarkMode()"
         [class.scale-110]="!isDarkMode()"
-        title="Dia - Modo Claro"
       ></i>
       
       <button
@@ -23,7 +27,6 @@ import { ThemeService } from '../../core/services/theme.service';
         class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 cursor-pointer"
         [class.bg-blue-500]="isDarkMode()"
         [class.bg-yellow-400]="!isDarkMode()"
-        title="{{ isDarkMode() ? 'Alternar para Modo Claro (Dia)' : 'Alternar para Modo Escuro (Noite)' }}"
       >
         <span
           class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out"
@@ -38,7 +41,6 @@ import { ThemeService } from '../../core/services/theme.service';
         [class.text-blue-300]="isDarkMode()"
         [class.text-gray-400]="!isDarkMode()"
         [class.scale-110]="isDarkMode()"
-        title="Noite - Modo Escuro"
       ></i>
     </div>
   `,

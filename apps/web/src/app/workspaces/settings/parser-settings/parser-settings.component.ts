@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
+import { TooltipModule } from 'primeng/tooltip';
 import { Message } from 'primeng/message';
 import { SelectModule } from 'primeng/select';
 import { Password } from 'primeng/password';
@@ -28,6 +29,7 @@ const PARSER_NAME_KEYS: Record<string, string> = {
     FormsModule,
     Button,
     Card,
+    TooltipModule,
     Message,
     SelectModule,
     Password,

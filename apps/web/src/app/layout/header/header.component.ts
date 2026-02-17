@@ -6,6 +6,7 @@ import { Button } from 'primeng/button';
 import { Avatar } from 'primeng/avatar';
 import { Menu } from 'primeng/menu';
 import { MenuItem } from 'primeng/api';
+import { TooltipModule } from 'primeng/tooltip';
 import { AuthService } from '../../core/services/auth.service';
 import { ThemeSelectorComponent } from '../theme-selector/theme-selector.component';
 import { LanguageSelectorComponent } from '../language-selector/language-selector.component';
@@ -14,7 +15,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterModule, Button, Avatar, Menu, ThemeSelectorComponent, LanguageSelectorComponent, TranslatePipe],
+  imports: [CommonModule, RouterModule, Button, Avatar, Menu, TooltipModule, ThemeSelectorComponent, LanguageSelectorComponent, TranslatePipe],
   templateUrl: './header.html',
 })
 export class HeaderComponent implements OnInit, OnDestroy {

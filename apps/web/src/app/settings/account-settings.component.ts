@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
+import { TooltipModule } from 'primeng/tooltip';
 import { Card } from 'primeng/card';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Toast } from 'primeng/toast';
@@ -23,6 +24,7 @@ import { TranslateService, TranslatePipe } from '@ngx-translate/core';
     ReactiveFormsModule,
     Button,
     InputText,
+    TooltipModule,
     Card,
     ConfirmDialog,
     Toast,

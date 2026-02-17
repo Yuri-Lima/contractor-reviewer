@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { Message } from 'primeng/message';
+import { TooltipModule } from 'primeng/tooltip';
 import { AccordionModule } from 'primeng/accordion';
 import { TextareaModule } from 'primeng/textarea';
 import { MessageService } from 'primeng/api';
@@ -29,6 +30,7 @@ const PROMPT_LABEL_KEYS: Record<string, string> = {
     FormsModule,
     Button,
     Message,
+    TooltipModule,
     AccordionModule,
     TextareaModule,
     TranslatePipe,

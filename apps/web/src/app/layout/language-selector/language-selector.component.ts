@@ -2,13 +2,14 @@ import { Component, inject, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
-import { TranslateService } from '@ngx-translate/core';
+import { TooltipModule } from 'primeng/tooltip';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Language, LanguageConfig } from '../../core/services/i18n.service';
 
 @Component({
   selector: 'app-language-selector',
   standalone: true,
-  imports: [CommonModule, FormsModule, SelectModule],
+  imports: [CommonModule, FormsModule, SelectModule, TooltipModule, TranslatePipe],
   templateUrl: './language-selector.html',
 })
 export class LanguageSelectorComponent {

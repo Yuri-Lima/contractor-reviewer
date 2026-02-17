@@ -85,6 +85,7 @@
                     [label]="'workspaceMembers.addMember' | translate"
                     icon="pi pi-user-plus"
                     (onClick)="showAddForm.set(true)"
+                    [pTooltip]="'tooltip.addMember' | translate"
                   ></p-button>
                   <p-button
                     [label]="'workspaceMembers.remove' | translate"
@@ -92,6 +93,7 @@
                     severity="danger"
                     [disabled]="!selectedMember() || selectedMember()?.userId === currentUserId() || selectedMember()?.role === 'OWNER'"
                     (onClick)="selectedMember() && confirmRemove(selectedMember()!)"
+                    [pTooltip]="'tooltip.removeMember' | translate"
                   ></p-button>
                 </div>
               </ng-template>

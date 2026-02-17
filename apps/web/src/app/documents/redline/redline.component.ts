@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
+import { TooltipModule } from 'primeng/tooltip';
 import { TextareaModule } from 'primeng/textarea';
 import { Card } from 'primeng/card';
 import { Tag } from 'primeng/tag';
@@ -33,6 +34,7 @@ import { DiffMatchPatch, DiffOp } from 'diff-match-patch-ts';
     CommonModule,
     ReactiveFormsModule,
     Button,
+    TooltipModule,
     SelectModule,
     TextareaModule,
     Card,

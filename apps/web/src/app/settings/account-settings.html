@@ -40,6 +40,7 @@
           severity="secondary"
           [loading]="resetting()"
           (onClick)="confirmResetOnboarding()"
+          [pTooltip]="'tooltip.resetOnboarding' | translate"
         ></p-button>
         <p-button
           data-testid="onboarding-start-tour-btn"
@@ -47,6 +48,7 @@
           icon="pi pi-play"
           [outlined]="true"
           (onClick)="startTourNow()"
+          [pTooltip]="'tooltip.startTour' | translate"
         ></p-button>
       </div>
     </div>
@@ -123,6 +125,7 @@
             severity="danger"
             [disabled]="deleteForm.invalid || deleting()"
             [loading]="deleting()"
+            [pTooltip]="'tooltip.deleteAccount' | translate"
           ></p-button>
         </div>
       </form>

@@ -122,6 +122,7 @@
         [outlined]="true"
         (onClick)="loadConfig()"
         [disabled]="saving()"
+        [pTooltip]="'common.cancel' | translate"
       ></p-button>
       <p-button
         type="submit"
@@ -129,6 +130,7 @@
         icon="pi pi-check"
         [disabled]="retentionForm.invalid || saving()"
         [loading]="saving()"
+        [pTooltip]="'common.save' | translate"
       ></p-button>
     </div>
   </form>

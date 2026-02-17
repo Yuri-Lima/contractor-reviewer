@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { Tag } from 'primeng/tag';
 import { Button } from 'primeng/button';
+import { TooltipModule } from 'primeng/tooltip';
 import { Toast } from 'primeng/toast';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
@@ -15,7 +16,7 @@ import { AuthService } from '../../core/services/auth.service';
 @Component({
   selector: 'app-versions',
   standalone: true,
-  imports: [CommonModule, Tag, Button, Toast, MessageModule, TranslatePipe],
+  imports: [CommonModule, Tag, Button, TooltipModule, Toast, MessageModule, TranslatePipe],
   providers: [MessageService],
   template: `
     <div class="versions-container p-6">
@@ -57,6 +58,7 @@ import { AuthService } from '../../core/services/auth.service';
                   [icon]="selectedVersion()?.id === version.id ? 'pi pi-eye-slash' : 'pi pi-eye'"
                   [outlined]="true"
                   (onClick)="toggleVersion(version)"
+                  [pTooltip]="'tooltip.viewVersion' | translate"
                 ></p-button>
               </div>
 

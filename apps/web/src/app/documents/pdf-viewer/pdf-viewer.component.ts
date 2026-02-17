@@ -1,7 +1,8 @@
 import { Component, input, output, signal, effect, viewChild, ElementRef, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Button } from 'primeng/button';
-import { TranslateService } from '@ngx-translate/core';
+import { TooltipModule } from 'primeng/tooltip';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface TextSelection {
   text: string;
@@ -12,7 +13,7 @@ export interface TextSelection {
 @Component({
   selector: 'app-pdf-viewer',
   standalone: true,
-  imports: [CommonModule, Button],
+  imports: [CommonModule, Button, TooltipModule, TranslatePipe],
   template: `
     <div class="pdf-viewer-container bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
       <div class="pdf-viewer-controls flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -24,6 +25,7 @@ export interface TextSelection {
             (onClick)="previousPage()"
             severity="secondary"
             [outlined]="true"
+            [pTooltip]="'tooltip.prevPage' | translate"
           ></p-button>
           <span class="text-sm text-gray-700 dark:text-gray-300">
             Página {{ currentPage() }} de {{ totalPages() }}
@@ -35,6 +37,7 @@ export interface TextSelection {
             (onClick)="nextPage()"
             severity="secondary"
             [outlined]="true"
+            [pTooltip]="'tooltip.nextPage' | translate"
           ></p-button>
         </div>
         <div class="flex items-center gap-2">
@@ -45,7 +48,7 @@ export interface TextSelection {
             (onClick)="zoomOut()"
             severity="secondary"
             [outlined]="true"
-            title="Diminuir zoom"
+            [pTooltip]="'tooltip.zoomOut' | translate"
           ></p-button>
           <span class="text-sm text-gray-700 dark:text-gray-300 min-w-[60px] text-center">
             {{ Math.round(scale() * 100) }}%
@@ -57,7 +60,7 @@ export interface TextSelection {
             (onClick)="zoomIn()"
             severity="secondary"
             [outlined]="true"
-            title="Aumentar zoom"
+            [pTooltip]="'tooltip.zoomIn' | translate"
           ></p-button>
           <p-button
             icon="pi pi-refresh"
@@ -65,7 +68,7 @@ export interface TextSelection {
             (onClick)="resetZoom()"
             severity="secondary"
             [outlined]="true"
-            title="Resetar zoom"
+            [pTooltip]="'tooltip.zoomReset' | translate"
           ></p-button>
         </div>
       </div>

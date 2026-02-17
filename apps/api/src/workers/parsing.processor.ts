@@ -172,7 +172,7 @@ export class ParsingProcessor extends WorkerHost {
       let pageCount: number | null = null;
       let usedParser: string | undefined;
 
-      if (mimeType === 'text/plain') {
+      if (['text/plain', 'text/markdown', 'text/x-markdown'].includes(mimeType)) {
         const fileBuffer = await this.withTimeout(
           this.storageService.getFileBuffer(storageKey),
           30000,

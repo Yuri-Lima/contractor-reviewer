@@ -4,7 +4,7 @@ ContractAI Review supports multiple document parsers for extracting text from up
 
 ## Upload Validation
 
-Before parsing, files are validated by the storage module. Allowed formats: `.pdf`, `.doc`, `.docx`, `.txt`, `.png`, `.jpg`, `.jpeg` (max 25MB). MIME type is verified via file signature (magic numbers). See [apps/api/src/storage/README.md](apps/api/src/storage/README.md) for details.
+Before parsing, files are validated by the storage module. Allowed formats: `.pdf`, `.doc`, `.docx`, `.txt`, `.md`, `.png`, `.jpg`, `.jpeg` (max 25MB). MIME type is verified via file signature (magic numbers). See [apps/api/src/storage/README.md](apps/api/src/storage/README.md) for details.
 
 ## Overview
 

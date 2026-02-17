@@ -194,6 +194,18 @@ To enable the dashboard on port 8080 for debugging, add to the Traefik service i
 
 **Warning**: Do not expose the dashboard in production without authentication.
 
+## Verify deployment
+
+Run the verification script after `docker compose up -d`:
+
+```bash
+pnpm verify:deploy
+# or
+./scripts/verify-deployment.sh
+```
+
+This checks: containers, ports, API health, DB/Redis, and Traefik→web connectivity. Full end-to-end: open https://app.legalaiassistance.com in a browser (ensure DNS A record for `app` points to your VPS).
+
 ## Commands
 
 **VPS (from `deploy/` directory):**

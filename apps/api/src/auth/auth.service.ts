@@ -50,8 +50,11 @@ export class AuthService {
   }
 
   async validateUser(email: string, password: string): Promise<Omit<User, 'passwordHash'> | null> {
+    const normalizedEmail = email?.trim().toLowerCase();
+    if (!normalizedEmail) return null;
+
     const user = await this.userRepository.findOne({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (!user || !user.isActive) {

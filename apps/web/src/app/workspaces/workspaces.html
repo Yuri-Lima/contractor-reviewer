@@ -13,6 +13,7 @@
       (onClick)="showCreateForm.set(true)"
       [outlined]="false"
       class="w-full sm:w-auto"
+      [pTooltip]="'tooltip.createWorkspace' | translate"
     ></p-button>
   </div>
 
@@ -100,7 +101,7 @@
                 (onClick)="confirmDelete(workspace.id, workspace.name); $event.stopPropagation()"
                 [disabled]="loading()"
                 class="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 dark:hover:bg-red-900/20"
-                [title]="'workspaces.deleteWorkspace' | translate"
+                [pTooltip]="'tooltip.deleteWorkspace' | translate"
               ></p-button>
             </div>
           </div>
@@ -112,6 +113,7 @@
               data-testid="workspace-view-documents"
               class="block no-underline"
               (click)="$event.stopPropagation()"
+              [pTooltip]="'tooltip.viewDocuments' | translate"
             >
               <div class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                 <span class="flex items-center gap-2">
@@ -141,6 +143,7 @@
         icon="pi pi-plus"
         (onClick)="showCreateForm.set(true)"
         [outlined]="false"
+        [pTooltip]="'tooltip.createWorkspace' | translate"
       ></p-button>
     </div>
   }

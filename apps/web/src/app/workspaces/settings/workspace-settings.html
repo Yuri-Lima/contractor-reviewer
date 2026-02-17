@@ -159,6 +159,7 @@
                   [outlined]="true"
                   (onClick)="loadSettings()"
                   [disabled]="saving()"
+                  [pTooltip]="'common.cancel' | translate"
                 ></p-button>
                 <p-button
                   [label]="'retention.saveSettings' | translate"
@@ -166,6 +167,7 @@
                   [disabled]="retentionForm.invalid || saving()"
                   [loading]="saving()"
                   (onClick)="onSaveRetention()"
+                  [pTooltip]="'common.save' | translate"
                 ></p-button>
               </div>
             </form>
@@ -225,6 +227,7 @@
                     [loading]="savingChunking()"
                     [disabled]="savingChunking()"
                     (onClick)="onSaveChunking()"
+                    [pTooltip]="'common.save' | translate"
                   ></p-button>
                 </div>
               </div>

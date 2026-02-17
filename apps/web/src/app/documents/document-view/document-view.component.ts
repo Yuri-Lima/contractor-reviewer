@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { Toolbar } from 'primeng/toolbar';
+import { TooltipModule } from 'primeng/tooltip';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Toast } from 'primeng/toast';
 import { ConfirmationService, MessageService, SharedModule } from 'primeng/api';
@@ -71,6 +72,7 @@ interface FilesResourceParams extends FilesRequestParams {
     FormsModule,
     Button,
     Toolbar,
+    TooltipModule,
     SharedModule,
     ConfirmDialog,
     Toast,
@@ -119,6 +121,7 @@ interface FilesResourceParams extends FilesRequestParams {
             icon="pi pi-upload"
             [outlined]="true"
             (onClick)="triggerFileInput()"
+            [pTooltip]="'tooltip.uploadFile' | translate"
           ></p-button>
           @if (canDelete()) {
             <p-button
@@ -127,6 +130,7 @@ interface FilesResourceParams extends FilesRequestParams {
               severity="danger"
               [outlined]="true"
               (onClick)="confirmDelete()"
+              [pTooltip]="'tooltip.deleteDocument' | translate"
             ></p-button>
           }
         </div>
@@ -188,6 +192,7 @@ interface FilesResourceParams extends FilesRequestParams {
                         severity="danger"
                         [disabled]="!selectedFile()"
                         (onClick)="selectedFile() && confirmDeleteFile(selectedFile()!)"
+                        [pTooltip]="'common.delete' | translate"
                       ></p-button>
                       </div>
                     </ng-template>
@@ -236,6 +241,7 @@ interface FilesResourceParams extends FilesRequestParams {
                             [outlined]="true"
                             size="small"
                             (onClick)="viewFile(file)"
+                            [pTooltip]="'documents.viewFile' | translate"
                           ></p-button>
                         }
                         <p-button 
@@ -246,6 +252,7 @@ interface FilesResourceParams extends FilesRequestParams {
                           severity="secondary"
                           size="small"
                           (onClick)="downloadFile(file)"
+                          [pTooltip]="'common.download' | translate"
                         ></p-button>
                       </div>
                     </td>
@@ -351,7 +358,7 @@ interface FilesResourceParams extends FilesRequestParams {
           <div class="bg-white dark:bg-gray-800 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-auto" (click)="$event.stopPropagation()">
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
               <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ fileToView()?.fileName }}</h3>
-              <p-button icon="pi pi-times" [text]="true" (onClick)="closeFileViewer()" severity="secondary"></p-button>
+              <p-button icon="pi pi-times" [text]="true" (onClick)="closeFileViewer()" severity="secondary" [pTooltip]="'tooltip.close' | translate"></p-button>
             </div>
             <div class="p-4">
               @if (fileToView() && isPdfFile(fileToView()!)) {

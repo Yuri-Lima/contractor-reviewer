@@ -57,6 +57,7 @@
                     [loading]="savingKey() === prompt.key"
                     [disabled]="savingKey() === prompt.key"
                     (onClick)="onReset(prompt.key)"
+                    [pTooltip]="'prompts.resetToDefault' | translate"
                   ></p-button>
                 }
                 <p-button
@@ -65,6 +66,7 @@
                   [loading]="savingKey() === prompt.key"
                   [disabled]="!hasChanges(prompt.key) || savingKey() === prompt.key"
                   (onClick)="onSave(prompt.key)"
+                  [pTooltip]="'common.save' | translate"
                 ></p-button>
               </div>
             </div>

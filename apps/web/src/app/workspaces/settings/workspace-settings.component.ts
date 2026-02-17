@@ -5,6 +5,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { FormsModule } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { InputNumber } from 'primeng/inputnumber';
+import { TooltipModule } from 'primeng/tooltip';
 import { Card } from 'primeng/card';
 import { Message } from 'primeng/message';
 import { Toast } from 'primeng/toast';
@@ -37,6 +38,7 @@ interface ChunkingOption {
     FormsModule,
     Button,
     InputNumber,
+    TooltipModule,
     Card,
     Message,
     Toast,

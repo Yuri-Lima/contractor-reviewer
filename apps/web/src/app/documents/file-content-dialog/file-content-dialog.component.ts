@@ -13,6 +13,7 @@ import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Dialog } from 'primeng/dialog';
 import { Button } from 'primeng/button';
+import { TooltipModule } from 'primeng/tooltip';
 import { MessageModule } from 'primeng/message';
 import { Popover } from 'primeng/popover';
 import { ApiService } from '../../core/services/api.service';
@@ -24,7 +25,7 @@ import { contentToHtml } from '../../core/utils/content-transformer';
 @Component({
   selector: 'app-file-content-dialog',
   standalone: true,
-  imports: [CommonModule, Dialog, Button, MessageModule, Popover, TranslatePipe],
+  imports: [CommonModule, Dialog, Button, TooltipModule, MessageModule, Popover, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-dialog
@@ -97,6 +98,7 @@ import { contentToHtml } from '../../core/utils/content-transformer';
           [label]="'common.close' | translate"
           icon="pi pi-times"
           (onClick)="onClose()"
+          [pTooltip]="'tooltip.close' | translate"
         ></p-button>
       </ng-template>
     </p-dialog>
@@ -117,6 +119,7 @@ import { contentToHtml } from '../../core/utils/content-transformer';
             icon="pi pi-plus"
             size="small"
             (onClick)="addSelection()"
+            [pTooltip]="'redline.addToSelections' | translate"
           ></p-button>
         </div>
       }

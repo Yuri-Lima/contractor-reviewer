@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
+import { TooltipModule } from 'primeng/tooltip';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { InputNumber } from 'primeng/inputnumber';
 import { Toast } from 'primeng/toast';
@@ -28,6 +29,7 @@ interface NoLogsConfig {
     ReactiveFormsModule,
     Button,
     Card,
+    TooltipModule,
     ToggleSwitchModule,
     InputNumber,
     Toast,

@@ -90,12 +90,13 @@
         [disabled]="registerForm.invalid || loading()"
         [loading]="loading()"
         class="w-full mt-4"
+        [pTooltip]="'auth.signUp' | translate"
       ></p-button>
     </form>
 
     <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-center text-sm">
       <span class="text-gray-600 dark:text-gray-400">{{ 'auth.hasAccount' | translate }} </span>
-      <a routerLink="/login" data-testid="register-login-link" class="text-blue-600 dark:text-blue-400 font-medium hover:underline transition-colors">
+      <a routerLink="/login" data-testid="register-login-link" class="text-blue-600 dark:text-blue-400 font-medium hover:underline transition-colors" [pTooltip]="'auth.signIn' | translate">
         {{ 'auth.signIn' | translate }}
       </a>
     </div>

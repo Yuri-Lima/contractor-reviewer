@@ -91,6 +91,7 @@
         icon="pi pi-magic"
         [disabled]="redlineForm.invalid || generating()"
         [loading]="generating()"
+        [pTooltip]="'tooltip.generateRedline' | translate"
       ></p-button>
     </div>
     </form>

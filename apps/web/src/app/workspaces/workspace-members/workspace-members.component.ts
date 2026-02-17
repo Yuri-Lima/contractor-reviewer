@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { Toolbar } from 'primeng/toolbar';
+import { TooltipModule } from 'primeng/tooltip';
 import { InputText } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
@@ -29,6 +30,7 @@ import { BaseListConfig } from '../../core/components/base-list/base-list.config
     ReactiveFormsModule,
     Button,
     Toolbar,
+    TooltipModule,
     SharedModule,
     InputText,
     SelectModule,

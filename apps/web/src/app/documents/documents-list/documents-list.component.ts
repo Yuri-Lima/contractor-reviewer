@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
+import { TooltipModule } from 'primeng/tooltip';
 import { Toolbar } from 'primeng/toolbar';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Toast } from 'primeng/toast';
@@ -16,7 +17,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 @Component({
   selector: 'app-documents-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, Button, Card, Toolbar, SharedModule, ConfirmDialog, Toast, LocaleDatePipe, TranslatePipe],
+  imports: [CommonModule, RouterModule, Button, Card, Toolbar, TooltipModule, SharedModule, ConfirmDialog, Toast, LocaleDatePipe, TranslatePipe],
   providers: [ConfirmationService, MessageService],
   template: `
     <div class="documents-container p-6 max-w-6xl mx-auto">
@@ -31,6 +32,7 @@ import { TranslatePipe } from '@ngx-translate/core';
               [label]="'documents.create' | translate"
               icon="pi pi-plus"
               (onClick)="showCreateForm.set(true)"
+              [pTooltip]="'documents.create' | translate"
             ></p-button>
           </div>
         </ng-template>

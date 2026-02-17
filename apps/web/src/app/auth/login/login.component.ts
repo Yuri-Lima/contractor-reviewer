@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Router, RouterModule } from '@angular/router';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
+import { TooltipModule } from 'primeng/tooltip';
 import { InputText } from 'primeng/inputtext';
 import { Password } from 'primeng/password';
 import { Message } from 'primeng/message';
@@ -22,6 +23,7 @@ import { LanguageSelectorComponent } from '../../layout/language-selector/langua
     RouterModule,
     Button,
     Card,
+    TooltipModule,
     InputText,
     Password,
     Message,

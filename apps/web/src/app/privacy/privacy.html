@@ -94,6 +94,7 @@
           (onClick)="saveNoLogsConfig()"
           [loading]="saving()"
           [disabled]="!isNoLogsEnabled()"
+          [pTooltip]="'common.save' | translate"
         ></p-button>
       </div>
     </form>
@@ -127,6 +128,7 @@
         icon="pi pi-download"
         (onClick)="exportData()"
         [loading]="exporting()"
+        [pTooltip]="'tooltip.exportData' | translate"
       ></p-button>
     </div>
   </p-card>

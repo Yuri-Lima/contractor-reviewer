@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -9,7 +9,12 @@ import { Document } from '../entities/document.entity';
 import { Citation, ChatResponse } from '@contractai-review/shared';
 import { EmbeddingsService } from './embeddings.service';
 import { PromptService } from '../prompts/prompt.service';
-import { arrayToVectorString } from '../vector-helpers';
+import {
+  IVectorStore,
+  LegalChunkSearchResult,
+  VECTOR_STORE,
+  VectorSearchResult,
+} from '../vector-store/vector-store.interface';
 
 // Re-export for backward compatibility
 export type { Citation };
@@ -21,10 +26,8 @@ export class RagService {
   private readonly chatModel: string;
 
   constructor(
-    @InjectRepository(Chunk)
-    private chunkRepository: Repository<Chunk>,
-    @InjectRepository(Embedding)
-    private embeddingRepository: Repository<Embedding>,
+    @Inject(VECTOR_STORE)
+    private vectorStore: IVectorStore,
     @InjectRepository(Document)
     private documentRepository: Repository<Document>,
     private embeddingsService: EmbeddingsService,
@@ -46,29 +49,8 @@ export class RagService {
     queryEmbedding: number[],
     documentId: string,
     limit: number = 5,
-  ): Promise<Array<Chunk & { distance: number }>> {
-    const embeddingVector = arrayToVectorString(queryEmbedding);
-
-    // Use cosine distance for similarity search
-    // Cast embedding column to vector type for pgvector operations
-    const results = await this.chunkRepository.query(
-      `
-      SELECT 
-        c.*,
-        1 - (c.embedding::vector <=> $1::vector) AS distance
-      FROM chunks c
-      WHERE c."documentId" = $2
-        AND c.embedding IS NOT NULL
-      ORDER BY c.embedding::vector <=> $1::vector
-      LIMIT $3
-    `,
-      [embeddingVector, documentId, limit],
-    );
-
-    return results.map((r: any) => ({
-      ...r,
-      distance: parseFloat(r.distance),
-    }));
+  ): Promise<VectorSearchResult<Chunk>[]> {
+    return this.vectorStore.searchContractChunks(queryEmbedding, documentId, limit);
   }
 
   /**
@@ -79,47 +61,12 @@ export class RagService {
     country?: string,
     jurisdiction?: string,
     limit: number = 5,
-  ): Promise<Array<Embedding & { distance: number; sourceName?: string; section?: string; country?: string; jurisdiction?: string; url?: string }>> {
-    const embeddingVector = arrayToVectorString(queryEmbedding);
-
-    let query = `
-      SELECT 
-        e.*,
-        ls."sourceName",
-        ls."section",
-        ls."country",
-        ls."jurisdiction",
-        ls."url",
-        1 - (e.embedding::vector <=> $1::vector) AS distance
-      FROM embeddings e
-      LEFT JOIN legal_sources ls ON e."legalSourceId" = ls.id
-      WHERE e.embedding IS NOT NULL
-    `;
-
-    const params: any[] = [embeddingVector];
-    let paramIndex = 2;
-
-    if (country) {
-      query += ` AND ls.country = $${paramIndex}`;
-      params.push(country);
-      paramIndex++;
-    }
-
-    if (jurisdiction) {
-      query += ` AND ls.jurisdiction = $${paramIndex}`;
-      params.push(jurisdiction);
-      paramIndex++;
-    }
-
-    query += ` ORDER BY e.embedding::vector <=> $1::vector LIMIT $${paramIndex}`;
-    params.push(limit);
-
-    const results = await this.embeddingRepository.query(query, params);
-
-    return results.map((r: any) => ({
-      ...r,
-      distance: parseFloat(r.distance),
-    }));
+  ): Promise<LegalChunkSearchResult[]> {
+    return this.vectorStore.searchLegalChunks(
+      queryEmbedding,
+      { country, jurisdiction },
+      limit,
+    );
   }
 
   /**
@@ -185,30 +132,30 @@ export class RagService {
     });
 
     // Add citations for top chunks (even if similarity is lower, they're still relevant)
-    for (const chunk of contractChunks.slice(0, 3)) {
+    for (const result of contractChunks.slice(0, 3)) {
       // Lower threshold to include more citations (0.4 instead of 0.6)
       // Since distance is similarity, lower values still mean some relevance
-      if (chunk.distance > 0.4 || contractChunks.length <= 3) {
+      if (result.distance > 0.4 || contractChunks.length <= 3) {
         citations.push({
           type: 'contract',
           fileName: document?.title || 'Document',
-          pageNumber: chunk.pageNumber || undefined,
-          paragraphId: chunk.paragraphId || undefined,
-          quoteSnippet: chunk.text.substring(0, 200) + '...',
+          pageNumber: result.item.pageNumber || undefined,
+          paragraphId: result.item.paragraphId || undefined,
+          quoteSnippet: result.item.text.substring(0, 200) + '...',
         });
       }
     }
 
     // Legal citations
-    for (const chunk of legalChunks.slice(0, 2)) {
+    for (const result of legalChunks.slice(0, 2)) {
       // Lower threshold for legal citations too
-      if (chunk.distance > 0.4 || legalChunks.length <= 2) {
+      if (result.distance > 0.4 || legalChunks.length <= 2) {
         citations.push({
           type: 'legal',
-          sourceName: (chunk as any).sourceName || 'Legal Source',
-          section: chunk.section || undefined,
-          url: (chunk as any).url || undefined,
-          quoteSnippet: chunk.text.substring(0, 200) + '...',
+          sourceName: result.sourceName || 'Legal Source',
+          section: result.item.section || result.section || undefined,
+          url: result.url || undefined,
+          quoteSnippet: result.item.text.substring(0, 200) + '...',
         });
       }
     }
@@ -260,18 +207,18 @@ export class RagService {
    */
   private async generateAnswerText(
     question: string,
-    contractChunks: Array<Chunk & { distance: number }>,
-    legalChunks: Array<Embedding & { distance: number; sourceName?: string }>,
+    contractChunks: VectorSearchResult<Chunk>[],
+    legalChunks: LegalChunkSearchResult[],
     language: string = 'en',
     workspaceId?: string,
   ): Promise<string> {
     // Build context from chunks
     const contractContext = contractChunks
-      .map((c, i) => `[Contract Excerpt ${i + 1}]: ${c.text}`)
+      .map((c, i) => `[Contract Excerpt ${i + 1}]: ${c.item.text}`)
       .join('\n\n');
 
     const legalContext = legalChunks
-      .map((c, i) => `[Legal Source ${i + 1}]: ${c.text}`)
+      .map((c, i) => `[Legal Source ${i + 1}]: ${c.item.text}`)
       .join('\n\n');
 
     const context = [contractContext, legalContext].filter(Boolean).join('\n\n');

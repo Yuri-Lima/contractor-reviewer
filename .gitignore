@@ -45,3 +45,10 @@ nda-mutual.doc
 
 # Uploaded files (user documents, generated content)
 apps/api/storage/
+
+
+
+.nx/cache
+.nx/workspace-data
+nx-graph.html
+static/

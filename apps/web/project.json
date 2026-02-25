@@ -1,0 +1,16 @@
+{
+  "name": "web",
+  "tags": ["scope:web"],
+  "targets": {
+    "docker:build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker build -f apps/web/Dockerfile --tag apps-web .",
+        "cwd": "{workspaceRoot}",
+        "env": {}
+      },
+      "dependsOn": ["build", "^build"],
+      "configurations": {}
+    }
+  }
+}

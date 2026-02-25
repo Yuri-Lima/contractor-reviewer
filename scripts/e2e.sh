@@ -46,10 +46,8 @@ cleanup_api() {
 # Optional: start API in background
 if [ "${E2E_WITH_API}" = "1" ]; then
   echo "Starting API in background..."
-  cd apps/api
-  pnpm start:dev &
+  pnpm exec nx run api:start:dev &
   API_PID=$!
-  cd "$ROOT"
   trap cleanup_api EXIT
   trap 'cleanup_api; exit 130' INT
   trap 'cleanup_api; exit 143' TERM
@@ -69,5 +67,4 @@ if [ "${E2E_WITH_API}" = "1" ]; then
 fi
 
 echo "Running E2E tests..."
-cd apps/web
-pnpm e2e
+pnpm exec nx run web:e2e

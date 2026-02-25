@@ -14,14 +14,16 @@ cd "$REPO_ROOT"
 
 echo "Building and pushing images to $DOCKERHUB_USERNAME (tag: $IMAGE_TAG, platform: $BUILD_PLATFORM)"
 
-# API — build from repo root
+# API — build via Nx (respects build order, cache)
 echo "--- Building contractai-api ---"
-docker build --platform "$BUILD_PLATFORM" -f apps/api/Dockerfile -t "$DOCKERHUB_USERNAME/contractai-api:$IMAGE_TAG" .
+DOCKER_BUILDKIT=1 pnpm nx run api:docker:build
+docker tag apps-api "$DOCKERHUB_USERNAME/contractai-api:$IMAGE_TAG"
 docker push "$DOCKERHUB_USERNAME/contractai-api:$IMAGE_TAG"
 
-# Web — build from repo root
+# Web — build via Nx
 echo "--- Building contractai-web ---"
-docker build --platform "$BUILD_PLATFORM" -f apps/web/Dockerfile -t "$DOCKERHUB_USERNAME/contractai-web:$IMAGE_TAG" .
+DOCKER_BUILDKIT=1 pnpm nx run web:docker:build
+docker tag apps-web "$DOCKERHUB_USERNAME/contractai-web:$IMAGE_TAG"
 docker push "$DOCKERHUB_USERNAME/contractai-web:$IMAGE_TAG"
 
 # Docling — build from service dir

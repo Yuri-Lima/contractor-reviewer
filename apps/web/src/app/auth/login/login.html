@@ -43,7 +43,7 @@
           [placeholder]="'auth.passwordPlaceholder' | translate"
           [feedback]="false"
           [toggleMask]="true"
-          class="w-full"
+          class="w-full mb-4"
           [inputStyleClass]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched ? 'ng-invalid' : ''"
         ></p-password>
         @if (loginForm.get('password')?.invalid && loginForm.get('password')?.touched) {
@@ -74,6 +74,7 @@
         class="w-full"
         [class.mt-4]="!error()"
         [class.mt-6]="error()"
+        class="pt-2"
         [pTooltip]="'auth.signIn' | translate"
       ></p-button>
     </form>

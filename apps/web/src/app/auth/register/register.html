@@ -64,7 +64,7 @@
           [placeholder]="'auth.passwordPlaceholder' | translate"
           [feedback]="true"
           [toggleMask]="true"
-          class="w-full"
+          class="w-full mb-4"
           [inputStyleClass]="registerForm.get('password')?.invalid && registerForm.get('password')?.touched ? 'ng-invalid' : ''"
         ></p-password>
         @if (registerForm.get('password')?.invalid && registerForm.get('password')?.touched) {

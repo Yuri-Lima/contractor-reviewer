@@ -1,0 +1,16 @@
+{
+  "name": "api",
+  "tags": ["scope:api"],
+  "targets": {
+    "docker:build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker build -f apps/api/Dockerfile --tag apps-api .",
+        "cwd": "{workspaceRoot}",
+        "env": {}
+      },
+      "dependsOn": ["build", "^build"],
+      "configurations": {}
+    }
+  }
+}

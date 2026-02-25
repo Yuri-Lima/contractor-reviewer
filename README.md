@@ -211,7 +211,7 @@ Para começar a usar o ContractAI Review localmente, consulte o guia completo de
 2. Configurar `.env` a partir de `.env.example` (inclui `OPENAI_API_KEY`, `PARSER_KEYS_ENCRYPTION_KEY` se usar parsers pagos)
 3. Subir serviços: `docker-compose up -d` (Postgres, Redis, Docling, PDFPlumber)
 4. Rodar migrações: `pnpm migration:run`
-5. Iniciar API: `pnpm start:api` ou `pnpm --filter api start:dev`
+5. Iniciar API: `pnpm start:api` ou `pnpm dev:api` (modo watch)
 6. Iniciar Worker: `pnpm start:worker`
 7. Iniciar Web: `pnpm dev:web`
 
@@ -228,6 +228,19 @@ E2E_WITH_API=1 ./scripts/e2e.sh
 ```
 
 Ver [TESTING.md](TESTING.md) para guia completo e [apps/web/e2e/](apps/web/e2e/) para estrutura dos testes (auth, workspaces, documents, settings, onboarding).
+
+### Nx Commands
+
+O monorepo usa [Nx](https://nx.dev) para cache de tarefas e execução eficiente:
+
+| Comando | Descrição |
+|---------|-----------|
+| `pnpm build` | Build de shared, api e web (com ordem de dependências) |
+| `nx run-many -t build -p shared,api,web` | Mesmo que acima |
+| `nx affected -t build` | Build apenas dos projetos afetados pelas mudanças |
+| `nx graph` | Visualiza grafo de dependências e tarefas |
+
+Para **Nx Cloud** (cache remoto e distribuição de tarefas em CI), execute `npx nx connect` e siga as instruções em [cloud.nx.app](https://cloud.nx.app).
 
 ## Stack Tecnológica
 
@@ -254,6 +267,7 @@ Ver [TESTING.md](TESTING.md) para guia completo e [apps/web/e2e/](apps/web/e2e/)
 - **Prompts DB-backed** - Prompts de chat/redline configuráveis por workspace
 
 ### Infraestrutura
+- **Nx** - Build system e cache de tarefas para o monorepo
 - **Docker Compose** - Orquestração local (Postgres, Redis, Docling, PDFPlumber)
 - **S3/R2** - Armazenamento de arquivos (compatível)
 

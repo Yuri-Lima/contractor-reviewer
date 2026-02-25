@@ -5,21 +5,44 @@
   "description": "ContractAI Review MVP+ — monorepo",
   "scripts": {
     "install:all": "pnpm install",
-    "dev:api": "pnpm --filter api dev",
-    "start:api": "pnpm --filter api start",
-    "start:worker": "pnpm --filter api start:worker",
-    "dev:web": "pnpm --filter web start",
-    "build:api": "pnpm --filter api build",
-    "build:web": "pnpm --filter web build",
-    "migration:run": "pnpm --filter api migration:run",
-    "migration:generate": "pnpm --filter api migration:generate",
-    "e2e": "pnpm --filter web e2e",
-    "kill:port": "./scripts/kill-port.sh 3000 4200",
+    "dev:api": "nx run api:dev",
+    "start:api": "nx run api:start",
+    "start:worker": "nx run api:start:worker",
+    "dev:web": "nx run web:serve",
+    "build": "nx run-many -t build -p shared,api,web",
+    "build:api": "nx run api:build",
+    "build:web": "nx run web:build",
+    "migration:run": "nx run api:migration:run",
+    "migration:generate": "nx run api:migration:generate",
+    "e2e": "nx run web:e2e",
+    "kill:port": "./scripts/kill-port.sh 3000 4400 8000 8001",
     "docker:push": "./scripts/build-and-push.sh",
-    "verify:deploy": "./scripts/verify-deployment.sh"
+    "verify:deploy": "./scripts/verify-deployment.sh",
+    "lint": "nx run-many -t lint --all",
+    "test": "nx run-many -t test --all",
+    "docker:build": "nx run-many -t docker:build -p api,web"
   },
   "engines": {
     "node": ">=18"
   },
-  "packageManager": "pnpm@9.0.0"
+  "packageManager": "pnpm@9.0.0",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@nx/angular": "22.5.2",
+    "@nx/docker": "22.5.2",
+    "@nx/eslint": "^22.5.2",
+    "@nx/eslint-plugin": "^22.5.2",
+    "@nx/jest": "^22.5.2",
+    "@nx/nest": "22.5.2",
+    "@nx/playwright": "22.5.2",
+    "@playwright/test": "^1.36.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "eslint": "^9.39.3",
+    "globals": "^17.3.0",
+    "jest": "^30.2.0",
+    "nx": "22.5.2",
+    "ts-jest": "^29.4.6",
+    "typescript": "^5.9.3"
+  }
 }

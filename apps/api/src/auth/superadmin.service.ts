@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../entities/user.entity';
 import { WorkspaceMember, WorkspaceRole } from '../entities/workspace-member.entity';
@@ -61,9 +61,9 @@ export class SuperadminService implements OnModuleInit {
       superadmin.passwordHash = await bcrypt.hash(password, 10);
       await this.userRepository.save(superadmin);
     } else {
-      // Create superadmin
+      // Create superadmin (handle race: another instance may have created it)
       const passwordHash = await bcrypt.hash(password, 10);
-      
+
       superadmin = this.userRepository.create({
         email: normalizedEmail,
         passwordHash,
@@ -71,8 +71,27 @@ export class SuperadminService implements OnModuleInit {
         isActive: true,
       });
 
-      superadmin = await this.userRepository.save(superadmin);
-      this.logger.log(`Superadmin created: ${superadmin.email} - ${superadmin.name}`);
+      try {
+        superadmin = await this.userRepository.save(superadmin);
+        this.logger.log(`Superadmin created: ${superadmin.email} - ${superadmin.name}`);
+      } catch (err) {
+        if (
+          err instanceof QueryFailedError &&
+          (err as QueryFailedError & { driverError?: { code?: string } }).driverError?.code === '23505'
+        ) {
+          this.logger.log(`Superadmin already exists (race): ${normalizedEmail}`);
+          const existing = await this.userRepository.findOne({
+            where: { email: normalizedEmail },
+          });
+          if (existing) {
+            superadmin = existing;
+          } else {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
     }
 
     // Ensure superadmin is Owner of all workspaces

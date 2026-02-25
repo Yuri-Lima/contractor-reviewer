@@ -7,9 +7,13 @@ async function bootstrap() {
   app.enableShutdownHooks();
   app.setGlobalPrefix('api');
   
-  // Enable CORS for frontend
+  // Enable CORS for frontend (allow both 4200 and 4400 for dev)
+  const frontendUrl = process.env['FRONTEND_URL'];
+  const allowedOrigins = frontendUrl
+    ? frontendUrl.split(',').map((o) => o.trim())
+    : ['http://localhost:4200', 'http://localhost:4400'];
   app.enableCors({
-    origin: process.env['FRONTEND_URL'] || 'http://localhost:4200',
+    origin: allowedOrigins,
     credentials: true,
   });
   

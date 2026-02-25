@@ -1,17 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { OpenAI } from 'openai';
-import { Chunk } from '../entities/chunk.entity';
-import { Embedding } from '../entities/embedding.entity';
 import { Document } from '../entities/document.entity';
 import { EmbeddingsService } from '../rag/embeddings.service';
-import { RagService } from '../rag/rag.service';
 import { RedlineChange, RedlinePlaybook } from '@contractai-review/shared';
 import { DiffService } from './diff.service';
 import { PromptService } from '../prompts/prompt.service';
-import { arrayToVectorString } from '../vector-helpers';
+import { IVectorStore, VECTOR_STORE } from '../vector-store/vector-store.interface';
 
 @Injectable()
 export class RedlineService {
@@ -19,14 +16,11 @@ export class RedlineService {
   private readonly chatModel: string;
 
   constructor(
-    @InjectRepository(Chunk)
-    private chunkRepository: Repository<Chunk>,
-    @InjectRepository(Embedding)
-    private embeddingRepository: Repository<Embedding>,
+    @Inject(VECTOR_STORE)
+    private vectorStore: IVectorStore,
     @InjectRepository(Document)
     private documentRepository: Repository<Document>,
     private embeddingsService: EmbeddingsService,
-    private ragService: RagService,
     private diffService: DiffService,
     private promptService: PromptService,
     private configService: ConfigService,
@@ -57,7 +51,7 @@ export class RedlineService {
     const selectedTextEmbedding = await this.embeddingsService.generateEmbedding(selectedText);
     
     // Search contract chunks using vector similarity
-    const contractChunks = await this.searchContractChunks(selectedTextEmbedding, documentId, 5);
+    const contractChunks = await this.vectorStore.searchContractChunks(selectedTextEmbedding, documentId, 5);
 
     // Check if we found the text
     if (contractChunks.length === 0) {
@@ -84,16 +78,16 @@ export class RedlineService {
 
     // Search legal chunks if jurisdiction available
     const legalChunks = jurisdiction
-      ? await this.searchLegalChunks(selectedTextEmbedding, undefined, jurisdiction, 3)
+      ? await this.vectorStore.searchLegalChunks(selectedTextEmbedding, { jurisdiction }, 3)
       : [];
 
     // Build context from chunks
     const contractContext = contractChunks
-      .map((c, i) => `[Contract Excerpt ${i + 1}]: ${c.text}`)
+      .map((c, i) => `[Contract Excerpt ${i + 1}]: ${c.item.text}`)
       .join('\n\n');
 
     const legalContext = legalChunks
-      .map((c, i) => `[Legal Source ${i + 1}]: ${c.text}`)
+      .map((c, i) => `[Legal Source ${i + 1}]: ${c.item.text}`)
       .join('\n\n');
 
     const context = [contractContext, legalContext].filter(Boolean).join('\n\n');
@@ -210,87 +204,6 @@ export class RedlineService {
         notFound: true,
       };
     }
-  }
-
-  /**
-   * Search for similar contract chunks
-   */
-  private async searchContractChunks(
-    queryEmbedding: number[],
-    documentId: string,
-    limit: number = 5,
-  ): Promise<Array<Chunk & { distance: number }>> {
-    const embeddingVector = arrayToVectorString(queryEmbedding);
-
-    const results = await this.chunkRepository.query(
-      `
-      SELECT 
-        c.*,
-        1 - (c.embedding::vector <=> $1::vector) AS distance
-      FROM chunks c
-      WHERE c."documentId" = $2
-        AND c.embedding IS NOT NULL
-      ORDER BY c.embedding::vector <=> $1::vector
-      LIMIT $3
-    `,
-      [embeddingVector, documentId, limit],
-    );
-
-    return results.map((r: any) => ({
-      ...r,
-      distance: parseFloat(r.distance),
-    }));
-  }
-
-  /**
-   * Search for similar legal source chunks
-   */
-  private async searchLegalChunks(
-    queryEmbedding: number[],
-    country?: string,
-    jurisdiction?: string,
-    limit: number = 5,
-  ): Promise<Array<Embedding & { distance: number; sourceName?: string; section?: string; country?: string; jurisdiction?: string; url?: string }>> {
-    const embeddingVector = arrayToVectorString(queryEmbedding);
-
-    let query = `
-      SELECT 
-        e.*,
-        ls."sourceName",
-        ls."section",
-        ls."country",
-        ls."jurisdiction",
-        ls."url",
-        1 - (e.embedding::vector <=> $1::vector) AS distance
-      FROM embeddings e
-      LEFT JOIN legal_sources ls ON e."legalSourceId" = ls.id
-      WHERE e.embedding IS NOT NULL
-    `;
-
-    const params: any[] = [embeddingVector];
-    let paramIndex = 2;
-
-    if (country) {
-      query += ` AND ls.country = $${paramIndex}`;
-      params.push(country);
-      paramIndex++;
-    }
-
-    if (jurisdiction) {
-      query += ` AND ls.jurisdiction = $${paramIndex}`;
-      params.push(jurisdiction);
-      paramIndex++;
-    }
-
-    query += ` ORDER BY e.embedding::vector <=> $1::vector LIMIT $${paramIndex}`;
-    params.push(limit);
-
-    const results = await this.embeddingRepository.query(query, params);
-
-    return results.map((r: any) => ({
-      ...r,
-      distance: parseFloat(r.distance),
-    }));
   }
 
   /**

@@ -13,13 +13,15 @@ import { TabsModule } from 'primeng/tabs';
 import { SelectModule } from 'primeng/select';
 import { MessageService } from 'primeng/api';
 import { ApiService } from '../../core/services/api.service';
+import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import {
-  WorkspaceSettingsConfig,
+  WorkspaceRole,
   ChunkingStrategy,
 } from '@contractai-review/shared';
 import { PromptsEditorComponent } from './prompts-editor/prompts-editor.component';
 import { ParserSettingsComponent } from './parser-settings/parser-settings.component';
+import { TranscriptionSettingsComponent } from './transcription-settings/transcription-settings.component';
 import { WorkspaceSettingsTabService } from '../../onboarding/tour/workspace-settings-tab.service';
 
 interface ChunkingOption {
@@ -47,6 +49,7 @@ interface ChunkingOption {
     TranslatePipe,
     PromptsEditorComponent,
     ParserSettingsComponent,
+    TranscriptionSettingsComponent,
   ],
   providers: [MessageService],
   templateUrl: './workspace-settings.html',
@@ -64,6 +67,8 @@ export class WorkspaceSettingsComponent implements OnInit {
   savingChunking = signal(false);
   loading = signal(false);
   activeTab = signal<string>('general');
+  /** Only OWNER and ADMIN can edit API keys (transcription, parsers). */
+  canEditApiKeys = signal(true);
 
   retentionForm: FormGroup;
   chunkingStrategy = signal<string>(ChunkingStrategy.PARAGRAPH);
@@ -124,6 +129,10 @@ export class WorkspaceSettingsComponent implements OnInit {
     this.loading.set(true);
     this.apiService.getWorkspaceSettings(this.workspaceId()).subscribe({
       next: (config) => {
+        this.canEditApiKeys.set(
+          config.currentUserRole === WorkspaceRole.OWNER ||
+          config.currentUserRole === WorkspaceRole.ADMIN,
+        );
         this.retentionForm.patchValue({
           defaultFileRetentionDays: config.retention.defaultFileRetentionDays,
           defaultTextEmbeddingsRetentionDays:
@@ -139,8 +148,8 @@ export class WorkspaceSettingsComponent implements OnInit {
         console.error('Error loading workspace settings:', err);
         this.messageService.add({
           severity: 'error',
-          summary: this.translateService.instant('common.error'),
-          detail: this.translateService.instant('workspaceSettings.loadError'),
+          summary: this.translateService.instant(_('common.error')),
+          detail: this.translateService.instant(_('workspaceSettings.loadError')),
         });
         this.loading.set(false);
       },
@@ -164,18 +173,18 @@ export class WorkspaceSettingsComponent implements OnInit {
         next: () => {
           this.messageService.add({
             severity: 'success',
-            summary: this.translateService.instant('common.success'),
-            detail: this.translateService.instant('retention.saveSuccess'),
+            summary: this.translateService.instant(_('common.success')),
+            detail: this.translateService.instant(_('retention.saveSuccess')),
           });
           this.saving.set(false);
         },
         error: (err) => {
           this.messageService.add({
             severity: 'error',
-            summary: this.translateService.instant('common.error'),
+            summary: this.translateService.instant(_('common.error')),
             detail:
               err.error?.message ||
-              this.translateService.instant('retention.saveError'),
+              this.translateService.instant(_('retention.saveError')),
           });
           this.saving.set(false);
         },
@@ -194,18 +203,18 @@ export class WorkspaceSettingsComponent implements OnInit {
         next: () => {
           this.messageService.add({
             severity: 'success',
-            summary: this.translateService.instant('common.success'),
-            detail: this.translateService.instant('chunking.saveSuccess'),
+            summary: this.translateService.instant(_('common.success')),
+            detail: this.translateService.instant(_('chunking.saveSuccess')),
           });
           this.savingChunking.set(false);
         },
         error: (err) => {
           this.messageService.add({
             severity: 'error',
-            summary: this.translateService.instant('common.error'),
+            summary: this.translateService.instant(_('common.error')),
             detail:
               err.error?.message ||
-              this.translateService.instant('chunking.saveError'),
+              this.translateService.instant(_('chunking.saveError')),
           });
           this.savingChunking.set(false);
         },

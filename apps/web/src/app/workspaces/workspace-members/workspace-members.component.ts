@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject, computed } from '@angular/core';
+import { Component, OnInit, signal, inject, computed, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -13,6 +13,8 @@ import { Toast } from 'primeng/toast';
 import { Tag } from 'primeng/tag';
 import { Card } from 'primeng/card';
 import { ConfirmationService, MessageService, SharedModule } from 'primeng/api';
+import type { MenuItem } from 'primeng/api';
+import { ContextMenu } from 'primeng/contextmenu';
 import { ApiService } from '../../core/services/api.service';
 import { WorkspaceMember, WorkspaceRole, AddMemberRequest } from '@contractai-review/shared';
 import { AuthService } from '../../core/services/auth.service';
@@ -41,7 +43,8 @@ import { BaseListConfig } from '../../core/components/base-list/base-list.config
     Card,
     LocaleDatePipe,
     TranslatePipe,
-    BaseListComponent
+    BaseListComponent,
+    ContextMenu,
   ],
   providers: [ConfirmationService, MessageService],
   templateUrl: './workspace-members.html',
@@ -61,6 +64,12 @@ export class WorkspaceMembersComponent implements OnInit {
   private confirmationService = inject(ConfirmationService);
   private messageService = inject(MessageService);
 
+  membersContextMenuRef = viewChild<ContextMenu>('membersContextMenu');
+  selectedMemberForContext = signal<WorkspaceMember | null>(null);
+  membersContextMenuItems = computed<MenuItem[]>(() =>
+    this.buildMembersMenu(this.selectedMemberForContext())
+  );
+
   workspaceId = signal('');
   members = signal<WorkspaceMember[]>([]);
   loading = signal(false);
@@ -68,6 +77,8 @@ export class WorkspaceMembersComponent implements OnInit {
   showAddForm = signal(false);
   currentUserId = signal<string>('');
   selectedMember = signal<WorkspaceMember | null>(null);
+
+  canManageMembers = computed(() => true);
 
   // Table configuration (client-side pagination with selection when canManageMembers)
   tableConfig = computed<BaseListConfig>(() => {
@@ -140,12 +151,6 @@ export class WorkspaceMembersComponent implements OnInit {
         this.loading.set(false);
       },
     });
-  }
-
-  canManageMembers(): boolean {
-    // TODO: Check if current user is OWNER or ADMIN
-    // For now, allow all authenticated users
-    return true;
   }
 
   getRoleLabel(role: WorkspaceRole): string {
@@ -284,6 +289,67 @@ export class WorkspaceMembersComponent implements OnInit {
         this.removeMember(member.userId);
       },
     });
+  }
+
+  updateMemberRole(member: WorkspaceMember, role: WorkspaceRole): void {
+    this.apiService.updateMemberRole(this.workspaceId(), member.userId, role).subscribe({
+      next: () => {
+        this.messageService.add({
+          severity: 'success',
+          summary: this.translateService.instant('common.success'),
+          detail: this.translateService.instant('workspaceMembers.roleUpdated'),
+        });
+        this.loadMembers();
+      },
+      error: (err) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translateService.instant('common.error'),
+          detail: err.error?.message || this.translateService.instant('workspaceMembers.updateRoleError'),
+        });
+      },
+    });
+  }
+
+  private buildMembersMenu(member: WorkspaceMember | null): MenuItem[] {
+    if (!member || !this.canManageMembers()) return [];
+    if (member.role === WorkspaceRole.OWNER) return [];
+    const t = (key: string) => this.translateService.instant(key);
+    const isSelf = member.userId === this.currentUserId();
+    const changeRoleItems: MenuItem[] = [
+      {
+        label: t('workspaceMembers.roles.admin'),
+        icon: 'pi pi-shield',
+        command: () => this.updateMemberRole(member, WorkspaceRole.ADMIN),
+        disabled: member.role === WorkspaceRole.ADMIN,
+      },
+      {
+        label: t('workspaceMembers.roles.member'),
+        icon: 'pi pi-user',
+        command: () => this.updateMemberRole(member, WorkspaceRole.MEMBER),
+        disabled: member.role === WorkspaceRole.MEMBER,
+      },
+      {
+        label: t('workspaceMembers.roles.viewer'),
+        icon: 'pi pi-eye',
+        command: () => this.updateMemberRole(member, WorkspaceRole.VIEWER),
+        disabled: member.role === WorkspaceRole.VIEWER,
+      },
+    ];
+    return [
+      {
+        label: t('contextMenu.members.changeRole'),
+        icon: 'pi pi-user-edit',
+        items: changeRoleItems,
+      },
+      { separator: true },
+      {
+        label: t('contextMenu.members.remove'),
+        icon: 'pi pi-trash',
+        command: () => this.confirmRemove(member),
+        disabled: isSelf,
+      },
+    ];
   }
 
   removeMember(userId: string): void {

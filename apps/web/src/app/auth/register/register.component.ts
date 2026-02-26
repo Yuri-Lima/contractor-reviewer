@@ -8,8 +8,10 @@ import { TooltipModule } from 'primeng/tooltip';
 import { InputText } from 'primeng/inputtext';
 import { Password } from 'primeng/password';
 import { Message } from 'primeng/message';
+import { ROUTES } from '../../core/routes';
 import { AuthService } from '../../core/services/auth.service';
 import { RegisterRequest } from '@contractai-review/shared';
+import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { TranslatePipe } from '@ngx-translate/core';
 import { TranslateService } from '@ngx-translate/core';
 import { LanguageSelectorComponent } from '../../layout/language-selector/language-selector.component';
@@ -38,6 +40,8 @@ export class RegisterComponent {
   private router = inject(Router);
   private translateService = inject(TranslateService);
 
+  readonly routes = ROUTES;
+
   registerForm: FormGroup;
   loading = signal(false);
   error = signal('');
@@ -63,7 +67,7 @@ export class RegisterComponent {
     const data: RegisterRequest = this.registerForm.value;
     this.authService.register(data).subscribe({
       next: () => {
-        this.router.navigate(['/workspaces']);
+        this.router.navigate([ROUTES.WORKSPACES]);
       },
       error: (err) => {
         this.loading.set(false);
@@ -71,13 +75,13 @@ export class RegisterComponent {
         
         // Tratar diferentes tipos de erro
         if (err.status === 0) {
-          this.error.set(this.translateService.instant('errors.network'));
+          this.error.set(this.translateService.instant(_('errors.network')));
         } else if (err.status === 409) {
-          this.error.set(this.translateService.instant('errors.generic'));
+          this.error.set(this.translateService.instant(_('errors.generic')));
         } else if (err.status === 400) {
-          this.error.set(err.error?.message || this.translateService.instant('errors.generic'));
+          this.error.set(err.error?.message || this.translateService.instant(_('errors.generic')));
         } else {
-          this.error.set(err.error?.message || this.translateService.instant('errors.generic'));
+          this.error.set(err.error?.message || this.translateService.instant(_('errors.generic')));
         }
       },
     });

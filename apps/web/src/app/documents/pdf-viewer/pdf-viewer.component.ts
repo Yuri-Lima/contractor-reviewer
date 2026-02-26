@@ -2,6 +2,7 @@ import { Component, input, output, signal, effect, viewChild, ElementRef, inject
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Button } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
+import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface TextSelection {
@@ -169,7 +170,7 @@ export class PdfViewerComponent {
       this.loading.set(false);
     } catch (err: any) {
       console.error('Error loading PDF:', err);
-      this.error.set(err.message || this.translateService.instant('documents.loadPdfError'));
+      this.error.set(err.message || this.translateService.instant(_('documents.loadPdfError')));
       this.loading.set(false);
     }
   }
@@ -194,7 +195,7 @@ export class PdfViewerComponent {
       await page.render(renderContext).promise;
     } catch (err) {
       console.error('Error rendering page:', err);
-      this.error.set(this.translateService.instant('documents.renderPageError'));
+      this.error.set(this.translateService.instant(_('documents.renderPageError')));
     }
   }
 

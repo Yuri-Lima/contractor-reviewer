@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { workspaceDocuments, workspaceDocument } from '../../core/routes';
 import { ApiService } from '../../core/services/api.service';
 
 @Injectable({
@@ -54,7 +55,7 @@ export class TourNavigationService {
       return false;
     }
 
-    const navResult = await this.router.navigate(['/workspaces', first.id, 'documents']);
+    const navResult = await this.router.navigate([...workspaceDocuments(first.id)]);
     return !!navResult;
   }
 
@@ -79,12 +80,7 @@ export class TourNavigationService {
       return false;
     }
 
-    const navResult = await this.router.navigate([
-      '/workspaces',
-      firstWs.id,
-      'documents',
-      firstDoc.id,
-    ]);
+    const navResult = await this.router.navigate([...workspaceDocument(firstWs.id, firstDoc.id)]);
     return !!navResult;
   }
 

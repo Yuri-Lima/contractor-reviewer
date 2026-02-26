@@ -1,14 +1,19 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
 import { TooltipModule } from 'primeng/tooltip';
 import { Toolbar } from 'primeng/toolbar';
 import { ConfirmDialog } from 'primeng/confirmdialog';
+import { ContextMenu } from 'primeng/contextmenu';
 import { Toast } from 'primeng/toast';
 import { ConfirmationService, MessageService, SharedModule } from 'primeng/api';
+import type { MenuItem } from 'primeng/api';
+import { workspaceDocument } from '../../core/routes';
 import { ApiService } from '../../core/services/api.service';
+import { DocumentViewTabService } from '../../onboarding/tour/document-view-tab.service';
+import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { TranslateService } from '@ngx-translate/core';
 import { Document } from '@contractai-review/shared';
 import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
@@ -17,9 +22,10 @@ import { TranslatePipe } from '@ngx-translate/core';
 @Component({
   selector: 'app-documents-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, Button, Card, Toolbar, TooltipModule, SharedModule, ConfirmDialog, Toast, LocaleDatePipe, TranslatePipe],
+  imports: [CommonModule, RouterModule, Button, Card, Toolbar, TooltipModule, SharedModule, ConfirmDialog, Toast, ContextMenu, LocaleDatePipe, TranslatePipe],
   providers: [ConfirmationService, MessageService],
   template: `
+    <p-contextMenu #documentContextMenu [model]="documentContextMenuItems()"></p-contextMenu>
     <div class="documents-container p-6 max-w-6xl mx-auto">
       <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">{{ 'documents.title' | translate }}</h1>
 
@@ -102,9 +108,10 @@ import { TranslatePipe } from '@ngx-translate/core';
               [class.ring-blue-500]="selectedDocument()?.id === doc.id"
               [class.dark:ring-blue-400]="selectedDocument()?.id === doc.id"
               (click)="selectDocument(doc)"
+              (contextmenu)="onDocumentContextMenu($event, doc)"
             >
               <a
-                [routerLink]="['/workspaces', workspaceId(), 'documents', doc.id]"
+                [routerLink]="workspaceDocLink(workspaceId(), doc.id)"
                 class="block no-underline"
                 (click)="$event.stopPropagation()"
               >
@@ -162,11 +169,17 @@ import { TranslatePipe } from '@ngx-translate/core';
   `],
 })
 export class DocumentsListComponent implements OnInit {
+  readonly workspaceDocLink = workspaceDocument;
+
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private apiService = inject(ApiService);
   private confirmationService = inject(ConfirmationService);
   private messageService = inject(MessageService);
   private translateService = inject(TranslateService);
+  private documentViewTabService = inject(DocumentViewTabService);
+
+  documentContextMenuRef = viewChild<ContextMenu>('documentContextMenu');
 
   workspaceId = signal('');
   documents = signal<Document[]>([]);
@@ -177,6 +190,11 @@ export class DocumentsListComponent implements OnInit {
   error = signal<string | null>(null);
   deletingDocId = signal<string | null>(null);
   selectedDocument = signal<Document | null>(null);
+
+  selectedDocForContext = signal<Document | null>(null);
+  documentContextMenuItems = computed<MenuItem[]>(() =>
+    this.buildDocumentMenu(this.selectedDocForContext())
+  );
 
   selectDocument(doc: Document): void {
     this.selectedDocument.set(this.selectedDocument()?.id === doc.id ? null : doc);
@@ -212,13 +230,13 @@ export class DocumentsListComponent implements OnInit {
   createDocument(): void {
     const title = this.newDocumentTitle().trim();
     if (!title) {
-      this.error.set(this.translateService.instant('documents.titleRequired'));
+      this.error.set(this.translateService.instant(_('documents.titleRequired')));
       return;
     }
 
     const workspaceId = this.workspaceId();
     if (!workspaceId) {
-      this.error.set(this.translateService.instant('documents.workspaceIdNotFound'));
+      this.error.set(this.translateService.instant(_('documents.workspaceIdNotFound')));
       console.error('Workspace ID is missing');
       return;
     }
@@ -252,7 +270,7 @@ export class DocumentsListComponent implements OnInit {
           url: err.url,
         });
         this.loading.set(false);
-        const errorMessage = err.error?.message || err.message || this.translateService.instant('documents.createError');
+        const errorMessage = err.error?.message || err.message || this.translateService.instant(_('documents.createError'));
         this.error.set(errorMessage);
       },
     });
@@ -260,12 +278,12 @@ export class DocumentsListComponent implements OnInit {
 
   confirmDelete(doc: Document): void {
     this.confirmationService.confirm({
-      message: this.translateService.instant('documents.confirmDeleteMessage', { title: doc.title }),
-      header: this.translateService.instant('documents.confirmDelete'),
+      message: this.translateService.instant(_('documents.confirmDeleteMessage'), { title: doc.title }),
+      header: this.translateService.instant(_('documents.confirmDelete')),
       icon: 'pi pi-exclamation-triangle',
       acceptButtonStyleClass: 'p-button-danger',
-      acceptLabel: this.translateService.instant('common.delete'),
-      rejectLabel: this.translateService.instant('common.cancel'),
+      acceptLabel: this.translateService.instant(_('common.delete')),
+      rejectLabel: this.translateService.instant(_('common.cancel')),
       accept: () => {
         this.deleteDocument(doc.id);
       },
@@ -278,8 +296,8 @@ export class DocumentsListComponent implements OnInit {
       next: () => {
         this.messageService.add({
           severity: 'success',
-          summary: this.translateService.instant('common.success'),
-          detail: this.translateService.instant('documents.deleteSuccess'),
+          summary: this.translateService.instant(_('common.success')),
+          detail: this.translateService.instant(_('documents.deleteSuccess')),
         });
         this.deletingDocId.set(null);
         this.selectedDocument.set(null);
@@ -289,11 +307,58 @@ export class DocumentsListComponent implements OnInit {
         console.error('Error deleting document:', err);
         this.messageService.add({
           severity: 'error',
-          summary: this.translateService.instant('common.error'),
-          detail: err.error?.message || this.translateService.instant('documents.deleteError'),
+          summary: this.translateService.instant(_('common.error')),
+          detail: err.error?.message || this.translateService.instant(_('documents.deleteError')),
         });
         this.deletingDocId.set(null);
       },
     });
+  }
+
+  onDocumentContextMenu(event: MouseEvent, doc: Document): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.selectedDocForContext.set(doc);
+    this.documentContextMenuRef()?.show(event);
+  }
+
+  private buildDocumentMenu(doc: Document | null): MenuItem[] {
+    if (!doc) return [];
+    const wsId = this.workspaceId();
+    if (!wsId) return [];
+    const t = (key: string) => this.translateService.instant(_(key));
+    return [
+      {
+        label: t('contextMenu.documents.open'),
+        icon: 'pi pi-folder-open',
+        command: () => {
+          this.router.navigate(workspaceDocument(wsId, doc.id));
+        },
+      },
+      {
+        label: t('contextMenu.documents.chat'),
+        icon: 'pi pi-comments',
+        command: () => {
+          this.documentViewTabService.requestTab('2');
+          this.router.navigate(workspaceDocument(wsId, doc.id));
+        },
+      },
+      {
+        label: t('contextMenu.documents.redline'),
+        icon: 'pi pi-file-edit',
+        command: () => {
+          this.documentViewTabService.requestTab('1');
+          this.router.navigate(workspaceDocument(wsId, doc.id));
+        },
+      },
+      { separator: true },
+      {
+        label: t('contextMenu.documents.delete'),
+        icon: 'pi pi-trash',
+        command: () => {
+          this.confirmDelete(doc);
+        },
+      },
+    ];
   }
 }

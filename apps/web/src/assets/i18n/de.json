@@ -1,4 +1,7 @@
 {
+  "app": {
+    "name": "ContractAI Review"
+  },
   "common": {
     "login": "Anmelden",
     "logout": "Abmelden",
@@ -26,6 +29,7 @@
     "view": "Anzeigen",
     "remove": "Entfernen",
     "add": "Hinzufügen",
+    "actions": "Aktionen",
     "submit": "Absenden",
     "reset": "Zurücksetzen",
     "yes": "Ja",
@@ -60,6 +64,7 @@
   },
   "workspaces": {
     "title": "Arbeitsbereiche",
+    "allWorkspaces": "Alle Arbeitsbereiche",
     "description": "Verwalten Sie Ihre Arbeitsbereiche und Dokumente",
     "create": "Arbeitsbereich erstellen",
     "name": "Name des Arbeitsbereichs",
@@ -77,7 +82,12 @@
     "createSuccess": "Arbeitsbereich erfolgreich erstellt",
     "createError": "Fehler beim Erstellen des Arbeitsbereichs. Bitte versuchen Sie es erneut.",
     "nameRequired": "Name des Arbeitsbereichs ist erforderlich",
-    "unnamed": "Unbenannter Arbeitsbereich"
+    "unnamed": "Unbenannter Arbeitsbereich",
+    "logoUploaded": "Arbeitsbereichs-Logo erfolgreich hochgeladen",
+    "logoUploadError": "Fehler beim Hochladen des Arbeitsbereichs-Logos"
+  },
+  "sidebar": {
+    "currentWorkspace": "Aktueller Arbeitsbereich"
   },
   "documents": {
     "title": "Dokumente",
@@ -162,6 +172,14 @@
     "attempts": "Versuche",
     "selectParser": "Parser auswählen für",
     "parserDialogTitle": "Dokumenten-Parser wählen"
+  },
+  "chat": {
+    "voiceInput": "Spracheingabe",
+    "voiceInputUnsupported": "Spracheingabe wird in diesem Browser nicht unterstützt",
+    "listening": "Zuhören...",
+    "stopListening": "Zuhören beenden",
+    "transcribeError": "Spracherkennung fehlgeschlagen. Bitte erneut versuchen oder Ihre Frage eingeben.",
+    "transcribeTimeout": "Spracherkennung abgelaufen. Bitte erneut versuchen."
   },
   "parsers": {
     "title": "Dokumenten-Parser",
@@ -334,10 +352,13 @@
     "loadLogsError": "Fehler beim Laden der Audit-Protokolle",
     "permissionDenied": "Sie haben keine Berechtigung, Audit-Protokolle anzuzeigen. Nur ADMIN- und OWNER-Rollen können auf diese Seite zugreifen.",
     "notFound": "Arbeitsbereich nicht gefunden",
-    "exportSuccess": "Protokolle erfolgreich exportiert"
+    "exportSuccess": "Protokolle erfolgreich exportiert",
+    "detailsCopied": "Details in Zwischenablage kopiert",
+    "copyFailed": "Kopieren fehlgeschlagen"
   },
   "settings": {
     "title": "Kontoeinstellungen",
+    "menuItem": "Einstellungen",
     "accountInfo": "Kontoinformationen",
     "name": "Name",
     "email": "E-Mail",
@@ -362,7 +383,47 @@
     "yesDeleteAccount": "JA, KONTO LÖSCHEN",
     "accountDeleted": "Konto gelöscht",
     "accountDeletedSuccess": "Ihr Konto wurde erfolgreich gelöscht",
-    "deleteAccountError": "Fehler beim Löschen des Kontos"
+    "deleteAccountError": "Fehler beim Löschen des Kontos",
+    "uploadAvatar": "Avatar hochladen",
+    "useGravatar": "Gravatar verwenden",
+    "removeAvatar": "Benutzerdefinierten Avatar entfernen",
+    "avatarUploaded": "Avatar erfolgreich aktualisiert",
+    "avatarRemoved": "Avatar entfernt. Gravatar wird verwendet.",
+    "avatarError": "Fehler beim Hochladen des Avatars",
+    "avatarSizeError": "Das Bild muss 2MB oder weniger sein. Verwenden Sie PNG oder JPEG.",
+    "profileTab": "Profil",
+    "storageTab": "Speicher",
+    "storageProvider": "Anbieter",
+    "bucketEndpoint": "Endpoint-URL",
+    "bucketEndpointPlaceholder": "z.B. https://s3.amazonaws.com, https://&lt;account&gt;.r2.cloudflarestorage.com, https://fsn1.your-objectstorage.com",
+    "bucketRegionPlaceholder": "z.B. us-east-1, fsn1 (Hetzner), auto (R2)",
+    "credentialHelpS3": "Anmeldedaten in der AWS IAM-Konsole erstellen: IAM-Benutzer mit programmatischem Zugriff anlegen, S3-Richtlinie anhängen, Access Key ID und Secret Access Key speichern.",
+    "credentialHelpR2": "Im Cloudflare-Dashboard: R2 → Manage R2 API tokens → Create token. Access Key ID und Secret Access Key sofort kopieren (Secret wird nur einmal angezeigt).",
+    "credentialHelpHetzner": "In der Hetzner-Konsole: Projekt → Security → S3 Credentials → Generate credentials. Access Key und Secret Key sofort kopieren (Secret wird nur einmal angezeigt).",
+    "bucketRegion": "Region",
+    "bucket": "Bucket-Name",
+    "accessKeyId": "Access Key ID",
+    "secretAccessKey": "Secret Access Key",
+    "testConnection": "Verbindung testen",
+    "removeConfiguration": "Konfiguration entfernen",
+    "usingDefaultStorage": "Lokalen/Server-Speicher verwenden",
+    "usingYourBucket": "Ihr Bucket wird verwendet: {{bucket}}",
+    "storageSaveSuccess": "Speicherkonfiguration erfolgreich gespeichert",
+    "storageRemoveSuccess": "Speicherkonfiguration entfernt. Server-Standard wird verwendet.",
+    "storageError": "Fehler beim Speichern der Speicherkonfiguration",
+    "storageRemoveConfirm": "Sind Sie sicher, dass Sie Ihre Bucket-Konfiguration entfernen möchten? Ihre Avatare verwenden den Server-Speicher.",
+    "storageRemoveConfirmHeader": "Bucket-Konfiguration entfernen",
+    "providerS3": "Amazon S3",
+    "providerR2": "Cloudflare R2",
+    "providerHetzner": "Hetzner Object Storage",
+    "transcriptionTab": "Sprache",
+    "transcriptionProvider": "Transkriptionsanbieter",
+    "transcriptionProviderHelp": "Wählen Sie, welcher Dienst für die Sprach-zu-Text-Konvertierung im Chat verwendet werden soll.",
+    "transcriptionSaveSuccess": "Transkriptionsanbieter erfolgreich gespeichert",
+    "transcriptionError": "Fehler beim Speichern des Transkriptionsanbieters",
+    "providerHuggingface": "Hugging Face (Whisper)",
+    "providerOpenai": "OpenAI Whisper",
+    "transcriptionNoProvider": "Kein Transkriptionsanbieter konfiguriert. Fügen Sie API-Schlüssel in Arbeitsbereichseinstellungen → Sprache hinzu."
   },
   "onboarding": {
     "title": "Erste Schritte",
@@ -486,16 +547,35 @@
     "saveSuccess": "Aufbewahrungseinstellungen erfolgreich gespeichert",
     "saveError": "Fehler beim Speichern der Aufbewahrungseinstellungen"
   },
+  "transcription": {
+    "workspaceDescription": "Konfigurieren Sie API-Schlüssel für Sprache-zu-Text. Schlüssel werden verschlüsselt gespeichert und beim Mikrofon im Chat verwendet.",
+    "preferredProvider": "Bevorzugter Transkriptionsanbieter",
+    "preferredProviderHint": "Wählen Sie, welcher Anbieter für Sprachtranskription verwendet werden soll. Wenn nicht gesetzt, wird der erste mit konfiguriertem Schlüssel verwendet.",
+    "preferredProviderAuto": "Automatisch (erster mit Schlüssel)",
+    "preferredProviderSaved": "Bevorzugter Anbieter gespeichert",
+    "apiKeysTitle": "Transkriptions-API-Schlüssel",
+    "apiKeysDescription": "Fügen Sie Ihren Hugging-Face- oder OpenAI-API-Schlüssel hinzu, um Sprachtranskription im Chat zu aktivieren. Schlüssel werden verschlüsselt und mit allen Arbeitsbereichsmitgliedern geteilt.",
+    "apiKeyPlaceholder": "API-Schlüssel einfügen",
+    "apiKeyConfigured": "Schlüssel konfiguriert",
+    "apiKeyNotConfigured": "Kein Schlüssel konfiguriert",
+    "huggingface": "Hugging Face (Whisper large-v3)",
+    "openai": "OpenAI Whisper",
+    "loadError": "Fehler beim Laden der Transkriptionseinstellungen",
+    "saveError": "Fehler beim Speichern des API-Schlüssels",
+    "apiKeySaved": "API-Schlüssel erfolgreich gespeichert"
+  },
   "workspaceSettings": {
     "title": "Arbeitsbereichseinstellungen",
     "tabParsers": "Dokumenten-Parser",
+    "tabVoice": "Sprache",
     "tabGeneral": "Allgemein",
     "tabRetention": "Aufbewahrung",
     "tabDocumentProcessing": "Dokumentenverarbeitung",
     "tabPrompts": "KI-Prompts",
     "generalPlaceholder": "Allgemeine Arbeitsbereichseinstellungen werden in einem zukünftigen Update verfügbar sein.",
     "menuItem": "Einstellungen",
-    "loadError": "Fehler beim Laden der Arbeitsbereichseinstellungen"
+    "loadError": "Fehler beim Laden der Arbeitsbereichseinstellungen",
+    "onlyAdminsCanEditApiKeys": "Nur Arbeitsbereichsbesitzer und -administratoren können API-Schlüssel bearbeiten."
   },
   "chunking": {
     "title": "Chunking-Strategie",
@@ -568,7 +648,9 @@
       "admin": "Administrator",
       "member": "Mitglied",
       "viewer": "Betrachter"
-    }
+    },
+    "roleUpdated": "Rolle erfolgreich aktualisiert",
+    "updateRoleError": "Fehler beim Aktualisieren der Rolle"
   },
   "versions": {
     "title": "Dokumentversionen",
@@ -589,8 +671,10 @@
     "audit": "Prüfprotokolle",
     "members": "Arbeitsbereichsmitglieder",
     "settings": "Kontoeinstellungen",
+    "settingsMenu": "Einstellungen und Präferenzen",
     "workspaceSettings": "Arbeitsbereichseinstellungen",
     "viewDocuments": "Dokumente in diesem Arbeitsbereich öffnen",
+    "uploadWorkspaceLogo": "Arbeitsbereichs-Logo hochladen",
     "deleteWorkspace": "Diesen Arbeitsbereich dauerhaft löschen",
     "createWorkspace": "Neuen Arbeitsbereich erstellen",
     "themeToggle": "Design umschalten",
@@ -648,5 +732,36 @@
   "baseList": {
     "emptyMessage": "Keine Daten verfügbar",
     "loading": "Lädt..."
+  },
+  "contextMenu": {
+    "workspaces": {
+      "openDocuments": "Dokumente öffnen",
+      "settings": "Arbeitsbereich-Einstellungen",
+      "members": "Mitglieder verwalten",
+      "delete": "Arbeitsbereich löschen"
+    },
+    "documents": {
+      "open": "Öffnen",
+      "chat": "Chat öffnen",
+      "redline": "Redline öffnen",
+      "delete": "Dokument löschen"
+    },
+    "files": {
+      "view": "Inhalt anzeigen",
+      "download": "Herunterladen",
+      "delete": "Datei löschen"
+    },
+    "audit": {
+      "copyDetails": "Details kopieren",
+      "filterByAction": "Nach Aktion filtern",
+      "filterByUser": "Nach Benutzer filtern"
+    },
+    "members": {
+      "changeRole": "Rolle ändern",
+      "remove": "Aus Arbeitsbereich entfernen"
+    },
+    "versions": {
+      "view": "Anzeigen / Ausblenden"
+    }
   }
 }

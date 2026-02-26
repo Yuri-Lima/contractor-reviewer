@@ -6,6 +6,7 @@ import { Toast } from 'primeng/toast';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { ApiService } from '../../core/services/api.service';
+import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { TranslatePipe } from '@ngx-translate/core';
 import { TranslateService } from '@ngx-translate/core';
 
@@ -120,8 +121,8 @@ export class DocumentContentComponent implements OnInit {
         console.error('Error loading document content:', err);
         this.messageService.add({
           severity: 'error',
-          summary: this.translateService.instant('common.error'),
-          detail: this.translateService.instant('documentContent.error'),
+          summary: this.translateService.instant(_('common.error')),
+          detail: this.translateService.instant(_('documentContent.error')),
         });
         this.error.set(true);
         this.loading.set(false);

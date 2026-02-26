@@ -1,12 +1,16 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import { API_CONFIG } from '../config/api.config';
+import { getAudioExtensionFromMime } from '@contractai-review/shared/constants';
 import {
+  User,
   Workspace,
   CreateWorkspaceRequest,
   AddMemberRequest,
   WorkspaceMember,
+  WorkspaceRole,
   Document,
   CreateDocumentRequest,
   DocumentJob,
@@ -19,6 +23,7 @@ import {
   DocumentFile,
   FileContentResponse,
   WorkspaceSettingsConfig,
+  WorkspaceSettingsGetResponse,
   UpdateWorkspaceSettingsRequest,
   PromptListItem,
   PromptResponse,
@@ -28,6 +33,8 @@ import {
   UpdateChecklistRequest,
   UpdateTourRequest,
   UpdateVisitedRouteRequest,
+  UserStorageConfigResponse,
+  UpdateUserStorageRequest,
 } from '@contractai-review/shared';
 
 @Injectable({
@@ -63,6 +70,49 @@ export class ApiService {
 
   removeMember(workspaceId: string, userId: string): Observable<void> {
     return this.http.delete<void>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.workspaces}/${workspaceId}/members/${userId}`);
+  }
+
+  /**
+   * Fetches the workspace logo as blob and returns an object URL for display.
+   * Use this instead of presigned URL to support local storage (which has no
+   * /api/storage endpoint). Caller should revoke the URL when done to avoid leaks.
+   */
+  getWorkspaceLogoBlobUrl(workspaceId: string): Observable<string | null> {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.workspaces}/${workspaceId}/logo`;
+    return this.http.get(url, { responseType: 'blob' }).pipe(
+      map((blob) => URL.createObjectURL(blob)),
+      catchError(() => of(null)),
+    );
+  }
+
+  uploadWorkspaceLogo(workspaceId: string, file: File): Observable<void> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<void>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.workspaces}/${workspaceId}/logo`,
+      formData,
+    );
+  }
+
+  getWorkspaceLogoUrl(workspaceId: string): string {
+    return `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.workspaces}/${workspaceId}/logo`;
+  }
+
+  deleteWorkspaceLogo(workspaceId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.workspaces}/${workspaceId}/logo`,
+    );
+  }
+
+  updateMemberRole(
+    workspaceId: string,
+    userId: string,
+    role: WorkspaceRole,
+  ): Observable<WorkspaceMember> {
+    return this.http.put<WorkspaceMember>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.workspaces}/${workspaceId}/members/${userId}/role`,
+      { role },
+    );
   }
 
   // Documents
@@ -143,6 +193,24 @@ export class ApiService {
     return this.http.post<ChatResponse>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}`,
       request,
+    );
+  }
+
+  transcribe(
+    workspaceId: string,
+    documentId: string,
+    audioBlob: Blob,
+    language?: string,
+  ): Observable<{ text: string }> {
+    const formData = new FormData();
+    const ext = getAudioExtensionFromMime(audioBlob.type || 'audio/webm');
+    formData.append('audio', audioBlob, `audio.${ext}`);
+    if (language) {
+      formData.append('language', language);
+    }
+    return this.http.post<{ text: string }>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}/transcribe`,
+      formData,
     );
   }
 
@@ -227,15 +295,15 @@ export class ApiService {
   }
 
   // Workspace Settings (unified: retention, document processing, etc.)
-  getWorkspaceSettings(workspaceId: string): Observable<WorkspaceSettingsConfig> {
-    return this.http.get<WorkspaceSettingsConfig>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.settings(workspaceId)}`);
+  getWorkspaceSettings(workspaceId: string): Observable<WorkspaceSettingsGetResponse> {
+    return this.http.get<WorkspaceSettingsGetResponse>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.settings(workspaceId)}`);
   }
 
   updateWorkspaceSettings(
     workspaceId: string,
     config: UpdateWorkspaceSettingsRequest,
-  ): Observable<WorkspaceSettingsConfig> {
-    return this.http.put<WorkspaceSettingsConfig>(
+  ): Observable<WorkspaceSettingsGetResponse> {
+    return this.http.put<WorkspaceSettingsGetResponse>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.settings(workspaceId)}`,
       config,
     );
@@ -315,8 +383,50 @@ export class ApiService {
   }
 
   // Account
+  getAccount(): Observable<User> {
+    return this.http.get<User>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}`);
+  }
+
+  uploadAvatar(file: File): Observable<User> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<User>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}/avatar`,
+      formData,
+    );
+  }
+
+  getAvatarUrl(): string {
+    return `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}/avatar`;
+  }
+
+  deleteAvatar(): Observable<void> {
+    return this.http.delete<void>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}/avatar`,
+    );
+  }
+
   deleteAccount(): Observable<void> {
     return this.http.delete<void>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}`);
+  }
+
+  getAccountStorage(): Observable<UserStorageConfigResponse> {
+    return this.http.get<UserStorageConfigResponse>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}/storage`,
+    );
+  }
+
+  updateAccountStorage(request: UpdateUserStorageRequest): Observable<UserStorageConfigResponse> {
+    return this.http.put<UserStorageConfigResponse>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}/storage`,
+      request,
+    );
+  }
+
+  deleteAccountStorage(): Observable<void> {
+    return this.http.delete<void>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}/storage`,
+    );
   }
 
   // Users

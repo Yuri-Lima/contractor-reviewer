@@ -10,6 +10,8 @@ import { SuperadminService } from './superadmin.service';
 import { User } from '../entities/user.entity';
 import { WorkspaceMember } from '../entities/workspace-member.entity';
 import { Workspace } from '../entities/workspace.entity';
+import { ImageManagerModule } from '../image-manager/image-manager.module';
+import { UserStorageModule } from '../storage/user-storage.module';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { Workspace } from '../entities/workspace.entity';
       }),
       inject: [ConfigService],
     }),
+    ImageManagerModule,
+    UserStorageModule,
   ],
   controllers: [AuthController, AccountController],
   providers: [AuthService, JwtStrategy, SuperadminService],

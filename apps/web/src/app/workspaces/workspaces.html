@@ -1,3 +1,4 @@
+<p-contextMenu #workspaceContextMenu [model]="workspaceContextMenuItems()"></p-contextMenu>
 <div class="workspaces-container p-6 max-w-7xl mx-auto">
   <!-- Header Section -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -73,15 +74,23 @@
       @for (workspace of workspaces(); track trackByWorkspaceId($index, workspace)) {
         <p-card
           class="workspace-card transition-all duration-200 cursor-pointer group hover:shadow-lg dark:hover:shadow-xl"
+          (contextmenu)="onWorkspaceContextMenu($event, workspace)"
         >
           <!-- Header with workspace name -->
           <div class="p-5 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800">
             <div class="flex justify-between items-start gap-3">
               <div class="flex-1 min-w-0">
                 <div class="flex items-start gap-3">
-                  <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
-                    <i class="pi pi-building text-xl text-blue-600 dark:text-blue-400"></i>
-                  </div>
+                  <app-file-upload
+                    trigger="area"
+                    [accept]="IMAGE_ACCEPT"
+                    tooltipKey="tooltip.uploadWorkspaceLogo"
+                    [imageUrl]="logoUrl(workspace.id)"
+                    placeholderIcon="pi pi-building"
+                    size="md"
+                    [loading]="uploadingLogo()[workspace.id]"
+                    (fileSelected)="onWorkspaceLogoSelected(workspace, $event)"
+                  />
                   <div class="flex-1 min-w-0 overflow-hidden">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate" [title]="getWorkspaceName(workspace)">
                       {{ getWorkspaceName(workspace) }}
@@ -109,7 +118,7 @@
           <!-- Content -->
           <div class="p-5">
             <a
-              [routerLink]="['/workspaces', workspace.id, 'documents']"
+              [routerLink]="workspaceDocumentsRoute(workspace.id)"
               data-testid="workspace-view-documents"
               class="block no-underline"
               (click)="$event.stopPropagation()"

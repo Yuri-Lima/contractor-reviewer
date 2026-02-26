@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject, computed } from '@angular/core';
+import { Component, OnInit, signal, inject, computed, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -21,6 +21,8 @@ import { Tag } from 'primeng/tag';
 import { Card } from 'primeng/card';
 import { Toast } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
+import type { MenuItem } from 'primeng/api';
+import { ContextMenu } from 'primeng/contextmenu';
 import { ApiService } from '../core/services/api.service';
 import { TranslateService } from '@ngx-translate/core';
 import { LocaleDatePipe } from '../core/pipes/locale-date.pipe';
@@ -61,7 +63,8 @@ import { AuditLog } from '@contractai-review/shared';
     Toast,
     LocaleDatePipe,
     TranslatePipe,
-    BaseListComponent
+    BaseListComponent,
+    ContextMenu,
   ],
   providers: [MessageService],
   templateUrl: './audit.html',
@@ -77,6 +80,12 @@ export class AuditComponent implements OnInit {
   private messageService = inject(MessageService);
   private translateService = inject(TranslateService);
   private paginationService = inject(PaginationService);
+
+  auditContextMenuRef = viewChild<ContextMenu>('auditContextMenu');
+  selectedLogForContext = signal<AuditLog | null>(null);
+  auditContextMenuItems = computed<MenuItem[]>(() =>
+    this.buildAuditMenu(this.selectedLogForContext())
+  );
 
   workspaceId = signal('');
   logs = signal<AuditLog[]>([]);
@@ -352,6 +361,46 @@ export class AuditComponent implements OnInit {
       summary: this.translateService.instant('common.success'),
       detail: this.translateService.instant('audit.exportSuccess'),
     });
+  }
+
+  private buildAuditMenu(log: AuditLog | null): MenuItem[] {
+    if (!log) return [];
+    const t = (key: string) => this.translateService.instant(key);
+    return [
+      {
+        label: t('contextMenu.audit.copyDetails'),
+        icon: 'pi pi-copy',
+        command: () => this.copyLogDetails(log),
+      },
+    ];
+  }
+
+  copyLogDetails(log: AuditLog): void {
+    const lines = [
+      `Action: ${this.getActionLabel(log.action)}`,
+      `Type: ${this.getTargetTypeLabel(log.targetType)}`,
+      `User: ${log.actorUserId}`,
+      `IP: ${log.ip || 'N/A'}`,
+      `Date: ${new Date(log.createdAt).toLocaleString()}`,
+      log.metadata ? `Metadata: ${JSON.stringify(log.metadata)}` : '',
+    ].filter(Boolean);
+    const text = lines.join('\n');
+    navigator.clipboard.writeText(text).then(
+      () => {
+        this.messageService.add({
+          severity: 'success',
+          summary: this.translateService.instant('common.success'),
+          detail: this.translateService.instant('audit.detailsCopied'),
+        });
+      },
+      () => {
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translateService.instant('common.error'),
+          detail: this.translateService.instant('audit.copyFailed'),
+        });
+      }
+    );
   }
 
   convertToCsv(logs: AuditLog[]): string {

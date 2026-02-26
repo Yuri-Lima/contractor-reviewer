@@ -1,6 +1,19 @@
 <div class="account-settings-container p-6 max-w-4xl mx-auto">
   <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">{{ 'settings.title' | translate }}</h1>
 
+  <p-tabs [value]="activeTab()" (valueChange)="setActiveTab($event)">
+    <p-tablist>
+      <p-tab value="profile" class="flex items-center gap-2">
+        <i class="pi pi-user"></i>
+        <span>{{ 'settings.profileTab' | translate }}</span>
+      </p-tab>
+      <p-tab value="storage" class="flex items-center gap-2">
+        <i class="pi pi-database"></i>
+        <span>{{ 'settings.storageTab' | translate }}</span>
+      </p-tab>
+    </p-tablist>
+    <p-tabpanels>
+      <p-tabpanel value="profile">
   <p-card class="mb-6">
     <ng-template pTemplate="header">
       <div class="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -9,6 +22,35 @@
     </ng-template>
     <div class="p-4">
       <div class="space-y-4">
+        <!-- Avatar section -->
+        <div class="flex items-center gap-4">
+          <p-avatar
+            [image]="effectiveAvatarUrl ?? undefined"
+            [label]="effectiveAvatarUrl ? undefined : (currentUser()?.name || currentUser()?.email || '?').substring(0, 2).toUpperCase()"
+            shape="circle"
+            size="xlarge"
+            class="flex-shrink-0"
+            [style]="effectiveAvatarUrl ? {} : { 'background': 'linear-gradient(to bottom right, rgb(59 130 246), rgb(37 99 235))', 'color': 'white' }"
+          ></p-avatar>
+          <div class="flex flex-col gap-2">
+            <app-file-upload
+              trigger="button"
+              [accept]="IMAGE_ACCEPT"
+              labelKey="settings.uploadAvatar"
+              icon="pi pi-upload"
+              tooltipKey="settings.uploadAvatar"
+              [loading]="uploadingAvatar()"
+              [disabled]="uploadingAvatar()"
+              [showRemove]="hasCustomAvatar"
+              [loadingRemove]="removingAvatar()"
+              removeLabelKey="settings.removeAvatar"
+              removeIcon="pi pi-user-minus"
+              (fileSelected)="onAvatarFileSelected($event)"
+              (removeClicked)="removeAvatar()"
+            />
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ 'settings.avatarSizeError' | translate }}</p>
+          </div>
+        </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ 'settings.name' | translate }}</label>
           <p class="text-gray-800 dark:text-gray-200">{{ currentUser()?.name || ('common.notAvailable' | translate) }}</p>
@@ -131,6 +173,134 @@
       </form>
     </div>
   </p-card>
+      </p-tabpanel>
+
+      <p-tabpanel value="storage">
+        @if (storageLoading()) {
+          <p class="text-gray-600 dark:text-gray-400 py-4">{{ 'common.loading' | translate }}</p>
+        } @else {
+          <div class="space-y-4 py-4">
+            <p-message
+              [severity]="storageConfig().configured ? 'success' : 'info'"
+              [text]="storageConfig().configured && storageConfig().bucket
+                ? ('settings.usingYourBucket' | translate : { bucket: storageConfig().bucket })
+                : ('settings.usingDefaultStorage' | translate)"
+              class="mb-4"
+            ></p-message>
+
+            <form [formGroup]="storageForm" (ngSubmit)="saveStorageConfig()" class="space-y-4">
+              <p-card>
+                <ng-template pTemplate="header">
+                  <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">{{ 'settings.storageTab' | translate }}</h2>
+                  </div>
+                </ng-template>
+                <div class="p-4 space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ 'settings.storageProvider' | translate }}</label>
+                    <p-select
+                      formControlName="provider"
+                      [options]="providerOptions"
+                      optionLabel="labelKey"
+                      optionValue="value"
+                      [placeholder]="'settings.providerS3' | translate"
+                      styleClass="w-full"
+                    >
+                      <ng-template let-option pTemplate="item">
+                        {{ option.labelKey | translate }}
+                      </ng-template>
+                      <ng-template let-selected pTemplate="selectedItem">
+                        @if (selected) {
+                          {{ selected.labelKey | translate }}
+                        }
+                      </ng-template>
+                    </p-select>
+                    @if (storageForm.get('provider')?.value) {
+                      <p-message
+                        severity="info"
+                        [text]="getCredentialHelpKey(storageForm.get('provider')?.value) | translate"
+                        styleClass="mt-2 w-full"
+                      ></p-message>
+                    }
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ 'settings.bucketEndpoint' | translate }}</label>
+                    <input
+                      pInputText
+                      formControlName="endpoint"
+                      [placeholder]="'settings.bucketEndpointPlaceholder' | translate"
+                      class="w-full"
+                      [class.ng-invalid]="storageForm.get('endpoint')?.invalid && storageForm.get('endpoint')?.touched"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ 'settings.bucketRegion' | translate }}</label>
+                    <input
+                      pInputText
+                      formControlName="region"
+                      [placeholder]="'settings.bucketRegionPlaceholder' | translate"
+                      class="w-full"
+                      [class.ng-invalid]="storageForm.get('region')?.invalid && storageForm.get('region')?.touched"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ 'settings.bucket' | translate }}</label>
+                    <input
+                      pInputText
+                      formControlName="bucket"
+                      class="w-full"
+                      [class.ng-invalid]="storageForm.get('bucket')?.invalid && storageForm.get('bucket')?.touched"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ 'settings.accessKeyId' | translate }}</label>
+                    <input
+                      pInputText
+                      formControlName="accessKeyId"
+                      class="w-full"
+                      [class.ng-invalid]="storageForm.get('accessKeyId')?.invalid && storageForm.get('accessKeyId')?.touched"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ 'settings.secretAccessKey' | translate }}</label>
+                    <p-password
+                      formControlName="secretAccessKey"
+                      [toggleMask]="true"
+                      [feedback]="false"
+                      styleClass="w-full"
+                      inputStyleClass="w-full"
+                      [class.ng-invalid]="storageForm.get('secretAccessKey')?.invalid && storageForm.get('secretAccessKey')?.touched"
+                    ></p-password>
+                  </div>
+                  <div class="flex gap-2">
+                    <p-button
+                      type="submit"
+                      [label]="'common.save' | translate"
+                      icon="pi pi-check"
+                      [loading]="storageSaving()"
+                      [disabled]="storageForm.invalid || storageSaving()"
+                    ></p-button>
+                    @if (storageConfig().configured) {
+                      <p-button
+                        type="button"
+                        [label]="'settings.removeConfiguration' | translate"
+                        icon="pi pi-trash"
+                        severity="secondary"
+                        [outlined]="true"
+                        [loading]="storageSaving()"
+                        [disabled]="storageSaving()"
+                        (onClick)="confirmRemoveStorage()"
+                      ></p-button>
+                    }
+                  </div>
+                </div>
+              </p-card>
+            </form>
+          </div>
+        }
+      </p-tabpanel>
+    </p-tabpanels>
+  </p-tabs>
 
   <p-confirmDialog></p-confirmDialog>
   <p-toast></p-toast>

@@ -1,5 +1,6 @@
 import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { ROUTES } from '../core/routes';
 import { ApiService } from '../core/services/api.service';
 import { AuthService } from '../core/services/auth.service';
 import { OnboardingState } from '@contractai-review/shared';
@@ -104,7 +105,7 @@ export class OnboardingService {
       next: (s) => {
         this.state.set(s);
         this.isChecklistVisible.set(true);
-        this.router.navigate(['/workspaces']);
+        this.router.navigate([ROUTES.WORKSPACES]);
       },
     });
   }

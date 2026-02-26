@@ -60,6 +60,13 @@
           </div>
         </ng-template>
         <div class="p-4">
+          @if (!canEditApiKeys()) {
+            <p-message
+              severity="warn"
+              [text]="'workspaceSettings.onlyAdminsCanEditApiKeys' | translate"
+              class="mb-6"
+            ></p-message>
+          }
           <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
             {{ 'parsers.apiKeysDescription' | translate }}
           </p>
@@ -79,12 +86,13 @@
                       [feedback]="false"
                       styleClass="w-full"
                       inputStyleClass="w-full"
+                      [disabled]="!canEditApiKeys()"
                     ></p-password>
                     <p-button
                       [label]="'common.save' | translate"
                       icon="pi pi-check"
                       [loading]="savingKey() === p.id"
-                      [disabled]="savingKey() === p.id"
+                      [disabled]="savingKey() === p.id || !canEditApiKeys()"
                       (onClick)="saveApiKey(p.id)"
                       [pTooltip]="'common.save' | translate"
                     ></p-button>

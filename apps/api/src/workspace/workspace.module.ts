@@ -11,12 +11,14 @@ import { WorkspaceSettings } from '../entities/workspace-settings.entity';
 import { WorkspaceGuard, RolesGuard } from './guards';
 import { ParsersModule } from '../parsers/parsers.module';
 import { AuditModule } from '../audit/audit.module';
+import { ImageManagerModule } from '../image-manager/image-manager.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Workspace, WorkspaceMember, WorkspaceSettings]),
     forwardRef(() => ParsersModule),
     forwardRef(() => AuditModule),
+    ImageManagerModule,
   ],
   controllers: [WorkspaceController, WorkspaceSettingsController, WorkspaceParsersController],
   providers: [WorkspaceService, WorkspaceSettingsService, WorkspaceGuard, RolesGuard],

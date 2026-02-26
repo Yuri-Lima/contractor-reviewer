@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { Tag } from 'primeng/tag';
@@ -6,9 +6,12 @@ import { Button } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { Toast } from 'primeng/toast';
 import { MessageModule } from 'primeng/message';
+import { ContextMenu } from 'primeng/contextmenu';
 import { MessageService } from 'primeng/api';
+import type { MenuItem } from 'primeng/api';
 import { ApiService } from '../../core/services/api.service';
 import { DocumentVersion, RedlineChange, DiffBlock } from '@contractai-review/shared';
+import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { TranslatePipe } from '@ngx-translate/core';
 import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../core/services/auth.service';
@@ -16,9 +19,10 @@ import { AuthService } from '../../core/services/auth.service';
 @Component({
   selector: 'app-versions',
   standalone: true,
-  imports: [CommonModule, Tag, Button, TooltipModule, Toast, MessageModule, TranslatePipe],
+  imports: [CommonModule, Tag, Button, TooltipModule, Toast, MessageModule, ContextMenu, TranslatePipe],
   providers: [MessageService],
   template: `
+    <p-contextMenu #versionContextMenu [model]="versionContextMenuItems()"></p-contextMenu>
     <div class="versions-container p-6">
       <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">{{ 'versions.title' | translate }}</h2>
 
@@ -37,7 +41,10 @@ import { AuthService } from '../../core/services/auth.service';
       @if (!loading() && versions().length > 0) {
         <div class="space-y-4">
           @for (version of versions(); track version.id) {
-            <div class="version-item p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div
+              class="version-item p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
+              (contextmenu)="onVersionContextMenu($event, version)"
+            >
               <div class="flex justify-between items-start mb-3">
                 <div>
                   <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">
@@ -170,6 +177,12 @@ export class VersionsComponent implements OnInit {
   private messageService = inject(MessageService);
   private translateService = inject(TranslateService);
 
+  versionContextMenuRef = viewChild<ContextMenu>('versionContextMenu');
+  selectedVersionForContext = signal<DocumentVersion | null>(null);
+  versionContextMenuItems = computed<MenuItem[]>(() =>
+    this.buildVersionMenu(this.selectedVersionForContext())
+  );
+
   workspaceId = signal('');
   documentId = signal('');
   versions = signal<DocumentVersion[]>([]);
@@ -197,12 +210,31 @@ export class VersionsComponent implements OnInit {
         console.error('Error loading versions:', err);
         this.messageService.add({
           severity: 'error',
-          summary: this.translateService.instant('common.error'),
-          detail: this.translateService.instant('versions.loadError'),
+          summary: this.translateService.instant(_('common.error')),
+          detail: this.translateService.instant(_('versions.loadError')),
         });
         this.loading.set(false);
       },
     });
+  }
+
+  onVersionContextMenu(event: MouseEvent, version: DocumentVersion): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.selectedVersionForContext.set(version);
+    this.versionContextMenuRef()?.show(event);
+  }
+
+  private buildVersionMenu(version: DocumentVersion | null): MenuItem[] {
+    if (!version) return [];
+    const t = (key: string) => this.translateService.instant(_(key));
+    return [
+      {
+        label: t('contextMenu.versions.view'),
+        icon: 'pi pi-eye',
+        command: () => this.toggleVersion(version),
+      },
+    ];
   }
 
   toggleVersion(version: DocumentVersion): void {

@@ -3,9 +3,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { createHash } from 'crypto';
+import {
+  isTranscriptionProviderId,
+  type TranscriptionProviderId,
+  type User as ApiUser,
+} from '@contractai-review/shared';
 import { User } from '../entities/user.entity';
 import { LoginDto, RegisterDto } from './dto';
 import { WorkspaceMember, WorkspaceRole } from '../entities/workspace-member.entity';
+import { ImageManagerService } from '../image-manager/image-manager.service';
 
 @Injectable()
 export class AuthService {
@@ -17,9 +24,29 @@ export class AuthService {
     @InjectRepository(WorkspaceMember)
     private workspaceMemberRepository: Repository<WorkspaceMember>,
     private jwtService: JwtService,
+    private imageManagerService: ImageManagerService,
   ) {}
 
-  async register(registerDto: RegisterDto): Promise<{ user: Omit<User, 'passwordHash'>; accessToken: string }> {
+  private static getGravatarUrl(email: string): string {
+    const hash = createHash('md5').update(email.trim().toLowerCase()).digest('hex');
+    return `https://www.gravatar.com/avatar/${hash}?s=200&d=identicon`;
+  }
+
+  async serializeUserWithAvatar(user: Omit<User, 'passwordHash'>): Promise<ApiUser> {
+    const asset = await this.imageManagerService.getAsset('avatar', user.id);
+    const avatarUrl = asset
+      ? 'account/avatar'
+      : AuthService.getGravatarUrl(user.email);
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatarUrl,
+      createdAt: user.createdAt.toISOString(),
+    };
+  }
+
+  async register(registerDto: RegisterDto): Promise<{ user: ApiUser; accessToken: string }> {
     const existingUser = await this.userRepository.findOne({
       where: { email: registerDto.email },
     });
@@ -30,21 +57,22 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(registerDto.password, 10);
 
-    const user = this.userRepository.create({
+    const userEntity = this.userRepository.create({
       email: registerDto.email,
       passwordHash,
       name: registerDto.name,
     });
 
-    const savedUser = await this.userRepository.save(user);
+    const savedUser = await this.userRepository.save(userEntity);
 
     const payload = { sub: savedUser.id, email: savedUser.email };
     const accessToken = this.jwtService.sign(payload);
 
     const { passwordHash: _, ...userWithoutPassword } = savedUser;
+    const user = await this.serializeUserWithAvatar(userWithoutPassword);
 
     return {
-      user: userWithoutPassword,
+      user,
       accessToken,
     };
   }
@@ -71,7 +99,7 @@ export class AuthService {
     return userWithoutPassword;
   }
 
-  async login(loginDto: LoginDto): Promise<{ user: Omit<User, 'passwordHash'>; accessToken: string }> {
+  async login(loginDto: LoginDto): Promise<{ user: ApiUser; accessToken: string }> {
     const user = await this.validateUser(loginDto.email, loginDto.password);
 
     if (!user) {
@@ -81,10 +109,45 @@ export class AuthService {
     const payload = { sub: user.id, email: user.email };
     const accessToken = this.jwtService.sign(payload);
 
+    const serializedUser = await this.serializeUserWithAvatar(user);
     return {
-      user,
+      user: serializedUser,
       accessToken,
     };
+  }
+
+  /**
+   * Reserved for future "personal default override". Transcription currently uses workspace settings.
+   */
+  async getPreferredTranscriptionProvider(userId: string): Promise<TranscriptionProviderId | null> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['preferredTranscriptionProvider'],
+    });
+    const raw = user?.preferredTranscriptionProvider ?? null;
+    return raw && isTranscriptionProviderId(raw) ? raw : null;
+  }
+
+  /**
+   * Reserved for future "personal default override". Transcription currently uses workspace settings.
+   */
+  async updatePreferredTranscriptionProvider(
+    userId: string,
+    provider: TranscriptionProviderId,
+  ): Promise<void> {
+    await this.userRepository.update(
+      { id: userId },
+      { preferredTranscriptionProvider: provider },
+    );
+  }
+
+  async getAccount(userId: string): Promise<ApiUser | null> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+    if (!user || !user.isActive) return null;
+    const { passwordHash: _, ...userWithoutPassword } = user;
+    return this.serializeUserWithAvatar(userWithoutPassword);
   }
 
   async findById(id: string): Promise<User | null> {

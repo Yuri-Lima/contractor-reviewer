@@ -22,6 +22,7 @@ import {
   RedlineChange,
   DiffBlock,
 } from '@contractai-review/shared';
+import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { TranslatePipe } from '@ngx-translate/core';
 import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../core/services/auth.service';
@@ -109,11 +110,11 @@ export class RedlineComponent implements OnInit {
   }
 
   getPlaybookDescription(playbook: RedlinePlaybook | null): string {
-    if (!playbook) return this.translateService.instant('redline.selectPlaybook');
+    if (!playbook) return this.translateService.instant(_('redline.selectPlaybook'));
     const descriptions: Record<RedlinePlaybook, string> = {
-      [RedlinePlaybook.BALANCED]: this.translateService.instant('redline.playbooks.balanced'),
-      [RedlinePlaybook.CONSERVATIVE]: this.translateService.instant('redline.playbooks.conservative'),
-      [RedlinePlaybook.CLIENT_FRIENDLY]: this.translateService.instant('redline.playbooks.clientFriendly'),
+      [RedlinePlaybook.BALANCED]: this.translateService.instant(_('redline.playbooks.balanced')),
+      [RedlinePlaybook.CONSERVATIVE]: this.translateService.instant(_('redline.playbooks.conservative')),
+      [RedlinePlaybook.CLIENT_FRIENDLY]: this.translateService.instant(_('redline.playbooks.clientFriendly')),
     };
     return descriptions[playbook] || '';
   }
@@ -153,8 +154,8 @@ export class RedlineComponent implements OnInit {
         this.redlineResult.set(response);
         this.messageService.add({
           severity: 'success',
-          summary: this.translateService.instant('common.success'),
-          detail: this.translateService.instant('redline.generateSuccess', { count: response.changes.length }),
+          summary: this.translateService.instant(_('common.success')),
+          detail: this.translateService.instant(_('redline.generateSuccess'), { count: response.changes.length }),
         });
         this.generating.set(false);
       },
@@ -162,8 +163,8 @@ export class RedlineComponent implements OnInit {
         console.error('Error generating redline:', err);
         this.messageService.add({
           severity: 'error',
-          summary: this.translateService.instant('common.error'),
-          detail: err.error?.message || this.translateService.instant('redline.generateError'),
+          summary: this.translateService.instant(_('common.error')),
+          detail: err.error?.message || this.translateService.instant(_('redline.generateError')),
         });
         this.generating.set(false);
       },
@@ -205,12 +206,12 @@ export class RedlineComponent implements OnInit {
 
   confirmRejectProposal(): void {
     this.confirmationService.confirm({
-      message: this.translateService.instant('redline.rejectProposalConfirm'),
-      header: this.translateService.instant('redline.rejectProposal'),
+      message: this.translateService.instant(_('redline.rejectProposalConfirm')),
+      header: this.translateService.instant(_('redline.rejectProposal')),
       icon: 'pi pi-exclamation-triangle',
       acceptButtonStyleClass: 'p-button-danger',
-      acceptLabel: this.translateService.instant('redline.rejectProposal'),
-      rejectLabel: this.translateService.instant('common.cancel'),
+      acceptLabel: this.translateService.instant(_('redline.rejectProposal')),
+      rejectLabel: this.translateService.instant(_('common.cancel')),
       accept: () => {
         this.rejectProposal();
       },
@@ -231,8 +232,8 @@ export class RedlineComponent implements OnInit {
     });
     this.messageService.add({
       severity: 'success',
-      summary: this.translateService.instant('common.success'),
-      detail: this.translateService.instant('redline.rejectProposalSuccess'),
+      summary: this.translateService.instant(_('common.success')),
+      detail: this.translateService.instant(_('redline.rejectProposalSuccess')),
     });
   }
 
@@ -287,8 +288,8 @@ export class RedlineComponent implements OnInit {
       if (!editedText) {
         this.messageService.add({
           severity: 'error',
-          summary: this.translateService.instant('common.error'),
-          detail: this.translateService.instant('redline.selectedTextRequired'),
+          summary: this.translateService.instant(_('common.error')),
+          detail: this.translateService.instant(_('redline.selectedTextRequired')),
         });
         return;
       }
@@ -347,8 +348,8 @@ export class RedlineComponent implements OnInit {
     this.editingMode.set('view');
     this.messageService.add({
       severity: 'success',
-      summary: this.translateService.instant('common.success'),
-      detail: this.translateService.instant('redline.saveEdit'),
+      summary: this.translateService.instant(_('common.success')),
+      detail: this.translateService.instant(_('redline.saveEdit')),
     });
   }
 
@@ -448,8 +449,8 @@ export class RedlineComponent implements OnInit {
           this.onboardingService.markChecklistItem('apply_first_redline');
           this.messageService.add({
             severity: 'success',
-            summary: this.translateService.instant('common.success'),
-            detail: this.translateService.instant('redline.applySuccess', {
+            summary: this.translateService.instant(_('common.success')),
+            detail: this.translateService.instant(_('redline.applySuccess'), {
               version: applyResult.versionNumber,
               user: this.currentUser()?.email || 'User',
             }),
@@ -472,8 +473,8 @@ export class RedlineComponent implements OnInit {
           console.error('Error applying redline:', err);
           this.messageService.add({
             severity: 'error',
-            summary: this.translateService.instant('common.error'),
-            detail: err.error?.message || this.translateService.instant('redline.applyError'),
+            summary: this.translateService.instant(_('common.error')),
+            detail: err.error?.message || this.translateService.instant(_('redline.applyError')),
           });
           this.applying.set(false);
         },
@@ -515,8 +516,8 @@ export class RedlineComponent implements OnInit {
     this.showRegionConfirmation.set(false);
     this.messageService.add({
       severity: 'info',
-      summary: this.translateService.instant('common.info'),
-      detail: this.translateService.instant('redline.manualSelectionNotImplemented'),
+      summary: this.translateService.instant(_('common.info')),
+      detail: this.translateService.instant(_('redline.manualSelectionNotImplemented')),
     });
   }
 }

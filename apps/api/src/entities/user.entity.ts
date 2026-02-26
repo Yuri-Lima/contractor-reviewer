@@ -32,6 +32,13 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
+  /**
+   * Reserved for future "personal default override" of transcription provider.
+   * Transcription currently uses workspace-level preferred provider only.
+   */
+  @Column({ type: 'varchar', nullable: true })
+  preferredTranscriptionProvider: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

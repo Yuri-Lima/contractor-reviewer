@@ -1,4 +1,7 @@
 {
+  "app": {
+    "name": "ContractAI Review"
+  },
   "common": {
     "login": "Iniciar sesión",
     "logout": "Cerrar sesión",
@@ -26,6 +29,7 @@
     "view": "Ver",
     "remove": "Eliminar",
     "add": "Añadir",
+    "actions": "Acciones",
     "submit": "Enviar",
     "reset": "Restablecer",
     "yes": "Sí",
@@ -60,6 +64,7 @@
   },
   "workspaces": {
     "title": "Espacios de trabajo",
+    "allWorkspaces": "Todos los espacios de trabajo",
     "description": "Gestiona tus espacios de trabajo y documentos",
     "create": "Crear espacio de trabajo",
     "name": "Nombre del espacio de trabajo",
@@ -77,7 +82,12 @@
     "createSuccess": "Espacio de trabajo creado con éxito",
     "createError": "Error al crear espacio de trabajo. Inténtalo de nuevo.",
     "nameRequired": "El nombre del espacio de trabajo es obligatorio",
-    "unnamed": "Espacio de trabajo sin nombre"
+    "unnamed": "Espacio de trabajo sin nombre",
+    "logoUploaded": "Logo del espacio de trabajo subido correctamente",
+    "logoUploadError": "Error al subir el logo del espacio de trabajo"
+  },
+  "sidebar": {
+    "currentWorkspace": "Espacio de trabajo actual"
   },
   "documents": {
     "title": "Documentos",
@@ -162,6 +172,14 @@
     "attempts": "Intentos",
     "selectParser": "Seleccionar analizador para",
     "parserDialogTitle": "Elegir analizador de documentos"
+  },
+  "chat": {
+    "voiceInput": "Entrada de voz",
+    "voiceInputUnsupported": "La entrada de voz no está soportada en este navegador",
+    "listening": "Escuchando...",
+    "stopListening": "Dejar de escuchar",
+    "transcribeError": "Error en la transcripción de voz. Inténtelo de nuevo o escriba su pregunta.",
+    "transcribeTimeout": "La transcripción de voz ha expirado. Inténtelo de nuevo."
   },
   "parsers": {
     "title": "Analizadores de Documentos",
@@ -334,10 +352,13 @@
     "loadLogsError": "Error al cargar registros de auditoría",
     "permissionDenied": "No tiene permiso para ver los registros de auditoría. Solo los roles ADMIN y OWNER pueden acceder a esta página.",
     "notFound": "Espacio de trabajo no encontrado",
-    "exportSuccess": "Registros exportados con éxito"
+    "exportSuccess": "Registros exportados con éxito",
+    "detailsCopied": "Detalles copiados al portapapeles",
+    "copyFailed": "Error al copiar al portapapeles"
   },
   "settings": {
     "title": "Configuración de la cuenta",
+    "menuItem": "Configuración",
     "accountInfo": "Información de la cuenta",
     "name": "Nombre",
     "email": "Correo electrónico",
@@ -362,7 +383,47 @@
     "yesDeleteAccount": "SÍ, ELIMINAR CUENTA",
     "accountDeleted": "Cuenta Eliminada",
     "accountDeletedSuccess": "Tu cuenta ha sido eliminada con éxito",
-    "deleteAccountError": "Error al eliminar cuenta"
+    "deleteAccountError": "Error al eliminar cuenta",
+    "uploadAvatar": "Subir avatar",
+    "useGravatar": "Usar Gravatar",
+    "removeAvatar": "Quitar avatar personalizado",
+    "avatarUploaded": "Avatar actualizado correctamente",
+    "avatarRemoved": "Avatar eliminado. Usando Gravatar.",
+    "avatarError": "Error al subir avatar",
+    "avatarSizeError": "La imagen debe ser de 2MB o menos. Usa PNG o JPEG.",
+    "profileTab": "Perfil",
+    "storageTab": "Almacenamiento",
+    "storageProvider": "Proveedor",
+    "bucketEndpoint": "URL del endpoint",
+    "bucketEndpointPlaceholder": "ej. https://s3.amazonaws.com, https://&lt;account&gt;.r2.cloudflarestorage.com, https://fsn1.your-objectstorage.com",
+    "bucketRegionPlaceholder": "ej. us-east-1, fsn1 (Hetzner), auto (R2)",
+    "credentialHelpS3": "Obtenga credenciales en la consola IAM de AWS: cree un usuario IAM con acceso programático, adjunte la política S3, guarde Access Key ID y Secret Access Key.",
+    "credentialHelpR2": "En Cloudflare Dashboard: R2 → Manage R2 API tokens → Create token. Copie Access Key ID y Secret Access Key de inmediato (el secret se muestra solo una vez).",
+    "credentialHelpHetzner": "En Hetzner Console: Project → Security → S3 Credentials → Generate credentials. Copie access key y secret key de inmediato (el secret se muestra solo una vez).",
+    "bucketRegion": "Región",
+    "bucket": "Nombre del bucket",
+    "accessKeyId": "Access Key ID",
+    "secretAccessKey": "Secret Access Key",
+    "testConnection": "Probar conexión",
+    "removeConfiguration": "Eliminar configuración",
+    "usingDefaultStorage": "Usando almacenamiento local/servidor",
+    "usingYourBucket": "Usando tu bucket: {{bucket}}",
+    "storageSaveSuccess": "Configuración de almacenamiento guardada correctamente",
+    "storageRemoveSuccess": "Configuración de almacenamiento eliminada. Usando almacenamiento del servidor.",
+    "storageError": "Error al guardar la configuración de almacenamiento",
+    "storageRemoveConfirm": "¿Seguro que deseas eliminar la configuración de tu bucket? Tus avatares usarán el almacenamiento del servidor.",
+    "storageRemoveConfirmHeader": "Eliminar configuración del bucket",
+    "providerS3": "Amazon S3",
+    "providerR2": "Cloudflare R2",
+    "providerHetzner": "Hetzner Object Storage",
+    "transcriptionTab": "Voz",
+    "transcriptionProvider": "Proveedor de transcripción",
+    "transcriptionProviderHelp": "Elige qué servicio usar para convertir voz a texto en el chat.",
+    "transcriptionSaveSuccess": "Proveedor de transcripción guardado correctamente",
+    "transcriptionError": "Error al guardar el proveedor de transcripción",
+    "providerHuggingface": "Hugging Face (Whisper)",
+    "providerOpenai": "OpenAI Whisper",
+    "transcriptionNoProvider": "No hay proveedor de transcripción configurado. Añada claves API en Configuración del Workspace → Voz."
   },
   "onboarding": {
     "title": "Primeros pasos",
@@ -486,16 +547,35 @@
     "saveSuccess": "Configuración de retención guardada con éxito",
     "saveError": "Error al guardar configuración de retención"
   },
+  "transcription": {
+    "workspaceDescription": "Configura las claves API para voz-a-texto. Las claves se almacenan cifradas y se usan cuando los miembros usan el micrófono en el chat.",
+    "preferredProvider": "Proveedor de transcripción preferido",
+    "preferredProviderHint": "Elige qué proveedor usar para transcripción de voz. Si no está configurado, se usa el primero con clave configurada.",
+    "preferredProviderAuto": "Automático (primero disponible con clave)",
+    "preferredProviderSaved": "Proveedor preferido guardado",
+    "apiKeysTitle": "Claves API de Transcripción",
+    "apiKeysDescription": "Añade tu clave API de Hugging Face u OpenAI para habilitar la transcripción de voz en el chat. Las claves se cifran y comparten con todos los miembros del workspace.",
+    "apiKeyPlaceholder": "Pega tu clave API",
+    "apiKeyConfigured": "Clave configurada",
+    "apiKeyNotConfigured": "Sin clave configurada",
+    "huggingface": "Hugging Face (Whisper large-v3)",
+    "openai": "OpenAI Whisper",
+    "loadError": "Error al cargar la configuración de transcripción",
+    "saveError": "Error al guardar la clave API",
+    "apiKeySaved": "Clave API guardada correctamente"
+  },
   "workspaceSettings": {
     "title": "Configuración del Workspace",
     "tabParsers": "Analizadores de Documentos",
+    "tabVoice": "Voz",
     "tabGeneral": "General",
     "tabRetention": "Retención",
     "tabDocumentProcessing": "Procesamiento de Documentos",
     "tabPrompts": "Prompts de IA",
     "generalPlaceholder": "Las configuraciones generales del workspace estarán disponibles en una actualización futura.",
     "menuItem": "Configuración",
-    "loadError": "Error al cargar configuración del workspace"
+    "loadError": "Error al cargar configuración del workspace",
+    "onlyAdminsCanEditApiKeys": "Solo los propietarios y administradores del workspace pueden editar las claves API."
   },
   "chunking": {
     "title": "Estrategia de Chunking",
@@ -568,7 +648,9 @@
       "admin": "Administrador",
       "member": "Miembro",
       "viewer": "Visualizador"
-    }
+    },
+    "roleUpdated": "Rol actualizado correctamente",
+    "updateRoleError": "Error al actualizar el rol"
   },
   "versions": {
     "title": "Versiones del Documento",
@@ -589,8 +671,10 @@
     "audit": "Registros de auditoría",
     "members": "Miembros del espacio de trabajo",
     "settings": "Configuración de la cuenta",
+    "settingsMenu": "Ajustes y preferencias",
     "workspaceSettings": "Configuración del espacio de trabajo",
     "viewDocuments": "Abrir documentos en este espacio de trabajo",
+    "uploadWorkspaceLogo": "Subir logo del espacio de trabajo",
     "deleteWorkspace": "Eliminar este espacio de trabajo permanentemente",
     "createWorkspace": "Crear un nuevo espacio de trabajo",
     "themeToggle": "Cambiar tema",
@@ -648,5 +732,36 @@
   "baseList": {
     "emptyMessage": "No hay datos disponibles",
     "loading": "Cargando..."
+  },
+  "contextMenu": {
+    "workspaces": {
+      "openDocuments": "Abrir documentos",
+      "settings": "Configuración del espacio",
+      "members": "Gestionar miembros",
+      "delete": "Eliminar espacio de trabajo"
+    },
+    "documents": {
+      "open": "Abrir",
+      "chat": "Abrir chat",
+      "redline": "Abrir redline",
+      "delete": "Eliminar documento"
+    },
+    "files": {
+      "view": "Ver contenido",
+      "download": "Descargar",
+      "delete": "Eliminar archivo"
+    },
+    "audit": {
+      "copyDetails": "Copiar detalles",
+      "filterByAction": "Filtrar por acción",
+      "filterByUser": "Filtrar por usuario"
+    },
+    "members": {
+      "changeRole": "Cambiar rol",
+      "remove": "Eliminar del espacio de trabajo"
+    },
+    "versions": {
+      "view": "Ver / Ocultar"
+    }
   }
 }

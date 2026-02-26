@@ -2,6 +2,9 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
+  isTranscriptionProviderId,
+  TRANSCRIPTION_PROVIDER_IDS,
+  type TranscriptionProviderId,
   WorkspaceSettingsConfig,
   UpdateWorkspaceSettingsRequest,
   RetentionConfig,
@@ -68,6 +71,16 @@ export class WorkspaceSettingsService {
       }
     }
 
+    const transcriptionProviderApiKeys: Record<string, boolean> = {};
+    if (
+      settings.transcriptionProviderApiKeys &&
+      typeof settings.transcriptionProviderApiKeys === 'object'
+    ) {
+      for (const key of Object.keys(settings.transcriptionProviderApiKeys)) {
+        transcriptionProviderApiKeys[key] = !!settings.transcriptionProviderApiKeys[key];
+      }
+    }
+
     return {
       retention,
       general: {},
@@ -76,7 +89,24 @@ export class WorkspaceSettingsService {
         defaultDocumentParser: settings.defaultDocumentParser ?? 'docling',
         parserApiKeys: parserApiKeysMasked,
       },
+      transcriptionProviderApiKeys,
+      preferredTranscriptionProvider: settings.preferredTranscriptionProvider
+        ? (settings.preferredTranscriptionProvider as TranscriptionProviderId)
+        : null,
     };
+  }
+
+  async getPreferredTranscriptionProvider(
+    workspaceId: string,
+  ): Promise<TranscriptionProviderId | null> {
+    const settings = await this.workspaceSettingsRepository.findOne({
+      where: { workspaceId },
+    });
+    const raw = settings?.preferredTranscriptionProvider ?? null;
+    if (raw && isTranscriptionProviderId(raw)) {
+      return raw;
+    }
+    return null;
   }
 
   async getDecryptedApiKey(
@@ -96,6 +126,72 @@ export class WorkspaceSettingsService {
     } catch {
       return null;
     }
+  }
+
+  async getDecryptedTranscriptionApiKey(
+    workspaceId: string,
+    providerId: TranscriptionProviderId,
+  ): Promise<string | null> {
+    const settings = await this.workspaceSettingsRepository.findOne({
+      where: { workspaceId },
+    });
+    if (!settings?.transcriptionProviderApiKeys?.[providerId]) {
+      return null;
+    }
+    try {
+      return this.encryptionService.decrypt(
+        settings.transcriptionProviderApiKeys[providerId] as string,
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Resolves the effective transcription provider and API key for a workspace.
+   * Uses: preferred provider (if has key) -> first provider with key -> fallback from env.
+   * Loads workspace settings once to minimize DB calls.
+   */
+  async resolveEffectiveTranscriptionProvider(
+    workspaceId: string,
+    fallbackProviderId: () => TranscriptionProviderId,
+  ): Promise<{ providerId: TranscriptionProviderId; apiKey: string } | null> {
+    const settings = await this.workspaceSettingsRepository.findOne({
+      where: { workspaceId },
+    });
+    const keys = settings?.transcriptionProviderApiKeys;
+    if (!keys || typeof keys !== 'object') {
+      return null;
+    }
+
+    const decrypt = (providerId: TranscriptionProviderId): string | null => {
+      const encrypted = keys[providerId];
+      if (!encrypted || typeof encrypted !== 'string') return null;
+      try {
+        return this.encryptionService.decrypt(encrypted);
+      } catch {
+        return null;
+      }
+    };
+
+    const raw = settings?.preferredTranscriptionProvider ?? null;
+    const preferred =
+      raw && isTranscriptionProviderId(raw) ? raw : null;
+    if (preferred) {
+      const key = decrypt(preferred);
+      if (key) return { providerId: preferred, apiKey: key };
+    }
+
+    for (const id of TRANSCRIPTION_PROVIDER_IDS) {
+      const key = decrypt(id);
+      if (key) return { providerId: id, apiKey: key };
+    }
+
+    const fallbackId = fallbackProviderId();
+    const fallbackKey = decrypt(fallbackId);
+    if (fallbackKey) return { providerId: fallbackId, apiKey: fallbackKey };
+
+    return null;
   }
 
   async updateSettings(
@@ -188,6 +284,55 @@ export class WorkspaceSettingsService {
         }
         settings.parserApiKeys =
           Object.keys(encrypted).length > 0 ? encrypted : null;
+      }
+    }
+
+    const transcriptionProviderApiKeys = config.transcriptionProviderApiKeys;
+    if (
+      transcriptionProviderApiKeys !== undefined &&
+      typeof transcriptionProviderApiKeys === 'object'
+    ) {
+      const encrypted: Record<string, string> =
+        settings.transcriptionProviderApiKeys ?? {};
+      for (const [providerId, rawValue] of Object.entries(
+        transcriptionProviderApiKeys,
+      )) {
+        if (!isTranscriptionProviderId(providerId)) continue;
+        const strVal = typeof rawValue === 'string' ? rawValue : '';
+        if (strVal.trim()) {
+          try {
+            encrypted[providerId] = this.encryptionService.encrypt(strVal.trim());
+          } catch (encErr) {
+            const msg = encErr instanceof Error ? encErr.message : String(encErr);
+            if (msg.includes('PARSER_KEYS_ENCRYPTION_KEY')) {
+              throw new BadRequestException(
+                'Server encryption key not configured. Add PARSER_KEYS_ENCRYPTION_KEY to .env (generate with: openssl rand -hex 32). Required for storing transcription API keys.',
+              );
+            }
+            throw encErr;
+          }
+        } else if (
+          rawValue === false ||
+          rawValue === null ||
+          rawValue === undefined
+        ) {
+          delete encrypted[providerId];
+        }
+      }
+      settings.transcriptionProviderApiKeys =
+        Object.keys(encrypted).length > 0 ? encrypted : null;
+    }
+
+    if (config.preferredTranscriptionProvider !== undefined) {
+      const value = config.preferredTranscriptionProvider;
+      if (value == null || (typeof value === 'string' && value.trim() === '')) {
+        settings.preferredTranscriptionProvider = null;
+      } else if (isTranscriptionProviderId(value)) {
+        settings.preferredTranscriptionProvider = value;
+      } else {
+        throw new BadRequestException(
+          `Preferred transcription provider must be one of: huggingface, openai`,
+        );
       }
     }
 

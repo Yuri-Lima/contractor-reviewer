@@ -1,4 +1,7 @@
 {
+  "app": {
+    "name": "ContractAI Review"
+  },
   "common": {
     "login": "Login",
     "logout": "Logout",
@@ -26,6 +29,7 @@
     "view": "View",
     "remove": "Remove",
     "add": "Add",
+    "actions": "Actions",
     "submit": "Submit",
     "reset": "Reset",
     "yes": "Yes",
@@ -60,6 +64,7 @@
   },
   "workspaces": {
     "title": "Workspaces",
+    "allWorkspaces": "All Workspaces",
     "description": "Manage your workspaces and documents",
     "create": "Create Workspace",
     "name": "Workspace Name",
@@ -77,7 +82,12 @@
     "createSuccess": "Workspace created successfully",
     "createError": "Error creating workspace. Please try again.",
     "nameRequired": "Workspace name is required",
-    "unnamed": "Unnamed Workspace"
+    "unnamed": "Unnamed Workspace",
+    "logoUploaded": "Workspace logo uploaded successfully",
+    "logoUploadError": "Error uploading workspace logo"
+  },
+  "sidebar": {
+    "currentWorkspace": "Current Workspace"
   },
   "documents": {
     "title": "Documents",
@@ -162,6 +172,14 @@
     "attempts": "Attempts",
     "selectParser": "Select parser for",
     "parserDialogTitle": "Choose Document Parser"
+  },
+  "chat": {
+    "voiceInput": "Voice input",
+    "voiceInputUnsupported": "Voice input is not supported in this browser",
+    "listening": "Listening...",
+    "stopListening": "Stop listening",
+    "transcribeError": "Voice transcription failed. Please try again or type your question.",
+    "transcribeTimeout": "Voice transcription timed out. Please try again."
   },
   "parsers": {
     "title": "Document Parsers",
@@ -334,10 +352,13 @@
     "loadLogsError": "Error loading audit logs",
     "permissionDenied": "You don't have permission to view audit logs. Only ADMIN and OWNER roles can access this page.",
     "notFound": "Workspace not found",
-    "exportSuccess": "Logs exported successfully"
+    "exportSuccess": "Logs exported successfully",
+    "detailsCopied": "Details copied to clipboard",
+    "copyFailed": "Failed to copy to clipboard"
   },
   "settings": {
     "title": "Account Settings",
+    "menuItem": "Settings",
     "accountInfo": "Account Information",
     "name": "Name",
     "email": "Email",
@@ -362,7 +383,47 @@
     "yesDeleteAccount": "YES, DELETE ACCOUNT",
     "accountDeleted": "Account Deleted",
     "accountDeletedSuccess": "Your account has been deleted successfully",
-    "deleteAccountError": "Error deleting account"
+    "deleteAccountError": "Error deleting account",
+    "uploadAvatar": "Upload avatar",
+    "useGravatar": "Use Gravatar",
+    "removeAvatar": "Remove custom avatar",
+    "avatarUploaded": "Avatar updated successfully",
+    "avatarRemoved": "Avatar removed. Using Gravatar.",
+    "avatarError": "Error uploading avatar",
+    "avatarSizeError": "Image must be 2MB or less. Use PNG or JPEG.",
+    "profileTab": "Profile",
+    "storageTab": "Storage",
+    "storageProvider": "Provider",
+    "bucketEndpoint": "Endpoint URL",
+    "bucketEndpointPlaceholder": "e.g. https://s3.amazonaws.com, https://&lt;account&gt;.r2.cloudflarestorage.com, https://fsn1.your-objectstorage.com",
+    "bucketRegionPlaceholder": "e.g. us-east-1, fsn1 (Hetzner), auto (R2)",
+    "credentialHelpS3": "Get credentials from AWS IAM Console: create an IAM user with programmatic access, attach S3 policy, save Access Key ID and Secret Access Key.",
+    "credentialHelpR2": "In Cloudflare Dashboard: R2 → Manage R2 API tokens → Create token. Copy Access Key ID and Secret Access Key immediately (secret is shown only once).",
+    "credentialHelpHetzner": "In Hetzner Console: Project → Security → S3 Credentials → Generate credentials. Copy access key and secret key immediately (secret is shown only once).",
+    "bucketRegion": "Region",
+    "bucket": "Bucket name",
+    "accessKeyId": "Access Key ID",
+    "secretAccessKey": "Secret Access Key",
+    "testConnection": "Test connection",
+    "removeConfiguration": "Remove configuration",
+    "usingDefaultStorage": "Using local/server storage",
+    "usingYourBucket": "Using your bucket: {{bucket}}",
+    "storageSaveSuccess": "Storage configuration saved successfully",
+    "storageRemoveSuccess": "Storage configuration removed. Using server default.",
+    "storageError": "Error saving storage configuration",
+    "storageRemoveConfirm": "Are you sure you want to remove your bucket configuration? Your avatars will use server storage.",
+    "storageRemoveConfirmHeader": "Remove bucket configuration",
+    "providerS3": "Amazon S3",
+    "providerR2": "Cloudflare R2",
+    "providerHetzner": "Hetzner Object Storage",
+    "transcriptionTab": "Voice",
+    "transcriptionProvider": "Transcription provider",
+    "transcriptionProviderHelp": "Choose which service to use for converting speech to text in the chat.",
+    "transcriptionSaveSuccess": "Transcription provider saved successfully",
+    "transcriptionError": "Error saving transcription provider",
+    "providerHuggingface": "Hugging Face (Whisper)",
+    "providerOpenai": "OpenAI Whisper",
+    "transcriptionNoProvider": "No transcription provider is configured. Add API keys in Workspace Settings → Voice."
   },
   "onboarding": {
     "title": "Getting Started",
@@ -490,16 +551,35 @@
     "fuzzyMatchThresholdDescription": "Minimum match percentage (0-100) for fuzzy text matching when applying redlines. Higher values require more exact matches.",
     "mustBeBetween0And100": "Value must be between 0 and 100"
   },
+  "transcription": {
+    "workspaceDescription": "Configure API keys for voice-to-text. Keys are stored encrypted and used when members use the microphone in the chat.",
+    "preferredProvider": "Preferred transcription provider",
+    "preferredProviderHint": "Choose which provider to use for voice transcription. If unset, the first provider with a configured key is used.",
+    "preferredProviderAuto": "Auto (first available with key)",
+    "preferredProviderSaved": "Preferred provider saved",
+    "apiKeysTitle": "Transcription API Keys",
+    "apiKeysDescription": "Add your Hugging Face or OpenAI API key to enable voice transcription in the chat. Keys are encrypted and shared with all workspace members.",
+    "apiKeyPlaceholder": "Paste your API key",
+    "apiKeyConfigured": "Key configured",
+    "apiKeyNotConfigured": "No key configured",
+    "huggingface": "Hugging Face (Whisper large-v3)",
+    "openai": "OpenAI Whisper",
+    "loadError": "Error loading transcription settings",
+    "saveError": "Error saving API key",
+    "apiKeySaved": "API key saved successfully"
+  },
   "workspaceSettings": {
     "title": "Workspace Settings",
     "tabParsers": "Document Parsers",
+    "tabVoice": "Voice",
     "tabGeneral": "General",
     "tabRetention": "Retention",
     "tabDocumentProcessing": "Document Processing",
     "tabPrompts": "AI Prompts",
     "generalPlaceholder": "General workspace settings will be available here in a future update.",
     "menuItem": "Settings",
-    "loadError": "Error loading workspace settings"
+    "loadError": "Error loading workspace settings",
+    "onlyAdminsCanEditApiKeys": "Only workspace owners and admins can edit API keys."
   },
   "chunking": {
     "title": "Chunking Strategy",
@@ -572,7 +652,9 @@
       "admin": "Admin",
       "member": "Member",
       "viewer": "Viewer"
-    }
+    },
+    "roleUpdated": "Role updated successfully",
+    "updateRoleError": "Error updating role"
   },
   "versions": {
     "title": "Document Versions",
@@ -593,8 +675,10 @@
     "audit": "Audit logs",
     "members": "Workspace members",
     "settings": "Account settings",
+    "settingsMenu": "Settings & preferences",
     "workspaceSettings": "Workspace settings",
     "viewDocuments": "Open documents in this workspace",
+    "uploadWorkspaceLogo": "Upload workspace logo",
     "deleteWorkspace": "Delete this workspace permanently",
     "createWorkspace": "Create a new workspace",
     "themeToggle": "Toggle theme",
@@ -652,5 +736,36 @@
   "baseList": {
     "emptyMessage": "No data available",
     "loading": "Loading..."
+  },
+  "contextMenu": {
+    "workspaces": {
+      "openDocuments": "Open Documents",
+      "settings": "Workspace Settings",
+      "members": "Manage Members",
+      "delete": "Delete workspace"
+    },
+    "documents": {
+      "open": "Open",
+      "chat": "Open Chat",
+      "redline": "Open Redline",
+      "delete": "Delete document"
+    },
+    "files": {
+      "view": "View content",
+      "download": "Download",
+      "delete": "Delete file"
+    },
+    "audit": {
+      "copyDetails": "Copy details",
+      "filterByAction": "Filter by action",
+      "filterByUser": "Filter by user"
+    },
+    "members": {
+      "changeRole": "Change role",
+      "remove": "Remove from workspace"
+    },
+    "versions": {
+      "view": "View / Hide"
+    }
   }
 }

@@ -8,8 +8,10 @@ import { TooltipModule } from 'primeng/tooltip';
 import { InputText } from 'primeng/inputtext';
 import { Password } from 'primeng/password';
 import { Message } from 'primeng/message';
+import { ROUTES } from '../../core/routes';
 import { AuthService } from '../../core/services/auth.service';
 import { LoginRequest } from '@contractai-review/shared';
+import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { TranslatePipe } from '@ngx-translate/core';
 import { TranslateService } from '@ngx-translate/core';
 import { LanguageSelectorComponent } from '../../layout/language-selector/language-selector.component';
@@ -38,6 +40,8 @@ export class LoginComponent {
   private router = inject(Router);
   private translateService = inject(TranslateService);
 
+  readonly routes = ROUTES;
+
   loginForm: FormGroup;
   loading = signal(false);
   error = signal('');
@@ -62,11 +66,11 @@ export class LoginComponent {
     const credentials: LoginRequest = this.loginForm.value;
     this.authService.login(credentials).subscribe({
       next: () => {
-        this.router.navigate(['/workspaces']);
+        this.router.navigate([ROUTES.WORKSPACES]);
       },
       error: (err) => {
         this.loading.set(false);
-        const errorMsg = err.error?.message || this.translateService.instant('auth.loginError');
+        const errorMsg = err.error?.message || this.translateService.instant(_('auth.loginError'));
         this.error.set(errorMsg);
       },
     });

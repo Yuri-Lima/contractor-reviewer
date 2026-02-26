@@ -1,5 +1,6 @@
 import { WorkspaceRole } from '../enums/workspace.enum';
 import { RetentionConfig } from './common';
+import type { TranscriptionProviderId } from './transcription';
 
 export interface WorkspaceSettingsConfig {
   retention: RetentionConfig;
@@ -9,6 +10,18 @@ export interface WorkspaceSettingsConfig {
     defaultDocumentParser?: string;
     parserApiKeys?: Record<string, boolean>;
   };
+  /** Transcription provider API keys (masked: configured/not) */
+  transcriptionProviderApiKeys?: Record<TranscriptionProviderId, boolean>;
+  /** Preferred transcription provider for this workspace (huggingface | openai) */
+  preferredTranscriptionProvider?: TranscriptionProviderId | null;
+}
+
+/**
+ * Response from GET workspace settings. Includes currentUserRole so the frontend
+ * can show/hide API key edit UI for non-admin roles.
+ */
+export interface WorkspaceSettingsGetResponse extends WorkspaceSettingsConfig {
+  currentUserRole: WorkspaceRole;
 }
 
 /**
@@ -25,6 +38,10 @@ export interface UpdateWorkspaceSettingsRequest {
     defaultDocumentParser?: string;
     parserApiKeys?: Record<string, string | boolean>;
   };
+  /** Transcription keys: provider id -> string (set) | false (remove) */
+  transcriptionProviderApiKeys?: Record<TranscriptionProviderId, string | boolean>;
+  /** Preferred transcription provider (huggingface | openai) */
+  preferredTranscriptionProvider?: TranscriptionProviderId | null;
 }
 
 export interface Workspace {

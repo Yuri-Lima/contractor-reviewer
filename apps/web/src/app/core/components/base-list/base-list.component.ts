@@ -1,4 +1,4 @@
-import { Component, input, contentChild, computed, Signal, TemplateRef, inject, viewChild } from '@angular/core';
+import { Component, input, output, contentChild, computed, Signal, TemplateRef, inject, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TableModule, Table, TableService, TableLazyLoadEvent } from 'primeng/table';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -100,6 +100,8 @@ function tableFactory(component: BaseListComponent): Table | null {
         #table
         [value]="data()"
         [loading]="loading()"
+        [contextMenu]="contextMenu()"
+        (contextMenuSelectionChange)="onContextMenuSelectionChange($event)"
         [paginator]="config().paginator ?? true"
         [lazy]="config().lazy ?? false"
         [rows]="config().rows ?? 25"
@@ -177,6 +179,12 @@ export class BaseListComponent<T = any> {
   
   data = input.required<T[]>();
 
+  /** Optional ref to p-contextMenu for table row context menu. Parent passes ViewChild ref. */
+  contextMenu = input<unknown>(undefined);
+
+  /** Emits when a table row is right-clicked (context menu selection). Parent sets selectedXForContext signal. */
+  contextMenuSelect = output<{ data: T }>();
+
   // Default: ViewChild reference to p-table component instance
   // Behavior: Gets reference to the Table component instance after view initialization
   // Applies when: Component view is initialized and p-table is rendered
@@ -211,6 +219,12 @@ export class BaseListComponent<T = any> {
 
   onSelectionChange(event: any): void {
     this.config().onSelectionChange?.(event);
+  }
+
+  onContextMenuSelectionChange(event: { data: T }): void {
+    if (event?.data != null) {
+      this.contextMenuSelect.emit({ data: event.data });
+    }
   }
 
   // Lazy loading handler

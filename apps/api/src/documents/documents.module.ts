@@ -17,6 +17,8 @@ import { WorkspaceModule } from '../workspace/workspace.module';
 import { RagModule } from '../rag/rag.module';
 import { PromptsModule } from '../prompts/prompts.module';
 import { AuditModule } from '../audit/audit.module';
+import { AuthModule } from '../auth/auth.module';
+import { TranscriptionModule } from '../transcription/transcription.module';
 import { ChatMessageService } from './chat-message.service';
 import { VersionService } from './version.service';
 import { RedlineService } from './redline.service';
@@ -40,7 +42,9 @@ import { Embedding } from '../entities/embedding.entity';
     WorkspaceModule,
     RagModule,
     PromptsModule,
-    AuditModule, // For audit logging
+    AuditModule,
+    AuthModule,
+    TranscriptionModule,
   ],
   controllers: [DocumentsController, ChatController, RedlineController],
   providers: [DocumentsService, ChatMessageService, VersionService, RedlineService, DiffService],

@@ -19,10 +19,19 @@ export class AuthService {
     private http: HttpClient,
     private router: Router,
   ) {
-    // Check if token is still valid on init
     if (this.isAuthenticated()) {
       this.validateToken();
+      this.refreshUser();
     }
+  }
+
+  refreshUser(): void {
+    this.http
+      .get<User>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}`)
+      .subscribe({
+        next: (user) => this.updateUser(user),
+        error: () => {},
+      });
   }
 
   login(credentials: LoginRequest): Observable<LoginResponse> {
@@ -50,6 +59,11 @@ export class AuthService {
   logout(): void {
     this.clearAuth();
     this.router.navigate(['/login']);
+  }
+
+  updateUser(user: User): void {
+    this.setUser(user);
+    this.currentUser.set(user);
   }
 
   getToken(): string | null {

@@ -39,6 +39,8 @@ const PARSER_NAME_KEYS: Record<string, string> = {
 })
 export class ParserSettingsComponent {
   workspaceId = input.required<string>();
+  /** When false, API key inputs are disabled (only OWNER/ADMIN can edit). */
+  canEditApiKeys = input<boolean>(true);
 
   private apiService = inject(ApiService);
   private messageService = inject(MessageService);
@@ -52,13 +54,10 @@ export class ParserSettingsComponent {
   apiKeyInputs = signal<Record<string, string>>({});
 
   constructor() {
-    effect(
-      () => {
-        const wsId = this.workspaceId();
-        if (wsId) this.load(wsId);
-      },
-      { allowSignalWrites: true },
-    );
+    effect(() => {
+      const wsId = this.workspaceId();
+      if (wsId) this.load(wsId);
+    });
   }
 
   getParserNameKey(p: ParserInfo): string {

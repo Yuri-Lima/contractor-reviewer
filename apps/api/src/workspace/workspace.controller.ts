@@ -9,7 +9,13 @@ import {
   Param,
   HttpCode,
   HttpStatus,
+  BadRequestException,
+  UseInterceptors,
+  UploadedFile,
+  Res,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { WorkspaceGuard, RolesGuard } from './guards';
 import { Roles } from './decorators/roles.decorator';
@@ -21,6 +27,7 @@ import { WorkspaceId, CurrentUser } from './decorators';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction, TargetType } from '../entities/audit-log.entity';
 import { RequestInfo } from '../common/decorators/request-info.decorator';
+import { ImageManagerService } from '../image-manager/image-manager.service';
 
 @Controller('workspaces')
 @UseGuards(JwtAuthGuard)
@@ -28,6 +35,7 @@ export class WorkspaceController {
   constructor(
     private workspaceService: WorkspaceService,
     private auditService: AuditService,
+    private imageManagerService: ImageManagerService,
   ) {}
 
   @Get()
@@ -124,5 +132,61 @@ export class WorkspaceController {
       requestInfo.userAgent,
       { removedUserId: userId },
     );
+  }
+
+  @Get(':workspaceId/logo/url')
+  @UseGuards(WorkspaceGuard, RolesGuard)
+  @Roles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN, WorkspaceRole.MEMBER, WorkspaceRole.VIEWER)
+  async getWorkspaceLogoUrl(@WorkspaceId() workspaceId: string): Promise<{ url: string }> {
+    const url = await this.imageManagerService.getImageUrl(
+      'workspace_logo',
+      workspaceId,
+      'original',
+      3600,
+    );
+    return { url };
+  }
+
+  @Post(':workspaceId/logo')
+  @UseGuards(WorkspaceGuard, RolesGuard)
+  @Roles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  @UseInterceptors(FileInterceptor('file'))
+  @HttpCode(HttpStatus.OK)
+  async uploadWorkspaceLogo(
+    @WorkspaceId() workspaceId: string,
+    @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
+  ): Promise<void> {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+    await this.imageManagerService.uploadImage('workspace_logo', workspaceId, file);
+  }
+
+  @Get(':workspaceId/logo')
+  @UseGuards(WorkspaceGuard, RolesGuard)
+  @Roles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN, WorkspaceRole.MEMBER, WorkspaceRole.VIEWER)
+  async getWorkspaceLogo(
+    @WorkspaceId() workspaceId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const { buffer, mimeType } = await this.imageManagerService.getImageBuffer(
+        'workspace_logo',
+        workspaceId,
+      );
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      res.send(buffer);
+    } catch {
+      res.status(404).send();
+    }
+  }
+
+  @Delete(':workspaceId/logo')
+  @UseGuards(WorkspaceGuard, RolesGuard)
+  @Roles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteWorkspaceLogo(@WorkspaceId() workspaceId: string): Promise<void> {
+    await this.imageManagerService.deleteImage('workspace_logo', workspaceId);
   }
 }

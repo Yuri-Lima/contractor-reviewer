@@ -11,6 +11,7 @@ import { Toast } from 'primeng/toast';
 import { Message } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { ApiService } from '../core/services/api.service';
+import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { TranslateService } from '@ngx-translate/core';
 import { TranslatePipe } from '@ngx-translate/core';
 
@@ -56,7 +57,7 @@ export class PrivacyComponent implements OnInit {
   exporting = signal(false);
 
   // Computed property for days suffix
-  daysSuffix = computed(() => ` ${this.translateService.instant('common.days')}`);
+  daysSuffix = computed(() => ` ${this.translateService.instant(_('common.days'))}`);
 
   // Signal to track no-logs enabled state (avoids ExpressionChangedAfterItHasBeenCheckedError)
   private noLogsEnabledSignal = signal<boolean>(false);
@@ -136,8 +137,8 @@ export class PrivacyComponent implements OnInit {
         next: () => {
           this.messageService.add({
             severity: 'success',
-            summary: this.translateService.instant('common.success'),
-            detail: this.translateService.instant('privacy.saveSuccess'),
+            summary: this.translateService.instant(_('common.success')),
+            detail: this.translateService.instant(_('privacy.saveSuccess')),
           });
           this.saving.set(false);
         },
@@ -145,8 +146,8 @@ export class PrivacyComponent implements OnInit {
           console.error('Error saving no-logs config:', err);
           this.messageService.add({
             severity: 'error',
-            summary: this.translateService.instant('common.error'),
-            detail: this.translateService.instant('privacy.saveError'),
+            summary: this.translateService.instant(_('common.error')),
+            detail: this.translateService.instant(_('privacy.saveError')),
           });
           this.saving.set(false);
           // Reload config on error to restore previous state
@@ -177,7 +178,7 @@ export class PrivacyComponent implements OnInit {
         this.messageService.add({
           severity: 'error',
           summary: this.translateService.instant('common.error'),
-          detail: err.error?.message || this.translateService.instant('privacy.saveError'),
+          detail: err.error?.message || this.translateService.instant(_('privacy.saveError')),
         });
         this.saving.set(false);
         // Reload config on error to restore previous state
@@ -198,8 +199,8 @@ export class PrivacyComponent implements OnInit {
         window.URL.revokeObjectURL(url);
         this.messageService.add({
           severity: 'success',
-          summary: this.translateService.instant('common.success'),
-          detail: this.translateService.instant('privacy.exportSuccess'),
+          summary: this.translateService.instant(_('common.success')),
+          detail: this.translateService.instant(_('privacy.exportSuccess')),
         });
         this.exporting.set(false);
       },
@@ -207,8 +208,8 @@ export class PrivacyComponent implements OnInit {
         console.error('Error exporting data:', err);
         this.messageService.add({
           severity: 'error',
-          summary: this.translateService.instant('common.error'),
-          detail: this.translateService.instant('privacy.exportError'),
+          summary: this.translateService.instant(_('common.error')),
+          detail: this.translateService.instant(_('privacy.exportError')),
         });
         this.exporting.set(false);
       },

@@ -1,3 +1,4 @@
+<p-contextMenu #membersContextMenu [model]="membersContextMenuItems()"></p-contextMenu>
 <div class="workspace-members-container p-6 max-w-6xl mx-auto">
   <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">{{ 'workspaceMembers.title' | translate }}</h1>
 
@@ -74,6 +75,8 @@
       <app-base-list
         [data]="members()"
         [config]="tableConfig()"
+        [contextMenu]="canManageMembers() ? membersContextMenuRef() : undefined"
+        (contextMenuSelect)="selectedMemberForContext.set($event.data)"
       >
         @if (canManageMembers()) {
           <ng-template #toolbarTemplate>
@@ -115,7 +118,7 @@
 
         <!-- Body template -->
     <ng-template #bodyTemplate let-member>
-      <tr [pSelectableRow]="member">
+      <tr [pSelectableRow]="member" [pContextMenuRow]="member" [pContextMenuRowDisabled]="!canManageMembers()">
         @if (canManageMembers()) {
           <td></td>
         }

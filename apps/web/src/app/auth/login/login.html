@@ -81,7 +81,7 @@
 
     <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-center text-sm">
       <span class="text-gray-600 dark:text-gray-400">{{ 'auth.noAccount' | translate }} </span>
-      <a routerLink="/register" data-testid="login-register-link" class="text-blue-600 dark:text-blue-400 font-medium hover:underline transition-colors" [pTooltip]="'auth.register' | translate">
+      <a [routerLink]="routes.REGISTER" data-testid="login-register-link" class="text-blue-600 dark:text-blue-400 font-medium hover:underline transition-colors" [pTooltip]="'auth.register' | translate">
         {{ 'auth.register' | translate }}
       </a>
     </div>

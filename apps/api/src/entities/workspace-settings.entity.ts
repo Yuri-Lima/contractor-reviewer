@@ -49,6 +49,14 @@ export class WorkspaceSettings {
   @Column({ type: 'jsonb', nullable: true })
   parserApiKeys: Record<string, string> | null;
 
+  /** Encrypted API keys for transcription providers (huggingface, openai) */
+  @Column({ type: 'jsonb', nullable: true })
+  transcriptionProviderApiKeys: Record<string, string> | null;
+
+  /** Preferred transcription provider for this workspace (huggingface | openai) */
+  @Column({ type: 'varchar', nullable: true })
+  preferredTranscriptionProvider: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

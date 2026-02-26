@@ -1,5 +1,6 @@
 import { CHECKLIST_KEYS } from '@contractai-review/shared';
 import type { ChecklistKey } from '@contractai-review/shared';
+import { ROUTES } from '../../core/routes';
 
 export interface ChecklistItemConfig {
   key: ChecklistKey;
@@ -18,5 +19,5 @@ const KEY_TO_TITLE: Record<string, string> = {
 export const CHECKLIST_CONFIG: ChecklistItemConfig[] = CHECKLIST_KEYS.map((key) => ({
   key,
   titleKey: KEY_TO_TITLE[key],
-  route: key === 'create_workspace' ? '/workspaces' : undefined,
+  route: key === 'create_workspace' ? ROUTES.WORKSPACES : undefined,
 }));

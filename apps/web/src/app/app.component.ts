@@ -2,7 +2,6 @@ import { Component, signal, computed, inject } from '@angular/core';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { filter } from 'rxjs';
-import { HeaderComponent } from './layout/header/header.component';
 import { SidebarComponent } from './layout/sidebar/sidebar.component';
 import { ChecklistComponent } from './onboarding/checklist/checklist.component';
 import { AuthService } from './core/services/auth.service';
@@ -13,16 +12,13 @@ import { RouteGuideService } from './onboarding/tour/route-guide.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent, ChecklistComponent],
+  imports: [CommonModule, RouterOutlet, SidebarComponent, ChecklistComponent],
   template: `
     <div class="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-      @if (showHeader()) {
-        <app-header></app-header>
-      }
       @if (showSidebar()) {
         <div class="flex flex-1">
           <app-sidebar [workspaceId]="currentWorkspaceId() || undefined"></app-sidebar>
-          <main class="flex-1 bg-gray-50 dark:bg-gray-900 min-h-[calc(100vh-64px)] transition-colors duration-200">
+          <main class="flex-1 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
             <router-outlet></router-outlet>
           </main>
         </div>
@@ -47,10 +43,6 @@ export class AppComponent {
   currentWorkspaceId = signal<string | null>(null);
   currentUrl = signal<string>(this.router.url);
 
-  // Header should only show when authenticated AND not on auth routes
-  showHeader = computed(() => 
-    this.authService.isAuthenticated() && !this.isAuthRoute(this.currentUrl())
-  );
   // Sidebar should only show when authenticated AND not on auth routes
   showSidebar = computed(() => 
     this.authService.isAuthenticated() && !this.isAuthRoute(this.currentUrl())

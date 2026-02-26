@@ -24,7 +24,8 @@
     "cap:build:sync": "pnpm build && pnpm cap:sync",
     "cap:dev:ios": "pnpm start & pnpm cap:open:ios",
     "cap:dev:android": "pnpm start & pnpm cap:open:android",
-    "cap:doctor": "npx cap doctor"
+    "cap:doctor": "npx cap doctor",
+    "i18n:extract": "ngx-translate-extract --input ./src --output ./src/assets/i18n/en.json ./src/assets/i18n/es.json ./src/assets/i18n/de.json ./src/assets/i18n/pt-BR.json --marker _ --format namespaced-json"
   },
   "dependencies": {
     "@angular/animations": "^21.0.0",
@@ -60,6 +61,8 @@
     "@angular-devkit/build-angular": "^21.0.0",
     "@angular/cli": "^21.0.0",
     "@angular/compiler-cli": "^21.0.0",
+    "@biesbjerg/ngx-translate-extract": "^7.0.4",
+    "@biesbjerg/ngx-translate-extract-marker": "^1.0.0",
     "@capacitor/cli": "^6.0.0",
     "@playwright/test": "^1.58.2",
     "@types/jest": "^29.5.14",

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, computed, effect, inject, viewChild, ElementRef, DestroyRef, untracked } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, effect, inject, viewChild, DestroyRef, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -8,6 +8,8 @@ import { TooltipModule } from 'primeng/tooltip';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Toast } from 'primeng/toast';
 import { ConfirmationService, MessageService, SharedModule } from 'primeng/api';
+import type { MenuItem } from 'primeng/api';
+import { ContextMenu } from 'primeng/contextmenu';
 import { TabsModule } from 'primeng/tabs';
 import { ProgressBar } from 'primeng/progressbar';
 import { Dialog } from 'primeng/dialog';
@@ -17,7 +19,10 @@ import { Tag } from 'primeng/tag';
 import { Card } from 'primeng/card';
 import { interval, Subject } from 'rxjs';
 import { takeUntil, timeout } from 'rxjs';
+import { workspaceDocuments } from '../../core/routes';
+import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { ApiService } from '../../core/services/api.service';
+import { VoiceRecordingService } from '../../core/services/voice-recording.service';
 import { OnboardingService } from '../../onboarding/onboarding.service';
 import { DocumentViewTabService } from '../../onboarding/tour/document-view-tab.service';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
@@ -36,6 +41,7 @@ import { RedlineComponent } from '../redline/redline.component';
 import { VersionsComponent } from '../versions/versions.component';
 import { FileContentDialogComponent } from '../file-content-dialog/file-content-dialog.component';
 import { BaseListComponent } from '../../core/components/base-list/base-list.component';
+import { FileUploadComponent } from '../../core/components/file-upload';
 import { BaseListConfig } from '../../core/components/base-list/base-list.config';
 import { LazyLoadEvent } from 'primeng/api';
 import { PaginationService } from '../../core/services/pagination.service';
@@ -88,8 +94,10 @@ interface FilesResourceParams extends FilesRequestParams {
     VersionsComponent,
     FileContentDialogComponent,
     BaseListComponent,
+    ContextMenu,
     LocaleDatePipe,
     TranslatePipe,
+    FileUploadComponent,
   ],
   providers: [ConfirmationService, MessageService],
   template: `
@@ -114,15 +122,16 @@ interface FilesResourceParams extends FilesRequestParams {
           </div>
         </div>
         <div class="document-actions flex gap-2">
-          <input type="file" #fileInput (change)="onFileSelected($event)" [attr.accept]="fileInputAccept" style="display: none" />
-          <p-button
-            data-tour="upload-btn"
-            [label]="'documents.uploadFile' | translate"
+          <app-file-upload
+            trigger="button"
+            [accept]="fileInputAccept"
+            labelKey="documents.uploadFile"
             icon="pi pi-upload"
-            [outlined]="true"
-            (onClick)="triggerFileInput()"
-            [pTooltip]="'tooltip.uploadFile' | translate"
-          ></p-button>
+            tooltipKey="tooltip.uploadFile"
+            [buttonOutlined]="true"
+            [dataTour]="'upload-btn'"
+            (fileSelected)="onFileSelected($event)"
+          />
           @if (canDelete()) {
             <p-button
               [label]="'common.delete' | translate"
@@ -179,9 +188,15 @@ interface FilesResourceParams extends FilesRequestParams {
         </p-tablist>
         <p-tabpanels>
           <p-tabpanel value="0">
+            <p-contextMenu #fileContextMenu [model]="fileContextMenuItems()"></p-contextMenu>
             <p-card class="files-section mt-4">
               <div class="p-4">
-              <app-base-list [data]="files()" [config]="filesTableConfig()">
+              <app-base-list
+                [data]="files()"
+                [config]="filesTableConfig()"
+                [contextMenu]="fileContextMenuRef()"
+                (contextMenuSelect)="selectedFileForContext.set($event.data)"
+              >
                 <ng-template #toolbarTemplate>
                   <p-toolbar class="mb-4">
                     <ng-template pTemplate="start">
@@ -223,7 +238,7 @@ interface FilesResourceParams extends FilesRequestParams {
                 
                 <!-- Body template -->
                 <ng-template #bodyTemplate let-file>
-                  <tr [pSelectableRow]="file" (dblclick)="openFileContentDialog(file, $event)">
+                  <tr [pSelectableRow]="file" [pContextMenuRow]="file" (dblclick)="openFileContentDialog(file, $event)">
                     <td></td>
                     <td>{{ file.fileName }}</td>
                     <td>{{ file.mimeType }}</td>
@@ -335,6 +350,17 @@ interface FilesResourceParams extends FilesRequestParams {
                   [placeholder]="'documents.askQuestion' | translate"
                   (keyup.enter)="sendQuestion()"
                 />
+                @if (voiceAvailable()) {
+                  <p-button
+                    [icon]="voiceRecording() ? 'pi pi-stop' : 'pi pi-microphone'"
+                    [severity]="voiceRecording() ? 'danger' : 'secondary'"
+                    [outlined]="true"
+                    [disabled]="loading() || voiceTranscribing()"
+                    [loading]="voiceTranscribing()"
+                    (onClick)="toggleVoiceRecording()"
+                    [pTooltip]="voiceRecording() ? ('chat.stopListening' | translate) : ('chat.voiceInput' | translate)"
+                  ></p-button>
+                }
                 <p-button
                   [label]="'documents.send' | translate"
                   icon="pi pi-send"
@@ -457,9 +483,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   private destroyRef = inject(DestroyRef);
   private onboardingService = inject(OnboardingService);
   private documentViewTabService = inject(DocumentViewTabService);
+  private voiceRecordingService = inject(VoiceRecordingService);
 
-  // ViewChild como signal
-  fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
   redlineComponent = viewChild<RedlineComponent>('redlineComponent');
 
   readonly fileInputAccept = FILE_INPUT_ACCEPT;
@@ -469,8 +494,16 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   document = signal<Document | null>(null);
   question = signal('');
   loading = signal(false);
+  voiceRecording = signal(false);
+  voiceTranscribing = signal(false);
+  voiceAvailable = signal(false);
   chatMessages = signal<Array<{ question: string; answerText?: string; confidence?: string; citations?: Citation[] }>>([]);
   selectedFile = signal<DocumentFile | null>(null); // For table row selection (enables Delete button only)
+  fileContextMenuRef = viewChild<ContextMenu>('fileContextMenu');
+  selectedFileForContext = signal<DocumentFile | null>(null);
+  fileContextMenuItems = computed<MenuItem[]>(() =>
+    this.buildFileMenu(this.selectedFileForContext())
+  );
   fileToView = signal<DocumentFile | null>(null);   // For file viewer dialog (opened by View button only)
   fileForContentDialog = signal<DocumentFile | null>(null); // For file content dialog (opened by double-click)
   activeTab = signal<string | number>('0');
@@ -544,7 +577,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     rows: this.paginationService.pageSize(),
     rowsPerPageOptions: [10, 25, 50, 100],
     showCurrentPageReport: true,
-    currentPageReportTemplate: (this.translateService.instant('common.showing') || 'Showing') + ' {first} ' + (this.translateService.instant('common.to') || 'to') + ' {last} ' + (this.translateService.instant('common.of') || 'of') + ' {totalRecords} ' + (this.translateService.instant('documents.files') || 'files'),
+    currentPageReportTemplate: (this.translateService.instant(_('common.showing')) || 'Showing') + ' {first} ' + (this.translateService.instant(_('common.to')) || 'to') + ' {last} ' + (this.translateService.instant(_('common.of')) || 'of') + ' {totalRecords} ' + (this.translateService.instant(_('documents.files')) || 'files'),
     sortMode: 'multiple',
     striped: true,
     emptyMessageKey: 'documents.noFiles',
@@ -620,9 +653,9 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       if (status === 404 || name === 'TimeoutError') return;
       this.messageService.add({
         severity: 'error',
-        summary: this.translateService.instant('common.error'),
+        summary: this.translateService.instant(_('common.error')),
         detail:
-          this.translateService.instant('documents.loadFilesError') ||
+          this.translateService.instant(_('documents.loadFilesError')) ||
           'Error loading files',
       });
     });
@@ -630,6 +663,11 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopAggressivePolling();
+    // Release voice recording resources if user navigates away while recording
+    if (this.voiceRecording()) {
+      this.voiceRecordingService.cancelRecording();
+      this.voiceRecording.set(false);
+    }
     // Clean up object URLs to prevent memory leaks
     this.fileObjectUrls().forEach(url => URL.revokeObjectURL(url));
     this.fileObjectUrls.set(new Map());
@@ -638,6 +676,56 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.workspaceId.set(this.route.snapshot.paramMap.get('workspaceId') || '');
     this.documentId.set(this.route.snapshot.paramMap.get('documentId') || '');
+    this.voiceAvailable.set(this.voiceRecordingService.isAvailable());
+  }
+
+  async toggleVoiceRecording(): Promise<void> {
+    if (this.voiceTranscribing() || this.loading()) return;
+    if (this.voiceRecording()) {
+      this.voiceRecording.set(false);
+      this.voiceTranscribing.set(true);
+      try {
+        const blob = await this.voiceRecordingService.stopRecording();
+        const lang = this.translateService.getCurrentLang() || 'en';
+        this.apiService
+          .transcribe(this.workspaceId(), this.documentId(), blob, lang)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (res) => {
+              const current = this.question();
+              const separator = current ? ' ' : '';
+              this.question.set(current + separator + res.text);
+              this.voiceTranscribing.set(false);
+            },
+            error: (err) => {
+              this.messageService.add({
+                severity: 'error',
+                summary: this.translateService.instant(_('common.error')),
+                detail: err?.error?.message ?? this.translateService.instant(_('chat.transcribeError')),
+              });
+              this.voiceTranscribing.set(false);
+            },
+          });
+      } catch (err:any) {
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translateService.instant(_('common.error')),
+          detail: err?.error?.message ?? err?.message ?? this.translateService.instant(_('chat.transcribeError')),
+        });
+        this.voiceTranscribing.set(false);
+      }
+    } else {
+      try {
+        await this.voiceRecordingService.startRecording();
+        this.voiceRecording.set(true);
+      } catch (err:any) {
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translateService.instant(_('common.error')),
+          detail: err?.error?.message ?? err?.message ?? this.translateService.instant(_('chat.voiceInputUnsupported')),
+        });
+      }
+    }
   }
 
   loadParsers(): void {
@@ -945,20 +1033,13 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
 
   /** Parser dialog header as string (avoids [object Object] from translate) */
   getParserDialogHeader(): string {
-    const h = this.translateService.instant('documents.parserDialogTitle');
+    const h = this.translateService.instant(_('documents.parserDialogTitle'));
     return typeof h === 'string' ? h : 'Choose Document Parser';
   }
 
   getConfidenceLabel(confidence: string): string {
     if (!confidence) return '';
     return this.translateService.instant(`redline.confidence.${confidence}`) || confidence;
-  }
-
-  triggerFileInput(): void {
-    const input = this.fileInput()?.nativeElement;
-    if (input) {
-      input.click();
-    }
   }
 
   onQuestionInput(event: Event): void {
@@ -968,31 +1049,26 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     }
   }
 
-  onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      const file = input.files[0];
-      this.pendingFile.set(file);
-      const wsId = this.workspaceId();
-      forkJoin({
-        parsers: this.apiService.getDocumentParsers(wsId),
-        settings: this.apiService.getWorkspaceSettings(wsId),
-      }).subscribe({
-        next: ({ parsers: list, settings }) => {
-          this.parsers.set(list);
-          const defaultParser = settings.documentProcessing?.defaultDocumentParser ?? 'docling';
-          const defaultP = list.find(p => p.id === defaultParser);
-          const defaultIsEnabled = defaultP ? this.isParserEnabled(defaultP) : false;
-          const fallback = list.find(p => this.isParserEnabled(p))?.id ?? 'docling';
-          this.selectedParser.set(defaultIsEnabled ? defaultParser : fallback);
-        },
-        error: () => {
-          this.selectedParser.set('docling');
-        },
-      });
-      this.showParserDialog.set(true);
-      input.value = '';
-    }
+  onFileSelected(file: File): void {
+    this.pendingFile.set(file);
+    const wsId = this.workspaceId();
+    forkJoin({
+      parsers: this.apiService.getDocumentParsers(wsId),
+      settings: this.apiService.getWorkspaceSettings(wsId),
+    }).subscribe({
+      next: ({ parsers: list, settings }) => {
+        this.parsers.set(list);
+        const defaultParser = settings.documentProcessing?.defaultDocumentParser ?? 'docling';
+        const defaultP = list.find(p => p.id === defaultParser);
+        const defaultIsEnabled = defaultP ? this.isParserEnabled(defaultP) : false;
+        const fallback = list.find(p => this.isParserEnabled(p))?.id ?? 'docling';
+        this.selectedParser.set(defaultIsEnabled ? defaultParser : fallback);
+      },
+      error: () => {
+        this.selectedParser.set('docling');
+      },
+    });
+    this.showParserDialog.set(true);
   }
 
   cancelParserDialog(): void {
@@ -1026,8 +1102,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         console.error('Error uploading file:', err);
         this.messageService.add({
           severity: 'error',
-          summary: this.translateService.instant('common.error'),
-          detail: err.error?.message || this.translateService.instant('documents.uploadError'),
+          summary: this.translateService.instant(_('common.error')),
+          detail: err.error?.message || this.translateService.instant(_('documents.uploadError')),
         });
       },
     });
@@ -1118,8 +1194,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         console.error('Error loading file:', err);
         this.messageService.add({
           severity: 'error',
-          summary: this.translateService.instant('common.error'),
-          detail: this.translateService.instant('documents.loadFileError'),
+          summary: this.translateService.instant(_('common.error')),
+          detail: this.translateService.instant(_('documents.loadFileError')),
         });
       },
     });
@@ -1136,12 +1212,12 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
             this.textFileContent.set(text);
           }).catch(err => {
             console.error('Error reading text file:', err);
-            this.textFileContent.set(this.translateService.instant('documents.loadFileError'));
+            this.textFileContent.set(this.translateService.instant(_('documents.loadFileError')));
           });
         },
         error: (err) => {
           console.error('Error loading text file:', err);
-          this.textFileContent.set(this.translateService.instant('documents.loadFileError'));
+          this.textFileContent.set(this.translateService.instant(_('documents.loadFileError')));
         },
       });
     } else {
@@ -1162,8 +1238,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
             console.error('Error loading file:', err);
             this.messageService.add({
               severity: 'error',
-              summary: this.translateService.instant('common.error'),
-              detail: this.translateService.instant('documents.loadFileError'),
+              summary: this.translateService.instant(_('common.error')),
+              detail: this.translateService.instant(_('documents.loadFileError')),
             });
           },
         });
@@ -1193,8 +1269,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         console.error('Error downloading file:', err);
         this.messageService.add({
           severity: 'error',
-          summary: this.translateService.instant('common.error'),
-          detail: err.error?.message || this.translateService.instant('documents.downloadError'),
+          summary: this.translateService.instant(_('common.error')),
+          detail: err.error?.message || this.translateService.instant(_('documents.downloadError')),
         });
       },
     });
@@ -1219,7 +1295,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   }
 
   formatFileSize(bytes: number): string {
-    if (bytes === 0) return `0 ${this.translateService.instant('documents.fileSizeUnits.bytes')}`;
+    if (bytes === 0) return `0 ${this.translateService.instant(_('documents.fileSizeUnits.bytes'))}`;
     const k = 1024;
     const sizes = ['bytes', 'kb', 'mb', 'gb'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -1263,19 +1339,19 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     this.activeTab.set('1');
     this.messageService.add({
       severity: 'success',
-      summary: this.translateService.instant('common.success'),
-      detail: this.translateService.instant('redline.selectionsAdded'),
+      summary: this.translateService.instant(_('common.success')),
+      detail: this.translateService.instant(_('redline.selectionsAdded')),
     });
   }
 
   confirmDelete(): void {
     this.confirmationService.confirm({
-      message: this.translateService.instant('documents.confirmDeleteMessage', { title: this.document()?.title || '' }),
-      header: this.translateService.instant('documents.confirmDelete'),
+      message: this.translateService.instant(_('documents.confirmDeleteMessage'), { title: this.document()?.title || '' }),
+      header: this.translateService.instant(_('documents.confirmDelete')),
       icon: 'pi pi-exclamation-triangle',
       acceptButtonStyleClass: 'p-button-danger',
-      acceptLabel: this.translateService.instant('common.delete'),
-      rejectLabel: this.translateService.instant('common.cancel'),
+      acceptLabel: this.translateService.instant(_('common.delete')),
+      rejectLabel: this.translateService.instant(_('common.cancel')),
       accept: () => {
         this.deleteDocument();
       },
@@ -1284,16 +1360,45 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
 
   confirmDeleteFile(file: DocumentFile): void {
     this.confirmationService.confirm({
-      message: this.translateService.instant('documents.confirmDeleteFileMessage', { fileName: file.fileName }),
-      header: this.translateService.instant('documents.confirmDeleteFile'),
+      message: this.translateService.instant(_('documents.confirmDeleteFileMessage'), { fileName: file.fileName }),
+      header: this.translateService.instant(_('documents.confirmDeleteFile')),
       icon: 'pi pi-exclamation-triangle',
       acceptButtonStyleClass: 'p-button-danger',
-      acceptLabel: this.translateService.instant('common.delete'),
-      rejectLabel: this.translateService.instant('common.cancel'),
+      acceptLabel: this.translateService.instant(_('common.delete')),
+      rejectLabel: this.translateService.instant(_('common.cancel')),
       accept: () => {
         this.deleteFile(file.id);
       },
     });
+  }
+
+  private buildFileMenu(file: DocumentFile | null): MenuItem[] {
+    if (!file) return [];
+    const t = (key: string) => this.translateService.instant(_(key));
+    const items: MenuItem[] = [];
+    if (file.status === 'available') {
+      items.push({
+        label: t('contextMenu.files.view'),
+        icon: 'pi pi-eye',
+        command: () => {
+          this.openFileContentDialog(file, {} as MouseEvent);
+        },
+      });
+    }
+    items.push(
+      {
+        label: t('contextMenu.files.download'),
+        icon: 'pi pi-download',
+        command: () => this.downloadFile(file),
+      },
+      { separator: true },
+      {
+        label: t('contextMenu.files.delete'),
+        icon: 'pi pi-trash',
+        command: () => this.confirmDeleteFile(file),
+      }
+    );
+    return items;
   }
 
   deleteFile(fileId: string): void {
@@ -1301,8 +1406,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       next: () => {
         this.messageService.add({
           severity: 'success',
-          summary: this.translateService.instant('common.success'),
-          detail: this.translateService.instant('documents.deleteFileSuccess'),
+          summary: this.translateService.instant(_('common.success')),
+          detail: this.translateService.instant(_('documents.deleteFileSuccess')),
         });
         this.selectedFile.set(null);
         if (this.fileToView()?.id === fileId) {
@@ -1325,8 +1430,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         console.error('Error deleting file:', err);
         this.messageService.add({
           severity: 'error',
-          summary: this.translateService.instant('common.error'),
-          detail: err.error?.message || this.translateService.instant('documents.deleteFileError'),
+          summary: this.translateService.instant(_('common.error')),
+          detail: err.error?.message || this.translateService.instant(_('documents.deleteFileError')),
         });
       },
     });
@@ -1337,17 +1442,17 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       next: () => {
         this.messageService.add({
           severity: 'success',
-          summary: this.translateService.instant('common.success'),
-          detail: this.translateService.instant('documents.deleteSuccess'),
+          summary: this.translateService.instant(_('common.success')),
+          detail: this.translateService.instant(_('documents.deleteSuccess')),
         });
-        this.router.navigate(['/workspaces', this.workspaceId(), 'documents']);
+        this.router.navigate([...workspaceDocuments(this.workspaceId())]);
       },
       error: (err) => {
         console.error('Error deleting document:', err);
         this.messageService.add({
           severity: 'error',
-          summary: this.translateService.instant('common.error'),
-          detail: err.error?.message || this.translateService.instant('documents.deleteError'),
+          summary: this.translateService.instant(_('common.error')),
+          detail: err.error?.message || this.translateService.instant(_('documents.deleteError')),
         });
       },
     });

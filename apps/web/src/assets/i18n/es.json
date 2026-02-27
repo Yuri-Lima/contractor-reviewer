@@ -42,7 +42,8 @@
     "of": "de",
     "showing": "Mostrando",
     "notAvailable": "N/A",
-    "days": "días"
+    "days": "días",
+    "clearSearch": "Limpiar búsqueda"
   },
   "auth": {
     "email": "Correo electrónico",
@@ -124,6 +125,12 @@
       "error": "Error"
     },
     "loadFilesError": "Error al cargar archivos",
+    "searchFiles": "Buscar archivos...",
+    "searchAll": "Todas las columnas",
+    "searchModeContains": "Contiene",
+    "searchModeFuzzy": "Fuzzy (tolerante a errores)",
+    "similarityThreshold": "Similitud",
+    "similarityThresholdHelp": "Menor = más tolerante a errores",
     "processing": "Procesamiento en curso",
     "titlePlaceholder": "Título del documento",
     "descriptionPlaceholder": "Descripción (opcional)",

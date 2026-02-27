@@ -36,6 +36,7 @@ import {
   FILE_INPUT_ACCEPT,
   ChatResponseModeValues,
   type ChatResponseMode,
+  type FileSearchScope,
 } from '@contractai-review/shared';
 
 /** Local fallback when shared package fails to load (e.g. 404). Must match ChatResponseModeValues. */
@@ -50,6 +51,11 @@ import { VersionsComponent } from '../versions/versions.component';
 import { FileContentDialogComponent } from '../file-content-dialog/file-content-dialog.component';
 import { BaseListComponent } from '../../core/components/base-list/base-list.component';
 import { FileUploadComponent } from '../../core/components/file-upload';
+import {
+  SearchInputComponent,
+  type SearchScopeOption,
+  type SearchModeOption,
+} from '../../core/components/search-input';
 import { EditableTitleComponent } from '../../core/components/editable-title/editable-title.component';
 import { BaseListConfig } from '../../core/components/base-list/base-list.config';
 import { LazyLoadEvent } from 'primeng/api';
@@ -58,15 +64,18 @@ import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
 import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 
-/** API request params for getDocumentFiles (pagination, sort, filters) */
+/** API request params for getDocumentFiles (pagination, sort, filters, fuzzy search) */
 interface FilesRequestParams {
   offset: number;
   limit: number;
   sortField?: string;
   sortOrder?: number;
+  q?: string;
   fileName?: string;
   mimeType?: string;
   status?: string;
+  searchMode?: 'fuzzy' | 'contains';
+  similarityThreshold?: number;
   sizeBytes?: number;
   startDate?: string;
   endDate?: string;
@@ -120,6 +129,7 @@ interface ChatMessageWithAudio {
     LocaleDatePipe,
     TranslatePipe,
     FileUploadComponent,
+    SearchInputComponent,
     EditableTitleComponent,
   ],
   providers: [ConfirmationService, MessageService],
@@ -228,7 +238,26 @@ interface ChatMessageWithAudio {
                 <ng-template #toolbarTemplate>
                   <p-toolbar class="mb-4">
                     <ng-template pTemplate="start">
-                      <div class="flex gap-2">
+                      <app-search-input
+                        class="flex-1 min-w-0"
+                        [value]="fileSearchQuery()"
+                        (valueChange)="applyFileSearch($event)"
+                        [showSearchModeSelector]="true"
+                        [searchModeOptions]="fileSearchModeOptions"
+                        [searchMode]="fileSearchMode()"
+                        (searchModeChange)="onFileSearchModeChange($event)"
+                        [showSimilaritySlider]="true"
+                        [similarityThreshold]="fileSimilarityThreshold()"
+                        (similarityThresholdChange)="onFileSimilarityThresholdChange($event)"
+                        [showScopeSelector]="true"
+                        [scopeOptions]="fileSearchScopeOptions"
+                        [scope]="fileSearchScope()"
+                        (scopeChange)="onFileSearchScopeChange($event)"
+                        placeholderKey="documents.searchFiles"
+                        dataTour="files-search"
+                      />
+                    </ng-template>
+                    <ng-template pTemplate="end">
                       <p-button
                         [label]="'common.delete' | translate"
                         icon="pi pi-trash"
@@ -237,7 +266,6 @@ interface ChatMessageWithAudio {
                         (onClick)="selectedFile() && confirmDeleteFile(selectedFile()!)"
                         [pTooltip]="'common.delete' | translate"
                       ></p-button>
-                      </div>
                     </ng-template>
                   </p-toolbar>
                 </ng-template>
@@ -572,6 +600,21 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   );
   fileToView = signal<DocumentFile | null>(null);   // For file viewer dialog (opened by View button only)
   fileForContentDialog = signal<DocumentFile | null>(null); // For file content dialog (opened by double-click)
+  fileSearchQuery = signal<string>('');
+  fileSearchScope = signal<FileSearchScope>('all');
+  fileSearchMode = signal<'fuzzy' | 'contains'>('contains');
+  fileSimilarityThreshold = signal<number>(0.2);
+  readonly fileSearchModeOptions: SearchModeOption[] = [
+    { value: 'contains', labelKey: 'documents.searchModeContains' },
+    { value: 'fuzzy', labelKey: 'documents.searchModeFuzzy' },
+  ];
+  readonly fileSearchScopeOptions: SearchScopeOption[] = [
+    { value: 'all', labelKey: 'documents.searchAll' },
+    { value: 'fileName', labelKey: 'documents.fileName' },
+    { value: 'mimeType', labelKey: 'documents.fileType' },
+    { value: 'status', labelKey: 'documents.status' },
+    { value: 'createdAt', labelKey: 'documents.createdAt' },
+  ];
   activeTab = signal<string | number>('0');
   textFileContent = signal<string>('');
   parsers = signal<ParserInfo[]>([]);
@@ -600,9 +643,11 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         apiParams['sortField'] = params['sortField'];
         if (params['sortOrder'] != null) apiParams['sortOrder'] = params['sortOrder'];
       }
+      if (params['q'] != null && params['q'] !== '') apiParams['q'] = params['q'];
       if (params['fileName'] != null && params['fileName'] !== '') apiParams['fileName'] = params['fileName'];
       if (params['mimeType'] != null && params['mimeType'] !== '') apiParams['mimeType'] = params['mimeType'];
       if (params['status'] != null && params['status'] !== '') apiParams['status'] = params['status'];
+      if (params['searchMode'] != null) apiParams['searchMode'] = params['searchMode'];
       if (params['sizeBytes'] != null) apiParams['sizeBytes'] = params['sizeBytes'];
       if (params['startDate'] != null && params['startDate'] !== '') apiParams['startDate'] = params['startDate'];
       if (params['endDate'] != null && params['endDate'] !== '') apiParams['endDate'] = params['endDate'];
@@ -695,6 +740,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
             limit: this.paginationService.pageSize(),
             sortField: this.paginationService.sortField(),
             sortOrder: this.paginationService.sortOrder(),
+            searchMode: this.fileSearchMode(),
+            similarityThreshold: this.fileSimilarityThreshold(),
           };
           this.filesParams.set(initialParams);
           this.filesRequest.set({ workspaceId: wsId, documentId: docId, ...initialParams });
@@ -838,20 +885,55 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Map PrimeNG LazyLoadEvent to API request params; resource reacts to filesParams change */
+  /** Map PrimeNG LazyLoadEvent to API request params; merges in search input state */
   private lazyEventToApiParams(event: LazyLoadEvent): FilesRequestParams {
     const offset = event.first ?? 0;
     const limit = event.rows ?? 25;
-    const params: FilesRequestParams = { offset, limit };
+    const params: FilesRequestParams = {
+      offset,
+      limit,
+      searchMode: this.fileSearchMode(),
+      similarityThreshold: this.fileSimilarityThreshold(),
+    };
 
-    if (event.filters) {
-      if (event.filters['fileName']?.value) {
+    const scope = this.fileSearchScope();
+    const query = this.fileSearchQuery().trim();
+    if (query) {
+      if (scope === 'all') {
+        params.q = query;
+        params.fileName = undefined;
+        params.mimeType = undefined;
+        params.status = undefined;
+        params.startDate = undefined;
+        params.endDate = undefined;
+      } else if (scope === 'createdAt') {
+        params.q = undefined;
+        params.fileName = undefined;
+        params.mimeType = undefined;
+        params.status = undefined;
+        const parsed = this.parseDateString(query);
+        if (parsed) {
+          params.startDate = parsed.startDate;
+          params.endDate = parsed.endDate;
+        }
+      } else {
+        params.q = undefined;
+        params.startDate = undefined;
+        params.endDate = undefined;
+        if (scope === 'fileName') params.fileName = query;
+        else if (scope === 'mimeType') params.mimeType = query;
+        else if (scope === 'status') params.status = query;
+      }
+    }
+
+    if (event.filters && !params.q) {
+      if (!params.fileName && event.filters['fileName']?.value) {
         params.fileName = event.filters['fileName'].value;
       }
-      if (event.filters['mimeType']?.value) {
+      if (!params.mimeType && event.filters['mimeType']?.value) {
         params.mimeType = event.filters['mimeType'].value;
       }
-      if (event.filters['status']?.value) {
+      if (!params.status && event.filters['status']?.value) {
         params.status = event.filters['status'].value;
       }
       if (event.filters['sizeBytes']?.value) {
@@ -887,10 +969,134 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       a.limit === b.limit &&
       (a.sortField ?? '') === (b.sortField ?? '') &&
       (a.sortOrder ?? 0) === (b.sortOrder ?? 0) &&
+      (a.searchMode ?? '') === (b.searchMode ?? '') &&
+      (a.similarityThreshold ?? 0.2) === (b.similarityThreshold ?? 0.2) &&
+      (a.q ?? '') === (b.q ?? '') &&
       (a.fileName ?? '') === (b.fileName ?? '') &&
       (a.mimeType ?? '') === (b.mimeType ?? '') &&
-      (a.status ?? '') === (b.status ?? '')
+      (a.status ?? '') === (b.status ?? '') &&
+      (a.startDate ?? '') === (b.startDate ?? '') &&
+      (a.endDate ?? '') === (b.endDate ?? '')
     );
+  }
+
+  /** Handle search mode change from SearchInputComponent; re-applies current search */
+  onFileSearchModeChange(value: 'fuzzy' | 'contains'): void {
+    this.fileSearchMode.set(value);
+    this.applyFileSearch(this.fileSearchQuery());
+  }
+
+  /** Handle similarity threshold change from SearchInputComponent; re-applies current search */
+  onFileSimilarityThresholdChange(value: number): void {
+    this.fileSimilarityThreshold.set(value);
+    this.applyFileSearch(this.fileSearchQuery());
+  }
+
+  /** Handle scope change from SearchInputComponent; validates and sets scope */
+  onFileSearchScopeChange(value: string): void {
+    const valid: FileSearchScope[] = ['all', 'fileName', 'mimeType', 'status', 'createdAt'];
+    if (valid.includes(value as FileSearchScope)) {
+      this.fileSearchScope.set(value as FileSearchScope);
+      this.applyFileSearch(this.fileSearchQuery());
+    }
+  }
+
+  /** Apply search from SearchInputComponent; resets to page 0 */
+  applyFileSearch(query: string): void {
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    if (!wsId || !docId) return;
+
+    this.fileSearchQuery.set(query);
+    const scope = this.fileSearchScope();
+    const current = this.filesParams();
+    const newParams: FilesRequestParams = {
+      ...current,
+      offset: 0,
+      searchMode: this.fileSearchMode(),
+      similarityThreshold: this.fileSimilarityThreshold(),
+      q: undefined,
+      fileName: undefined,
+      mimeType: undefined,
+      status: undefined,
+      startDate: undefined,
+      endDate: undefined,
+    };
+    const trimmed = query.trim();
+    if (scope === 'all' && trimmed) {
+      newParams.q = trimmed;
+    } else if (scope === 'fileName' && trimmed) {
+      newParams.fileName = trimmed;
+    } else if (scope === 'mimeType' && trimmed) {
+      newParams.mimeType = trimmed;
+    } else if (scope === 'status' && trimmed) {
+      newParams.status = trimmed;
+    } else if (scope === 'createdAt' && trimmed) {
+      const parsed = this.parseDateString(trimmed);
+      if (parsed) {
+        newParams.startDate = parsed.startDate;
+        newParams.endDate = parsed.endDate;
+      }
+    }
+
+    if (this.filesParamsEqual(this.filesParams(), newParams)) return;
+    this.paginationService.updateQueryParams({ page: 0 });
+    this.filesParams.set(newParams);
+    this.filesRequest.set({ workspaceId: wsId, documentId: docId, ...newParams });
+  }
+
+  /**
+   * Parse a date string into startDate/endDate (YYYY-MM-DD) for a full-day filter.
+   * Supports ISO (YYYY-MM-DD), DD/MM/YYYY, MM/DD/YYYY, and lenient Date parsing.
+   */
+  private parseDateString(input: string): { startDate: string; endDate: string } | null {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+
+    // ISO: YYYY-MM-DD
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      const [, y, m, d] = isoMatch;
+      const year = parseInt(y!, 10);
+      const month = parseInt(m!, 10) - 1;
+      const day = parseInt(d!, 10);
+      const date = new Date(Date.UTC(year, month, day));
+      if (!isNaN(date.getTime()) && date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day) {
+        const iso = date.toISOString().split('T')[0];
+        return { startDate: iso, endDate: iso };
+      }
+    }
+
+    // DD/MM/YYYY or MM/DD/YYYY (slash or hyphen separated)
+    const partsMatch = trimmed.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+    if (partsMatch) {
+      const [, a, b, y] = partsMatch;
+      const first = parseInt(a!, 10);
+      const second = parseInt(b!, 10);
+      const year = parseInt(y!, 10);
+      // If first > 12, it must be day (DD/MM); else try DD/MM then MM/DD
+      let date: Date;
+      if (first > 12) {
+        date = new Date(year, second - 1, first);
+      } else if (second > 12) {
+        date = new Date(year, first - 1, second);
+      } else {
+        date = new Date(year, second - 1, first);
+      }
+      if (!isNaN(date.getTime())) {
+        const iso = date.toISOString().split('T')[0];
+        return { startDate: iso, endDate: iso };
+      }
+    }
+
+    // Lenient fallback
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      const iso = parsed.toISOString().split('T')[0];
+      return { startDate: iso, endDate: iso };
+    }
+
+    return null;
   }
 
   /** Update files params and URL from table lazy load event; resource reloads only when params actually change */

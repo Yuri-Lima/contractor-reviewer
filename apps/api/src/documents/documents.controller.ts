@@ -242,7 +242,21 @@ export class DocumentsController {
   async getDocumentFiles(
     @WorkspaceId() workspaceId: string,
     @Param('documentId') documentId: string,
-    @Query() query: { offset?: number; limit?: number; sortField?: string; sortOrder?: number; fileName?: string; mimeType?: string; status?: string },
+    @Query()
+    query: {
+      offset?: number;
+      limit?: number;
+      sortField?: string;
+      sortOrder?: number;
+      q?: string;
+      fileName?: string;
+      mimeType?: string;
+      status?: string;
+      searchMode?: 'fuzzy' | 'contains';
+      similarityThreshold?: number;
+      startDate?: string;
+      endDate?: string;
+    },
   ): Promise<{ files: DocumentFile[]; total: number; limit: number; offset: number }> {
     // Verify document exists and belongs to workspace
     await this.documentsService.findById(documentId, workspaceId);

@@ -42,7 +42,8 @@
     "of": "von",
     "showing": "Zeigt",
     "notAvailable": "N/A",
-    "days": "Tage"
+    "days": "Tage",
+    "clearSearch": "Suche löschen"
   },
   "auth": {
     "email": "E-Mail",
@@ -124,6 +125,12 @@
       "error": "Fehler"
     },
     "loadFilesError": "Fehler beim Laden der Dateien",
+    "searchFiles": "Dateien suchen...",
+    "searchAll": "Alle Spalten",
+    "searchModeContains": "Enthält",
+    "searchModeFuzzy": "Fuzzy (toleriert Tippfehler)",
+    "similarityThreshold": "Ähnlichkeit",
+    "similarityThresholdHelp": "Niedriger = toleranter bei Tippfehlern",
     "processing": "Verarbeitung läuft",
     "titlePlaceholder": "Dokumenttitel",
     "descriptionPlaceholder": "Beschreibung (optional)",

@@ -42,7 +42,8 @@
     "of": "of",
     "showing": "Showing",
     "notAvailable": "N/A",
-    "days": "days"
+    "days": "days",
+    "clearSearch": "Clear search"
   },
   "auth": {
     "email": "Email",
@@ -129,6 +130,12 @@
       "error": "Error"
     },
     "loadFilesError": "Error loading files",
+    "searchFiles": "Search files...",
+    "searchAll": "All columns",
+    "searchModeContains": "Contains",
+    "searchModeFuzzy": "Fuzzy (typo-tolerant)",
+    "similarityThreshold": "Similarity",
+    "similarityThresholdHelp": "Lower = more typo-tolerant",
     "uploadFile": "Upload File",
     "processing": "Processing in progress",
     "titlePlaceholder": "Document title",

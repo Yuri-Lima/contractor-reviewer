@@ -299,7 +299,7 @@ interface ChatMessageWithAudio {
                     <th pSortableColumn="createdAt" pColumnFilter field="createdAt" filterMatchMode="dateIs" filterType="date">
                       {{ 'documents.createdAt' | translate }}
                     </th>
-                    <th>{{ 'common.actions' | translate }}</th>
+                    <th></th>
                   </tr>
                 </ng-template>
                 
@@ -320,7 +320,6 @@ interface ChatMessageWithAudio {
                       <div class="flex gap-2">
                         @if (file.status === 'available') {
                           <p-button
-                            [label]="'documents.viewFile' | translate"
                             icon="pi pi-eye"
                             [outlined]="true"
                             size="small"
@@ -328,11 +327,10 @@ interface ChatMessageWithAudio {
                             [pTooltip]="'documents.viewFile' | translate"
                           ></p-button>
                         }
-                        <p-button 
+                        <p-button
                           data-tour="download-btn"
-                          [label]="'common.download' | translate" 
-                          icon="pi pi-download" 
-                          [outlined]="true" 
+                          icon="pi pi-download"
+                          [outlined]="true"
                           severity="secondary"
                           size="small"
                           (onClick)="downloadFile(file); $event.stopPropagation()"

@@ -1,6 +1,7 @@
 import { WorkspaceRole } from '../enums/workspace.enum';
 import { RetentionConfig } from './common';
 import type { TranscriptionProviderId } from './transcription';
+import type { TtsProviderId, TtsProviderConfig, ChatResponseMode } from './tts';
 
 export interface WorkspaceSettingsConfig {
   retention: RetentionConfig;
@@ -14,6 +15,16 @@ export interface WorkspaceSettingsConfig {
   transcriptionProviderApiKeys?: Record<TranscriptionProviderId, boolean>;
   /** Preferred transcription provider for this workspace (huggingface | openai) */
   preferredTranscriptionProvider?: TranscriptionProviderId | null;
+  /** TTS provider API keys (masked: configured/not) */
+  ttsProviderApiKeys?: Record<TtsProviderId, boolean>;
+  /** Preferred TTS provider for this workspace */
+  preferredTtsProvider?: TtsProviderId | null;
+  /** Per-provider config (plan, output format, etc.). Keys are TtsProviderId. */
+  ttsProviderConfig?: Partial<Record<TtsProviderId, TtsProviderConfig>>;
+  /** Chat response mode: text only, audio only, or both */
+  chatResponseMode?: ChatResponseMode;
+  /** Auto-send message after voice recording completes */
+  voiceAutoSend?: boolean;
 }
 
 /**
@@ -42,6 +53,16 @@ export interface UpdateWorkspaceSettingsRequest {
   transcriptionProviderApiKeys?: Record<TranscriptionProviderId, string | boolean>;
   /** Preferred transcription provider (huggingface | openai) */
   preferredTranscriptionProvider?: TranscriptionProviderId | null;
+  /** TTS keys: provider id -> string (set) | false (remove) */
+  ttsProviderApiKeys?: Record<TtsProviderId, string | boolean>;
+  /** Preferred TTS provider */
+  preferredTtsProvider?: TtsProviderId | null;
+  /** Per-provider config (plan, output format, etc.). Keys are TtsProviderId. */
+  ttsProviderConfig?: Partial<Record<TtsProviderId, TtsProviderConfig>>;
+  /** Chat response mode */
+  chatResponseMode?: ChatResponseMode;
+  /** Voice recording auto-send */
+  voiceAutoSend?: boolean;
 }
 
 export interface Workspace {

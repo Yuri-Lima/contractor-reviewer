@@ -5,5 +5,7 @@ export * from './audio';
 export * from './onboarding';
 export * from './upload';
 export * from './image-asset';
+export * from './language';
 export * from './transcription';
 export * from './user-storage';
+export * from './tts';

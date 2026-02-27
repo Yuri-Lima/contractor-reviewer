@@ -1,4 +1,8 @@
-import { ALLOWED_EXTENSIONS, ALLOWED_MIME_TYPES } from '@contractai-review/shared';
+import {
+  ALLOWED_EXTENSIONS,
+  ALLOWED_MIME_TYPES,
+  MAX_FILE_SIZE_BYTES,
+} from '@contractai-review/shared';
 
 export interface FileValidationResult {
   isValid: boolean;
@@ -6,7 +10,7 @@ export interface FileValidationResult {
 }
 
 export class UploadValidator {
-  private static readonly MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+  private static readonly MAX_FILE_SIZE = MAX_FILE_SIZE_BYTES; // 50MB
 
   /**
    * Validate file extension
@@ -70,6 +74,13 @@ export class UploadValidator {
     }
     
     if (detectedMimeType && detectedMimeType !== mimeType) {
+      // Allow application/x-pdf when buffer is detected as PDF (same format)
+      if (
+        detectedMimeType === 'application/pdf' &&
+        mimeType === 'application/x-pdf'
+      ) {
+        return { isValid: true };
+      }
       return {
         isValid: false,
         error: `File signature does not match declared MIME type. Detected: ${detectedMimeType}, declared: ${mimeType}`,

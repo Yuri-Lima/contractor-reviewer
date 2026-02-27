@@ -144,6 +144,9 @@
     "confirmDeleteFileMessage": "Sind Sie sicher, dass Sie die Datei \"{{fileName}}\" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
     "deleteFileSuccess": "Datei erfolgreich gelöscht",
     "deleteFileError": "Fehler beim Löschen der Datei",
+    "confirmDeleteFiles": "Dateien löschen bestätigen",
+    "confirmDeleteFilesMessage": "Sind Sie sicher, dass Sie {{count}} Dateien löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "deleteFilesSuccess": "{{count}} Datei(en) erfolgreich gelöscht",
     "loadFileError": "Fehler beim Laden der Datei",
     "loadPdfError": "Fehler beim Laden des PDFs",
     "renderPageError": "Fehler beim Rendern der Seite",
@@ -182,7 +185,15 @@
     "error": "Fehler",
     "attempts": "Versuche",
     "selectParser": "Parser auswählen für",
-    "parserDialogTitle": "Dokumenten-Parser wählen"
+    "parserDialogTitle": "Dokumenten-Parser wählen",
+    "uploadFiles": "Dateien hochladen",
+    "uploadFileSizeExceeded": "Datei {{fileName}} übersteigt das 50MB-Limit",
+    "uploadBatchSizeExceeded": "Gesamtgröße übersteigt das 100MB-Limit",
+    "uploadBatchCountExceeded": "Maximal 20 Dateien pro Upload erlaubt",
+    "uploadingProgress": "{{current}} von {{total}} werden hochgeladen...",
+    "selectParserForFiles": "Parser auswählen für {{count}} Dateien",
+    "uploadBatchSuccess": "{{count}} Datei(en) erfolgreich hochgeladen",
+    "uploadPartialError": "{{success}} von {{total}} Dateien hochgeladen. {{failed}} fehlgeschlagen."
   },
   "chat": {
     "voiceInput": "Spracheingabe",

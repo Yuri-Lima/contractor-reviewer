@@ -150,6 +150,9 @@
     "confirmDeleteFileMessage": "Are you sure you want to delete the file \"{{fileName}}\"? This action cannot be undone.",
     "deleteFileSuccess": "File deleted successfully",
     "deleteFileError": "Error deleting file",
+    "confirmDeleteFiles": "Confirm Delete Files",
+    "confirmDeleteFilesMessage": "Are you sure you want to delete {{count}} files? This action cannot be undone.",
+    "deleteFilesSuccess": "{{count}} file(s) deleted successfully",
     "loadFileError": "Error loading file",
     "loadPdfError": "Error loading PDF",
     "renderPageError": "Error rendering page",
@@ -182,7 +185,15 @@
     "error": "Error",
     "attempts": "Attempts",
     "selectParser": "Select parser for",
-    "parserDialogTitle": "Choose Document Parser"
+    "parserDialogTitle": "Choose Document Parser",
+    "uploadFiles": "Upload Files",
+    "uploadFileSizeExceeded": "File {{fileName}} exceeds 50MB maximum",
+    "uploadBatchSizeExceeded": "Total size exceeds 100MB limit",
+    "uploadBatchCountExceeded": "Maximum 20 files allowed per upload",
+    "uploadingProgress": "Uploading {{current}} of {{total}}...",
+    "selectParserForFiles": "Select parser for {{count}} files",
+    "uploadBatchSuccess": "{{count}} file(s) uploaded successfully",
+    "uploadPartialError": "{{success}} of {{total}} files uploaded. {{failed}} failed."
   },
   "chat": {
     "voiceInput": "Voice input",

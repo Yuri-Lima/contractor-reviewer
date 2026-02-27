@@ -16,6 +16,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { MAX_FILE_SIZE_BYTES } from '@contractai-review/shared';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { WorkspaceGuard, RolesGuard } from '../workspace/guards';
@@ -98,7 +99,11 @@ export class DocumentsController {
   @Post(':documentId/files')
   @UseGuards(RolesGuard)
   @Roles(WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_FILE_SIZE_BYTES },
+    }),
+  )
   @HttpCode(HttpStatus.CREATED)
   async uploadFile(
     @WorkspaceId() workspaceId: string,

@@ -35,6 +35,10 @@ import {
   ParserInfo,
   FILE_INPUT_ACCEPT,
   ChatResponseModeValues,
+  ALLOWED_EXTENSIONS,
+  MAX_FILE_SIZE_BYTES,
+  MAX_BATCH_SIZE_BYTES,
+  MAX_BATCH_FILE_COUNT,
   type ChatResponseMode,
   type FileSearchScope,
 } from '@contractai-review/shared';
@@ -62,7 +66,8 @@ import { LazyLoadEvent } from 'primeng/api';
 import { PaginationService } from '../../core/services/pagination.service';
 import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
 import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
-import { forkJoin } from 'rxjs';
+import { forkJoin, from, of } from 'rxjs';
+import { mergeMap, map, catchError, toArray } from 'rxjs/operators';
 
 /** API request params for getDocumentFiles (pagination, sort, filters, fuzzy search) */
 interface FilesRequestParams {
@@ -85,6 +90,8 @@ interface FilesRequestParams {
 interface FilesResourceParams extends FilesRequestParams {
   workspaceId: string;
   documentId: string;
+  /** Incremented to force rxResource refetch after upload/delete */
+  refreshKey?: number;
 }
 
 /** Audio state for a chat message when TTS is enabled */
@@ -163,12 +170,14 @@ interface ChatMessageWithAudio {
           <app-file-upload
             trigger="button"
             [accept]="fileInputAccept"
+            [multiple]="true"
             labelKey="documents.uploadFile"
             icon="pi pi-upload"
             tooltipKey="tooltip.uploadFile"
             [buttonOutlined]="true"
             [dataTour]="'upload-btn'"
             (fileSelected)="onFileSelected($event)"
+            (filesSelected)="onFilesSelected($event)"
           />
           @if (canDelete()) {
             <p-button
@@ -262,8 +271,8 @@ interface ChatMessageWithAudio {
                         [label]="'common.delete' | translate"
                         icon="pi pi-trash"
                         severity="danger"
-                        [disabled]="!selectedFile()"
-                        (onClick)="selectedFile() && confirmDeleteFile(selectedFile()!)"
+                        [disabled]="selectedFiles().length === 0"
+                        (onClick)="onToolbarDeleteClick()"
                         [pTooltip]="'common.delete' | translate"
                       ></p-button>
                     </ng-template>
@@ -272,7 +281,9 @@ interface ChatMessageWithAudio {
                 <!-- Header template with sorting and filtering -->
                 <ng-template #headerTemplate>
                   <tr>
-                    <th style="width: 3rem"></th>
+                    <th style="width: 3rem">
+                      <p-tableHeaderCheckbox></p-tableHeaderCheckbox>
+                    </th>
                     <th pSortableColumn="fileName" pColumnFilter field="fileName" filterMatchMode="contains" filterType="text">
                       {{ 'documents.fileName' | translate }}
                     </th>
@@ -295,7 +306,9 @@ interface ChatMessageWithAudio {
                 <!-- Body template -->
                 <ng-template #bodyTemplate let-file>
                   <tr [pSelectableRow]="file" [pContextMenuRow]="file" (dblclick)="openFileContentDialog(file, $event)">
-                    <td></td>
+                    <td>
+                      <p-tableCheckbox [value]="file"></p-tableCheckbox>
+                    </td>
                     <td>{{ file.fileName }}</td>
                     <td>{{ file.mimeType }}</td>
                     <td>{{ formatFileSize(file.sizeBytes) }}</td>
@@ -311,7 +324,7 @@ interface ChatMessageWithAudio {
                             icon="pi pi-eye"
                             [outlined]="true"
                             size="small"
-                            (onClick)="viewFile(file)"
+                            (onClick)="viewFile(file); $event.stopPropagation()"
                             [pTooltip]="'documents.viewFile' | translate"
                           ></p-button>
                         }
@@ -322,8 +335,16 @@ interface ChatMessageWithAudio {
                           [outlined]="true" 
                           severity="secondary"
                           size="small"
-                          (onClick)="downloadFile(file)"
+                          (onClick)="downloadFile(file); $event.stopPropagation()"
                           [pTooltip]="'common.download' | translate"
+                        ></p-button>
+                        <p-button
+                          icon="pi pi-trash"
+                          severity="danger"
+                          [outlined]="true"
+                          size="small"
+                          (onClick)="confirmDeleteFile(file); $event.stopPropagation()"
+                          [pTooltip]="'common.delete' | translate"
                         ></p-button>
                       </div>
                     </td>
@@ -504,7 +525,11 @@ interface ChatMessageWithAudio {
       >
         <div class="space-y-4">
           <p class="text-sm text-gray-700 dark:text-gray-300">
-            {{ 'documents.selectParser' | translate }}: <strong>{{ pendingFile()?.name }}</strong>
+            @if (pendingFiles() && pendingFiles()!.length > 1) {
+              {{ 'documents.selectParserForFiles' | translate: { count: pendingFiles()!.length } }}
+            } @else {
+              {{ 'documents.selectParser' | translate }}: <strong>{{ pendingFiles()?.[0]?.name }}</strong>
+            }
           </p>
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -533,7 +558,7 @@ interface ChatMessageWithAudio {
         <ng-template pTemplate="footer">
           <p-button [label]="'common.cancel' | translate" severity="secondary" [outlined]="true" (onClick)="cancelParserDialog()"></p-button>
           <p-button [label]="'parsers.uploadWithParser' | translate" (onClick)="confirmParserSelection()"
-            [disabled]="!canConfirmUpload()"></p-button>
+            [disabled]="!canConfirmUpload() || uploadingFiles()"></p-button>
         </ng-template>
       </p-dialog>
 
@@ -592,7 +617,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   /** Currently playing message index; only one at a time */
   playingMessageIndex = signal<number | null>(null);
   private currentAudio: HTMLAudioElement | null = null;
-  selectedFile = signal<DocumentFile | null>(null); // For table row selection (enables Delete button only)
+  selectedFiles = signal<DocumentFile[]>([]); // Multi-selection for bulk delete
   fileContextMenuRef = viewChild<ContextMenu>('fileContextMenu');
   selectedFileForContext = signal<DocumentFile | null>(null);
   fileContextMenuItems = computed<MenuItem[]>(() =>
@@ -620,7 +645,12 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   parsers = signal<ParserInfo[]>([]);
   showParserDialog = signal(false);
   selectedParser = signal<string>('docling');
+  /** Single file (legacy) or first of batch - used for backward compat in some templates */
   pendingFile = signal<File | null>(null);
+  /** Files to upload - single or batch */
+  pendingFiles = signal<File[] | null>(null);
+  /** True while upload is in progress (disables confirm button to prevent double-submit) */
+  uploadingFiles = signal(false);
   fileObjectUrls = signal<Map<string, string>>(new Map());
   jobs = signal<DocumentJob[]>([]);
   private destroyAggressive$ = new Subject<void>();
@@ -695,10 +725,11 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     colspan: 7,
     filters: {},
     onLazyLoad: (event: LazyLoadEvent) => this.updateFilesParamsFromLazyEvent(event),
-    selectionMode: 'single' as const,
-    selection: this.selectedFile(),
+    selectionMode: 'multiple' as const,
+    selection: this.selectedFiles(),
     dataKey: 'id',
-    onSelectionChange: (v: DocumentFile | null) => this.selectedFile.set(v),
+    onSelectionChange: (v: DocumentFile | DocumentFile[] | null) =>
+      this.selectedFiles.set(Array.isArray(v) ? v : v ? [v] : []),
   }));
 
   constructor() {
@@ -1351,6 +1382,10 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
 
   /** Parser dialog header as string (avoids [object Object] from translate) */
   getParserDialogHeader(): string {
+    const files = this.pendingFiles();
+    if (files && files.length > 1) {
+      return this.translateService.instant(_('documents.selectParserForFiles'), { count: files.length });
+    }
     const h = this.translateService.instant(_('documents.parserDialogTitle'));
     return typeof h === 'string' ? h : 'Choose Document Parser';
   }
@@ -1368,7 +1403,59 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   }
 
   onFileSelected(file: File): void {
-    this.pendingFile.set(file);
+    this.openPendingFilesFlow([file]);
+  }
+
+  onFilesSelected(files: File[]): void {
+    const validation = this.validateFilesForUpload(files);
+    if (!validation.valid) {
+      this.messageService.add({
+        severity: 'error',
+        summary: this.translateService.instant(_('common.error')),
+        detail: validation.error!,
+      });
+      return;
+    }
+    this.openPendingFilesFlow(files);
+  }
+
+  private validateFilesForUpload(files: File[]): { valid: boolean; error?: string } {
+    if (files.length === 0) return { valid: false, error: this.translateService.instant(_('documents.uploadError')) };
+    if (files.length > MAX_BATCH_FILE_COUNT) {
+      return {
+        valid: false,
+        error: this.translateService.instant(_('documents.uploadBatchCountExceeded')),
+      };
+    }
+    let totalBytes = 0;
+    for (const f of files) {
+      if (f.size > MAX_FILE_SIZE_BYTES) {
+        return {
+          valid: false,
+          error: this.translateService.instant(_('documents.uploadFileSizeExceeded'), { fileName: f.name }),
+        };
+      }
+      const ext = '.' + (f.name.split('.').pop() || '').toLowerCase();
+      if (!(ALLOWED_EXTENSIONS as readonly string[]).includes(ext)) {
+        return {
+          valid: false,
+          error: this.translateService.instant(_('documents.uploadError')) + ` (${f.name}: invalid extension)`,
+        };
+      }
+      totalBytes += f.size;
+    }
+    if (totalBytes > MAX_BATCH_SIZE_BYTES) {
+      return {
+        valid: false,
+        error: this.translateService.instant(_('documents.uploadBatchSizeExceeded')),
+      };
+    }
+    return { valid: true };
+  }
+
+  private openPendingFilesFlow(files: File[]): void {
+    this.pendingFile.set(files[0] ?? null);
+    this.pendingFiles.set(files);
     const wsId = this.workspaceId();
     forkJoin({
       parsers: this.apiService.getDocumentParsers(wsId),
@@ -1392,39 +1479,134 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   cancelParserDialog(): void {
     this.showParserDialog.set(false);
     this.pendingFile.set(null);
+    this.pendingFiles.set(null);
   }
 
   confirmParserSelection(): void {
-    const file = this.pendingFile();
+    const files = this.pendingFiles();
     const parser = this.selectedParser();
-    if (!file) return;
-    this.apiService.uploadFile(this.workspaceId(), this.documentId(), file, parser).subscribe({
-      next: () => {
-        this.onboardingService.markChecklistItem('upload_contract');
-        this.showParserDialog.set(false);
-        this.pendingFile.set(null);
-        this.loadJobs();
-        setTimeout(() => {
-          const currentJobs = this.jobs();
-          if (currentJobs.some(j => j.status === 'pending' || j.status === 'processing')) {
-            this.startAggressivePolling();
+    if (!files?.length) return;
+    const validFiles = files.filter((f): f is File => f != null && f instanceof File);
+    if (!validFiles.length) {
+      this.messageService.add({
+        severity: 'error',
+        summary: this.translateService.instant(_('common.error')),
+        detail: this.translateService.instant(_('documents.uploadError')),
+      });
+      return;
+    }
+    this.uploadingFiles.set(true);
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    const total = validFiles.length;
+
+    from(validFiles)
+      .pipe(
+        mergeMap(
+          (file) =>
+            this.apiService.uploadFile(wsId, docId, file, parser).pipe(
+              map(() => ({ success: true as const })),
+              catchError((err) => {
+                const fileName = file?.name ?? 'unknown';
+                console.error('Error uploading file:', fileName, err);
+                return of({
+                  success: false as const,
+                  errorMessage: err?.error?.message as string | undefined,
+                });
+              }),
+            ),
+          2,
+        ),
+        toArray(),
+      )
+      .subscribe({
+        next: (results) => {
+          const successCount = results.filter((r) => r.success).length;
+          const failCount = results.filter((r) => !r.success).length;
+          const firstError = results.find((r) => !r.success && 'errorMessage' in r && r.errorMessage) as
+            | { errorMessage?: string }
+            | undefined;
+          // Edge case: no results despite having files to upload (e.g. filtered out or pipe error)
+          if (results.length === 0 && total > 0) {
+            this.uploadingFiles.set(false);
+            this.messageService.add({
+              severity: 'error',
+              summary: this.translateService.instant(_('common.error')),
+              detail: this.translateService.instant(_('documents.uploadError')),
+            });
+            this.showParserDialog.set(false);
+            this.pendingFile.set(null);
+            this.pendingFiles.set(null);
+            return;
           }
-        }, 100);
-        this.loadDocument();
-        const reloadParams: FilesRequestParams = { offset: 0, limit: this.paginationService.pageSize() };
-        this.filesParams.set(reloadParams);
-        this.filesRequest.set({ workspaceId: this.workspaceId(), documentId: this.documentId(), ...reloadParams });
-        this.paginationService.updateQueryParams({ page: 0, limit: this.paginationService.pageSize() });
-      },
-      error: (err) => {
-        console.error('Error uploading file:', err);
-        this.messageService.add({
-          severity: 'error',
-          summary: this.translateService.instant(_('common.error')),
-          detail: err.error?.message || this.translateService.instant(_('documents.uploadError')),
-        });
-      },
-    });
+          this.uploadingFiles.set(false);
+          this.onboardingService.markChecklistItem('upload_contract');
+          this.showParserDialog.set(false);
+          this.pendingFile.set(null);
+          this.pendingFiles.set(null);
+          this.loadJobs();
+          setTimeout(() => {
+            const currentJobs = this.jobs();
+            if (currentJobs.some(j => j.status === 'pending' || j.status === 'processing')) {
+              this.startAggressivePolling();
+            }
+          }, 100);
+          this.loadDocument();
+          const reloadParams: FilesRequestParams = { offset: 0, limit: this.paginationService.pageSize() };
+          this.filesParams.set(reloadParams);
+          // Use refreshKey to force rxResource to refetch; small delay ensures backend has committed
+          setTimeout(() => {
+            this.filesRequest.set({
+              workspaceId: wsId,
+              documentId: docId,
+              ...reloadParams,
+              refreshKey: Date.now(),
+            });
+          }, 150);
+          this.paginationService.updateQueryParams({ page: 0, limit: this.paginationService.pageSize() });
+          if (failCount === 0) {
+            this.messageService.add({
+              severity: 'success',
+              summary: this.translateService.instant(_('common.success')),
+              detail: this.translateService.instant(_('documents.uploadBatchSuccess'), { count: successCount }),
+            });
+          } else if (successCount > 0) {
+            const partialDetail = this.translateService.instant(_('documents.uploadPartialError'), {
+              success: successCount,
+              total,
+              failed: failCount,
+            });
+            const detail = firstError?.errorMessage
+              ? `${partialDetail}. ${firstError.errorMessage}`
+              : partialDetail;
+            this.messageService.add({
+              severity: 'warn',
+              summary: this.translateService.instant(_('common.error')),
+              detail,
+            });
+          } else {
+            const detail =
+              firstError?.errorMessage ||
+              this.translateService.instant(_('documents.uploadError'));
+            this.messageService.add({
+              severity: 'error',
+              summary: this.translateService.instant(_('common.error')),
+              detail,
+            });
+          }
+        },
+        error: (err) => {
+          this.uploadingFiles.set(false);
+          console.error('Error during batch upload:', err);
+          const detail =
+            err?.error?.message || this.translateService.instant(_('documents.uploadError'));
+          this.messageService.add({
+            severity: 'error',
+            summary: this.translateService.instant(_('common.error')),
+            detail,
+          });
+        },
+      });
   }
 
   isParserEnabled(p: ParserInfo): boolean {
@@ -1780,6 +1962,99 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     });
   }
 
+  onToolbarDeleteClick(): void {
+    const files = this.selectedFiles();
+    if (files.length === 0) return;
+    if (files.length === 1) {
+      this.confirmDeleteFile(files[0]!);
+    } else {
+      this.confirmDeleteSelectedFiles();
+    }
+  }
+
+  confirmDeleteSelectedFiles(): void {
+    const files = this.selectedFiles();
+    if (files.length === 0) return;
+    this.confirmationService.confirm({
+      message: this.translateService.instant(_('documents.confirmDeleteFilesMessage'), { count: files.length }),
+      header: this.translateService.instant(_('documents.confirmDeleteFiles')),
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      acceptLabel: this.translateService.instant(_('common.delete')),
+      rejectLabel: this.translateService.instant(_('common.cancel')),
+      accept: () => {
+        this.deleteSelectedFiles();
+      },
+    });
+  }
+
+  private deleteSelectedFiles(): void {
+    const files = this.selectedFiles();
+    if (files.length === 0) return;
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    const ids = files.map(f => f.id);
+
+    from(ids)
+      .pipe(
+        mergeMap((fileId) =>
+          this.apiService.deleteFile(wsId, docId, fileId).pipe(
+            map(() => ({ success: true as const })),
+            catchError((err) => {
+              console.error('Error deleting file:', fileId, err);
+              return of({ success: false as const });
+            }),
+          ),
+        2,
+        ),
+        toArray(),
+      )
+      .subscribe({
+        next: (results) => {
+          const successCount = results.filter(r => r.success).length;
+          this.selectedFiles.set([]);
+          if (this.fileToView() && ids.includes(this.fileToView()!.id)) {
+            this.closeFileViewer();
+          }
+          const reloadParams: FilesRequestParams = {
+            ...this.filesParams(),
+            offset: 0,
+            limit: this.paginationService.pageSize(),
+          };
+          this.filesParams.set(reloadParams);
+          this.filesRequest.set({
+            workspaceId: wsId,
+            documentId: docId,
+            ...reloadParams,
+            refreshKey: Date.now(),
+          });
+          this.paginationService.updateQueryParams({ page: 0, limit: this.paginationService.pageSize() });
+          if (successCount > 0) {
+            this.messageService.add({
+              severity: 'success',
+              summary: this.translateService.instant(_('common.success')),
+              detail: this.translateService.instant(_('documents.deleteFilesSuccess'), { count: successCount }),
+            });
+          }
+          if (successCount < results.length) {
+            this.messageService.add({
+              severity: 'warn',
+              summary: this.translateService.instant(_('common.error')),
+              detail: this.translateService.instant(_('documents.deleteFileError')),
+            });
+          }
+        },
+        error: (err) => {
+          console.error('Error during bulk delete:', err);
+          this.messageService.add({
+            severity: 'error',
+            summary: this.translateService.instant(_('common.error')),
+            detail: err.error?.message || this.translateService.instant(_('documents.deleteFileError')),
+          });
+        },
+      });
+  }
+
   confirmDeleteFile(file: DocumentFile): void {
     this.confirmationService.confirm({
       message: this.translateService.instant(_('documents.confirmDeleteFileMessage'), { fileName: file.fileName }),
@@ -1831,7 +2106,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
           summary: this.translateService.instant(_('common.success')),
           detail: this.translateService.instant(_('documents.deleteFileSuccess')),
         });
-        this.selectedFile.set(null);
+        this.selectedFiles.update(files => files.filter(f => f.id !== fileId));
         if (this.fileToView()?.id === fileId) {
           this.closeFileViewer();
         }
@@ -1845,6 +2120,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
           workspaceId: this.workspaceId(),
           documentId: this.documentId(),
           ...reloadParams,
+          refreshKey: Date.now(),
         });
         this.paginationService.updateQueryParams({ page: 0, limit: this.paginationService.pageSize() });
       },

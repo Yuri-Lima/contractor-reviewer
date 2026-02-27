@@ -30,12 +30,20 @@ import {
   Document,
   DocumentFile,
   DocumentJob,
-  JobStatus,
   ChatResponse,
   Citation,
   ParserInfo,
   FILE_INPUT_ACCEPT,
+  ChatResponseModeValues,
+  type ChatResponseMode,
 } from '@contractai-review/shared';
+
+/** Local fallback when shared package fails to load (e.g. 404). Must match ChatResponseModeValues. */
+const CHAT_MODE = {
+  TextOnly: 'text_only',
+  AudioOnly: 'audio_only',
+  AudioAndText: 'audio_and_text',
+} as const;
 import { PdfViewerComponent } from '../pdf-viewer/pdf-viewer.component';
 import { RedlineComponent } from '../redline/redline.component';
 import { VersionsComponent } from '../versions/versions.component';
@@ -67,6 +75,19 @@ interface FilesRequestParams {
 interface FilesResourceParams extends FilesRequestParams {
   workspaceId: string;
   documentId: string;
+}
+
+/** Audio state for a chat message when TTS is enabled */
+type ChatMessageAudioState = 'none' | 'synthesizing' | 'ready' | 'playing';
+
+/** Extended chat message with optional audio playback state */
+interface ChatMessageWithAudio {
+  question: string;
+  answerText?: string;
+  confidence?: string;
+  citations?: Citation[];
+  audioState?: ChatMessageAudioState;
+  audioUrl?: string;
 }
 
 @Component({
@@ -300,10 +321,40 @@ interface FilesResourceParams extends FilesRequestParams {
                       <strong class="text-blue-600 dark:text-blue-400">{{ 'documents.you' | translate }}:</strong>
                       <p class="text-gray-800 dark:text-gray-200 mt-1">{{ msg.question }}</p>
                     </div>
-                    @if (msg.answerText) {
+                    @if (msg.answerText || msg.audioState === 'synthesizing') {
                       <div class="message-answer">
                         <strong class="text-green-600 dark:text-green-400">{{ 'documents.assistant' | translate }}:</strong>
-                        <p class="text-gray-800 dark:text-gray-200 mt-1 mb-2">{{ msg.answerText }}</p>
+                        @if (chatResponseMode() !== ChatResponseMode.AudioOnly) {
+                          <p class="text-gray-800 dark:text-gray-200 mt-1 mb-2">{{ msg.answerText }}</p>
+                        }
+                        @if ((chatResponseMode() === ChatResponseMode.AudioOnly || chatResponseMode() === ChatResponseMode.AudioAndText) && msg.audioState === 'synthesizing') {
+                          <p class="text-sm text-gray-500 dark:text-gray-400 italic mb-2">{{ 'chat.synthesizing' | translate }}</p>
+                        }
+                        @if ((chatResponseMode() === ChatResponseMode.AudioOnly || chatResponseMode() === ChatResponseMode.AudioAndText) && (msg.audioState === 'ready' || msg.audioState === 'playing') && msg.audioUrl) {
+                          <div class="flex items-center gap-2 mb-2">
+                            @if (playingMessageIndex() === $index) {
+                              <p-button
+                                icon="pi pi-pause"
+                                [outlined]="true"
+                                size="small"
+                                (onClick)="pauseMessageAudio($index)"
+                                [pTooltip]="'chat.pauseAudio' | translate"
+                              ></p-button>
+                            } @else {
+                              <p-button
+                                [icon]="'pi pi-play'"
+                                [outlined]="true"
+                                size="small"
+                                (onClick)="playMessageAudio($index)"
+                                [pTooltip]="'chat.playAudio' | translate"
+                              ></p-button>
+                            }
+                            <span class="text-sm text-gray-500 dark:text-gray-400">{{ 'chat.playAudio' | translate }}</span>
+                          </div>
+                        }
+                        @if (chatResponseMode() === ChatResponseMode.AudioOnly && msg.answerText) {
+                          <p class="text-gray-800 dark:text-gray-200 mt-1 mb-2 sr-only">{{ msg.answerText }}</p>
+                        }
                         <div class="confidence-badge inline-block px-2 py-1 rounded text-xs font-semibold mb-2"
                              [class.bg-green-100]="msg.confidence === 'high'"
                              [class.text-green-800]="msg.confidence === 'high'"
@@ -487,6 +538,9 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
 
   redlineComponent = viewChild<RedlineComponent>('redlineComponent');
 
+  /** Expose enum for template comparisons. Uses fallback when shared package fails to load. */
+  readonly ChatResponseMode = ChatResponseModeValues ?? CHAT_MODE;
+
   readonly fileInputAccept = FILE_INPUT_ACCEPT;
 
   workspaceId = signal('');
@@ -497,7 +551,12 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   voiceRecording = signal(false);
   voiceTranscribing = signal(false);
   voiceAvailable = signal(false);
-  chatMessages = signal<Array<{ question: string; answerText?: string; confidence?: string; citations?: Citation[] }>>([]);
+  chatMessages = signal<ChatMessageWithAudio[]>([]);
+  chatResponseMode = signal<ChatResponseMode>((ChatResponseModeValues ?? CHAT_MODE).TextOnly);
+  voiceAutoSend = signal(false);
+  /** Currently playing message index; only one at a time */
+  playingMessageIndex = signal<number | null>(null);
+  private currentAudio: HTMLAudioElement | null = null;
   selectedFile = signal<DocumentFile | null>(null); // For table row selection (enables Delete button only)
   fileContextMenuRef = viewChild<ContextMenu>('fileContextMenu');
   selectedFileForContext = signal<DocumentFile | null>(null);
@@ -615,6 +674,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
 
           this.loadDocument();
           this.loadJobs();
+          this.loadWorkspaceChatSettings();
           this.startJobsPolling();
 
           // Read pagination from URL — untracked so these signals
@@ -663,6 +723,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopAggressivePolling();
+    this.stopCurrentAudio();
     // Release voice recording resources if user navigates away while recording
     if (this.voiceRecording()) {
       this.voiceRecordingService.cancelRecording();
@@ -671,6 +732,10 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     // Clean up object URLs to prevent memory leaks
     this.fileObjectUrls().forEach(url => URL.revokeObjectURL(url));
     this.fileObjectUrls.set(new Map());
+    // Revoke TTS audio blob URLs
+    this.chatMessages().forEach((m) => {
+      if (m.audioUrl) URL.revokeObjectURL(m.audioUrl);
+    });
   }
 
   ngOnInit(): void {
@@ -692,10 +757,14 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next: (res) => {
-              const current = this.question();
-              const separator = current ? ' ' : '';
-              this.question.set(current + separator + res.text);
               this.voiceTranscribing.set(false);
+              if (this.voiceAutoSend() && res.text?.trim()) {
+                this.sendQuestion(res.text.trim());
+              } else {
+                const current = this.question();
+                const separator = current ? ' ' : '';
+                this.question.set(current + separator + (res.text || ''));
+              }
             },
             error: (err) => {
               this.messageService.add({
@@ -746,6 +815,19 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         // Files are now loaded separately via pagination, so we don't use doc.files
       },
       error: (err) => console.error('Error loading document:', err),
+    });
+  }
+
+  loadWorkspaceChatSettings(): void {
+    const wsId = this.workspaceId();
+    if (!wsId) return;
+    this.apiService.getWorkspaceSettings(wsId).subscribe({
+      next: (settings) => {
+        const mode = settings.chatResponseMode ?? (ChatResponseModeValues ?? CHAT_MODE).TextOnly;
+        this.chatResponseMode.set(mode);
+        this.voiceAutoSend.set(settings.voiceAutoSend ?? false);
+      },
+      error: () => {},
     });
   }
 
@@ -1123,41 +1205,145 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     return !!p && this.isParserEnabled(p);
   }
 
-  sendQuestion(): void {
-    const questionText = this.question().trim();
+  sendQuestion(questionTextOverride?: string): void {
+    const questionText = (questionTextOverride ?? this.question().trim()).trim();
     if (!questionText) return;
-    
+
     this.loading.set(true);
-    this.question.set('');
-    
-    // Get current user language
+    if (!questionTextOverride) {
+      this.question.set('');
+    }
+
     const currentLang = this.translateService.currentLang || 'en';
-    
-    this.apiService.chat(this.workspaceId(), this.documentId(), { 
-      question: questionText,
-      language: currentLang // Add language to request
-    }).subscribe({
-      next: (response: ChatResponse) => {
-        const wasFirstMessage = this.chatMessages().length === 0;
-        this.chatMessages.update((messages) => [
-          ...messages,
-          {
+    const mode = this.chatResponseMode();
+
+    this.apiService
+      .chat(this.workspaceId(), this.documentId(), {
+        question: questionText,
+        language: currentLang,
+      })
+      .subscribe({
+        next: (response: ChatResponse) => {
+          const wasFirstMessage = this.chatMessages().length === 0;
+          const needsAudio =
+            mode === (ChatResponseModeValues ?? CHAT_MODE).AudioOnly || mode === (ChatResponseModeValues ?? CHAT_MODE).AudioAndText;
+          const newMessage: ChatMessageWithAudio = {
             question: questionText,
             answerText: response.answerText,
             confidence: response.confidence,
             citations: response.citations,
-          },
-        ]);
-        if (wasFirstMessage) {
-          this.onboardingService.markChecklistItem('run_first_review');
-        }
-        this.loading.set(false);
-      },
-      error: (err) => {
-        console.error('Error sending question:', err);
-        this.loading.set(false);
-      },
+            audioState: needsAudio ? 'synthesizing' : 'none',
+          };
+          this.chatMessages.update((messages) => [...messages, newMessage]);
+          if (wasFirstMessage) {
+            this.onboardingService.markChecklistItem('run_first_review');
+          }
+          this.loading.set(false);
+
+          if (needsAudio && response.answerText?.trim()) {
+            this.synthesizeAndPlayForMessage(
+              this.chatMessages().length - 1,
+              response.answerText,
+              currentLang,
+            );
+          }
+        },
+        error: (err) => {
+          console.error('Error sending question:', err);
+          this.loading.set(false);
+        },
+      });
+  }
+
+  private synthesizeAndPlayForMessage(
+    index: number,
+    text: string,
+    language: string,
+  ): void {
+    this.apiService
+      .synthesizeSpeech(this.workspaceId(), this.documentId(), text, language)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          this.chatMessages.update((messages) => {
+            const next = [...messages];
+            if (next[index]) {
+              next[index] = {
+                ...next[index],
+                audioState: 'ready' as const,
+                audioUrl: url,
+              };
+            }
+            return next;
+          });
+          this.playMessageAudio(index);
+        },
+        error: () => {
+          this.chatMessages.update((messages) => {
+            const next = [...messages];
+            if (next[index]) {
+              next[index] = { ...next[index], audioState: 'none' as const };
+            }
+            return next;
+          });
+          this.messageService.add({
+            severity: 'error',
+            summary: this.translateService.instant(_('common.error')),
+            detail: this.translateService.instant(_('chat.audioError')),
+          });
+        },
+      });
+  }
+
+  playMessageAudio(index: number): void {
+    const messages = this.chatMessages();
+    const msg = messages[index];
+    if (!msg?.audioUrl) return;
+
+    this.stopCurrentAudio();
+
+    const audio = new Audio(msg.audioUrl);
+    this.currentAudio = audio;
+    this.playingMessageIndex.set(index);
+    this.chatMessages.update((msgs) => {
+      const next = [...msgs];
+      if (next[index]) next[index] = { ...next[index], audioState: 'playing' as const };
+      return next;
     });
+
+    const resetState = () => {
+      this.playingMessageIndex.set(null);
+      this.currentAudio = null;
+      this.chatMessages.update((msgs) => {
+        const next = [...msgs];
+        if (next[index]) next[index] = { ...next[index], audioState: 'ready' as const };
+        return next;
+      });
+    };
+
+    audio.onended = resetState;
+    audio.onerror = resetState;
+    audio.play().catch(resetState);
+  }
+
+  pauseMessageAudio(index: number): void {
+    if (this.playingMessageIndex() !== index) return;
+    this.stopCurrentAudio();
+    this.playingMessageIndex.set(null);
+    this.chatMessages.update((msgs) => {
+      const next = [...msgs];
+      if (next[index]) next[index] = { ...next[index], audioState: 'ready' as const };
+      return next;
+    });
+  }
+
+  private stopCurrentAudio(): void {
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio.currentTime = 0;
+      this.currentAudio = null;
+    }
   }
 
   getDownloadUrl(fileId: string): string {

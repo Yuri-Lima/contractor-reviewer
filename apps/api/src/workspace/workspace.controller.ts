@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Put,
   Delete,
   Body,
@@ -56,6 +57,20 @@ export class WorkspaceController {
   @UseGuards(WorkspaceGuard)
   async getWorkspace(@WorkspaceId() workspaceId: string): Promise<Workspace> {
     return this.workspaceService.findById(workspaceId);
+  }
+
+  @Patch(':workspaceId')
+  @UseGuards(WorkspaceGuard, RolesGuard)
+  @Roles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  async updateWorkspace(
+    @WorkspaceId() workspaceId: string,
+    @Body() updateDto: { name: string },
+  ): Promise<Workspace> {
+    const name = updateDto?.name?.trim();
+    if (!name) {
+      throw new BadRequestException('Workspace name is required');
+    }
+    return this.workspaceService.updateName(workspaceId, name);
   }
 
   @Delete(':workspaceId')

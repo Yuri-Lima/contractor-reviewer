@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Document, DocumentStatus } from '../entities/document.entity';
@@ -107,6 +107,28 @@ export class DocumentsService {
     }
 
     return document;
+  }
+
+  /**
+   * Update document (title, description). Only provided fields are updated.
+   */
+  async update(
+    documentId: string,
+    workspaceId: string,
+    data: { title?: string; description?: string },
+  ): Promise<Document> {
+    const document = await this.findById(documentId, workspaceId);
+    if (data.title !== undefined) {
+      const trimmed = data.title.trim();
+      if (!trimmed) {
+        throw new BadRequestException('Document title cannot be empty');
+      }
+      document.title = trimmed;
+    }
+    if (data.description !== undefined) {
+      document.description = data.description?.trim() ?? '';
+    }
+    return this.documentRepository.save(document);
   }
 
   /**

@@ -88,6 +88,21 @@ export class WorkspaceService {
   }
 
   /**
+   * Update workspace name
+   */
+  async updateName(workspaceId: string, name: string): Promise<Workspace> {
+    const workspace = await this.findById(workspaceId);
+    workspace.name = name;
+    const saved = await this.workspaceRepository.save(workspace);
+    return {
+      id: saved.id,
+      name: saved.name || '',
+      createdAt: saved.createdAt,
+      updatedAt: saved.updatedAt,
+    } as Workspace;
+  }
+
+  /**
    * Get workspace by ID, ensuring it exists
    */
   async findById(workspaceId: string): Promise<Workspace> {

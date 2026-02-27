@@ -84,7 +84,9 @@
     "nameRequired": "El nombre del espacio de trabajo es obligatorio",
     "unnamed": "Espacio de trabajo sin nombre",
     "logoUploaded": "Logo del espacio de trabajo subido correctamente",
-    "logoUploadError": "Error al subir el logo del espacio de trabajo"
+    "logoUploadError": "Error al subir el logo del espacio de trabajo",
+    "updateSuccess": "Espacio de trabajo actualizado correctamente",
+    "updateError": "Error al actualizar el espacio de trabajo"
   },
   "sidebar": {
     "currentWorkspace": "Espacio de trabajo actual"
@@ -98,6 +100,8 @@
     "delete": "Eliminar documento",
     "deleteSuccess": "Documento eliminado con éxito",
     "deleteError": "Error al eliminar documento",
+    "updateSuccess": "Documento actualizado correctamente",
+    "updateError": "Error al actualizar el documento",
     "uploadSuccess": "Archivo subido con éxito",
     "uploadError": "Error al subir el archivo",
     "noFiles": "No se han subido archivos. Sube un archivo para comenzar.",

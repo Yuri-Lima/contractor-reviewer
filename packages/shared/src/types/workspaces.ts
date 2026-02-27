@@ -89,6 +89,10 @@ export interface CreateWorkspaceRequest {
   name: string;
 }
 
+export interface UpdateWorkspaceRequest {
+  name: string;
+}
+
 export interface AddMemberRequest {
   userId: string;
   role: WorkspaceRole;

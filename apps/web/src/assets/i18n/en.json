@@ -84,7 +84,9 @@
     "nameRequired": "Workspace name is required",
     "unnamed": "Unnamed Workspace",
     "logoUploaded": "Workspace logo uploaded successfully",
-    "logoUploadError": "Error uploading workspace logo"
+    "logoUploadError": "Error uploading workspace logo",
+    "updateSuccess": "Workspace updated successfully",
+    "updateError": "Error updating workspace"
   },
   "sidebar": {
     "currentWorkspace": "Current Workspace"
@@ -98,6 +100,8 @@
     "delete": "Delete Document",
     "deleteSuccess": "Document deleted successfully",
     "deleteError": "Error deleting document",
+    "updateSuccess": "Document updated successfully",
+    "updateError": "Error updating document",
     "uploadSuccess": "File uploaded successfully",
     "uploadError": "Failed to upload file",
     "noFiles": "No files uploaded. Upload a file to get started.",

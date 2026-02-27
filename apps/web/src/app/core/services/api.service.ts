@@ -196,6 +196,19 @@ export class ApiService {
     );
   }
 
+  synthesizeSpeech(
+    workspaceId: string,
+    documentId: string,
+    text: string,
+    language?: string,
+  ): Observable<Blob> {
+    return this.http.post(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}/synthesize`,
+      { text, language },
+      { responseType: 'blob' },
+    );
+  }
+
   transcribe(
     workspaceId: string,
     documentId: string,

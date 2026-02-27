@@ -144,6 +144,9 @@
     "confirmDeleteFileMessage": "¿Estás seguro de que deseas eliminar el archivo \"{{fileName}}\"? Esta acción no se puede deshacer.",
     "deleteFileSuccess": "Archivo eliminado con éxito",
     "deleteFileError": "Error al eliminar archivo",
+    "confirmDeleteFiles": "Confirmar eliminación de archivos",
+    "confirmDeleteFilesMessage": "¿Estás seguro de que deseas eliminar {{count}} archivos? Esta acción no se puede deshacer.",
+    "deleteFilesSuccess": "{{count}} archivo(s) eliminado(s) correctamente",
     "loadFileError": "Error al cargar archivo",
     "loadPdfError": "Error al cargar PDF",
     "renderPageError": "Error al renderizar página",
@@ -182,7 +185,15 @@
     "error": "Error",
     "attempts": "Intentos",
     "selectParser": "Seleccionar analizador para",
-    "parserDialogTitle": "Elegir analizador de documentos"
+    "parserDialogTitle": "Elegir analizador de documentos",
+    "uploadFiles": "Subir archivos",
+    "uploadFileSizeExceeded": "El archivo {{fileName}} supera el límite de 50MB",
+    "uploadBatchSizeExceeded": "El tamaño total supera el límite de 100MB",
+    "uploadBatchCountExceeded": "Máximo 20 archivos permitidos por subida",
+    "uploadingProgress": "Subiendo {{current}} de {{total}}...",
+    "selectParserForFiles": "Seleccionar analizador para {{count}} archivos",
+    "uploadBatchSuccess": "{{count}} archivo(s) subido(s) correctamente",
+    "uploadPartialError": "{{success}} de {{total}} archivos subidos. {{failed}} fallaron."
   },
   "chat": {
     "voiceInput": "Entrada de voz",

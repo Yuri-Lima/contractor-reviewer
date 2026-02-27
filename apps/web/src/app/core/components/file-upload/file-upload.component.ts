@@ -23,7 +23,8 @@ const SIZE_CLASSES: Record<FileUploadSize, string> = {
 
 /**
  * Reusable file upload component supporting button or clickable-area triggers.
- * Emits fileSelected(File); parent handles upload logic.
+ * Emits fileSelected(File) for single file; filesSelected(File[]) when multiple=true.
+ * Parent handles upload logic.
  */
 @Component({
   selector: 'app-file-upload',
@@ -34,6 +35,7 @@ const SIZE_CLASSES: Record<FileUploadSize, string> = {
       #fileInputRef
       type="file"
       [attr.accept]="accept()"
+      [attr.multiple]="multiple() ? '' : null"
       class="hidden"
       (change)="onFileChange($event)"
     />
@@ -168,7 +170,11 @@ export class FileUploadComponent {
   /** For trigger='area': size variant */
   size = input<FileUploadSize>('md');
 
+  /** Enable multi-file selection; when true, filesSelected is used instead of fileSelected */
+  multiple = input<boolean>(false);
+
   fileSelected = output<File>();
+  filesSelected = output<File[]>();
   removeClicked = output<void>();
 
   protected sizeClasses = computed(() => SIZE_CLASSES[this.size()]);
@@ -179,10 +185,14 @@ export class FileUploadComponent {
 
   onFileChange(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (file) {
-      input.value = '';
-      this.fileSelected.emit(file);
+    const files = input.files;
+    if (!files?.length) return;
+    const fileList = Array.from(files);
+    input.value = '';
+    if (this.multiple()) {
+      this.filesSelected.emit(fileList);
+    } else {
+      this.fileSelected.emit(fileList[0]!);
     }
   }
 }

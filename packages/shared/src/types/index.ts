@@ -11,3 +11,4 @@ export * from './onboarding';
 export * from './image-asset';
 export * from './user-storage';
 export * from './transcription';
+export * from './tts';

@@ -57,6 +57,26 @@ export class WorkspaceSettings {
   @Column({ type: 'varchar', nullable: true })
   preferredTranscriptionProvider: string | null;
 
+  /** Encrypted API keys for TTS providers (replicate_xtts, huggingface, openai) */
+  @Column({ type: 'jsonb', nullable: true })
+  ttsProviderApiKeys: Record<string, string> | null;
+
+  /** Preferred TTS provider for this workspace */
+  @Column({ type: 'varchar', nullable: true })
+  preferredTtsProvider: string | null;
+
+  /** Per-provider config (plan, output format, etc.). Keys are TtsProviderId. */
+  @Column({ type: 'jsonb', nullable: true })
+  ttsProviderConfig: Record<string, { plan?: string; outputFormat?: string }> | null;
+
+  /** Chat response mode: text_only | audio_only | audio_and_text */
+  @Column({ type: 'varchar', nullable: true, default: 'text_only' })
+  chatResponseMode: string | null;
+
+  /** Auto-send message after voice recording completes */
+  @Column({ type: 'boolean', default: false })
+  voiceAutoSend: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

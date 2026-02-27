@@ -5,11 +5,17 @@ import {
   isTranscriptionProviderId,
   TRANSCRIPTION_PROVIDER_IDS,
   type TranscriptionProviderId,
+  isTtsProviderId,
+  TtsProviderId,
+  TtsProviderConfig,
+  ELEVENLABS_PLANS,
   WorkspaceSettingsConfig,
   UpdateWorkspaceSettingsRequest,
   RetentionConfig,
   ChunkingStrategy,
   DocumentParser,
+  isChatResponseMode,
+  ChatResponseMode,
 } from '@contractai-review/shared';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
 import { EncryptionService } from '../common/encryption.service';
@@ -26,6 +32,14 @@ const ALLOWED_DOCUMENT_PARSERS = [
   DocumentParser.DPT2,
   DocumentParser.LLAMAPARSE,
   DocumentParser.UNSTRUCTURED,
+];
+
+/** TTS provider fallback order for "auto" mode: free/cost-friendly first */
+const TTS_PROVIDER_FALLBACK_ORDER: TtsProviderId[] = [
+  TtsProviderId.Huggingface,
+  TtsProviderId.OpenAI,
+  TtsProviderId.ElevenLabs,
+  TtsProviderId.ReplicateXtts,
 ];
 
 @Injectable()
@@ -93,7 +107,30 @@ export class WorkspaceSettingsService {
       preferredTranscriptionProvider: settings.preferredTranscriptionProvider
         ? (settings.preferredTranscriptionProvider as TranscriptionProviderId)
         : null,
+      ttsProviderApiKeys: this.maskTtsProviderApiKeys(
+        settings.ttsProviderApiKeys,
+      ),
+      preferredTtsProvider: settings.preferredTtsProvider
+        ? (settings.preferredTtsProvider as TtsProviderId)
+        : null,
+      ttsProviderConfig: (settings.ttsProviderConfig ?? {}) as Partial<
+        Record<TtsProviderId, TtsProviderConfig>
+      >,
+      chatResponseMode: (settings.chatResponseMode as ChatResponseMode) || undefined,
+      voiceAutoSend: settings.voiceAutoSend ?? false,
     };
+  }
+
+  private maskTtsProviderApiKeys(
+    keys: Record<string, string> | null | undefined,
+  ): Record<string, boolean> {
+    const result: Record<string, boolean> = {};
+    if (keys && typeof keys === 'object') {
+      for (const key of Object.keys(keys)) {
+        result[key] = !!keys[key];
+      }
+    }
+    return result;
   }
 
   async getPreferredTranscriptionProvider(
@@ -122,6 +159,26 @@ export class WorkspaceSettingsService {
     try {
       return this.encryptionService.decrypt(
         settings.parserApiKeys[parserId] as string,
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  async getDecryptedTtsApiKey(
+    workspaceId: string,
+    providerId: TtsProviderId,
+  ): Promise<string | null> {
+    if (!isTtsProviderId(providerId)) return null;
+    const settings = await this.workspaceSettingsRepository.findOne({
+      where: { workspaceId },
+    });
+    if (!settings?.ttsProviderApiKeys?.[providerId]) {
+      return null;
+    }
+    try {
+      return this.encryptionService.decrypt(
+        settings.ttsProviderApiKeys[providerId] as string,
       );
     } catch {
       return null;
@@ -190,6 +247,59 @@ export class WorkspaceSettingsService {
     const fallbackId = fallbackProviderId();
     const fallbackKey = decrypt(fallbackId);
     if (fallbackKey) return { providerId: fallbackId, apiKey: fallbackKey };
+
+    return null;
+  }
+
+  /**
+   * Resolves the effective TTS provider and API key for a workspace.
+   * Uses: preferred provider (if has key) -> first provider with key in fallback order.
+   */
+  async resolveEffectiveTtsProvider(
+    workspaceId: string,
+  ): Promise<
+    { providerId: TtsProviderId; apiKey: string; config?: TtsProviderConfig } | null
+  > {
+    const settings = await this.workspaceSettingsRepository.findOne({
+      where: { workspaceId },
+    });
+    const keys = settings?.ttsProviderApiKeys;
+    if (!keys || typeof keys !== 'object') {
+      return null;
+    }
+
+    const decrypt = (providerId: TtsProviderId): string | null => {
+      const encrypted = keys[providerId];
+      if (!encrypted || typeof encrypted !== 'string') return null;
+      try {
+        return this.encryptionService.decrypt(encrypted);
+      } catch {
+        return null;
+      }
+    };
+
+    const preferredRaw = settings?.preferredTtsProvider ?? null;
+    const preferred =
+      preferredRaw && isTtsProviderId(preferredRaw) ? preferredRaw : null;
+    if (preferred) {
+      const key = decrypt(preferred);
+      if (key) {
+        const config = settings?.ttsProviderConfig?.[preferred] as
+          | TtsProviderConfig
+          | undefined;
+        return { providerId: preferred, apiKey: key, config };
+      }
+    }
+
+    for (const id of TTS_PROVIDER_FALLBACK_ORDER) {
+      const key = decrypt(id);
+      if (key) {
+        const config = settings?.ttsProviderConfig?.[id] as
+          | TtsProviderConfig
+          | undefined;
+        return { providerId: id, apiKey: key, config };
+      }
+    }
 
     return null;
   }
@@ -334,6 +444,98 @@ export class WorkspaceSettingsService {
           `Preferred transcription provider must be one of: huggingface, openai`,
         );
       }
+    }
+
+    const ttsProviderApiKeys = config.ttsProviderApiKeys;
+    if (
+      ttsProviderApiKeys !== undefined &&
+      typeof ttsProviderApiKeys === 'object'
+    ) {
+      const encrypted: Record<string, string> =
+        settings.ttsProviderApiKeys ?? {};
+      for (const [providerId, rawValue] of Object.entries(ttsProviderApiKeys)) {
+        if (!isTtsProviderId(providerId)) continue;
+        const strVal = typeof rawValue === 'string' ? rawValue : '';
+        if (strVal.trim()) {
+          try {
+            encrypted[providerId] = this.encryptionService.encrypt(strVal.trim());
+          } catch (encErr) {
+            const msg = encErr instanceof Error ? encErr.message : String(encErr);
+            if (msg.includes('PARSER_KEYS_ENCRYPTION_KEY')) {
+              throw new BadRequestException(
+                'Server encryption key not configured. Add PARSER_KEYS_ENCRYPTION_KEY to .env. Required for storing TTS API keys.',
+              );
+            }
+            throw encErr;
+          }
+        } else if (
+          rawValue === false ||
+          rawValue === null ||
+          rawValue === undefined
+        ) {
+          delete encrypted[providerId];
+        }
+      }
+      settings.ttsProviderApiKeys =
+        Object.keys(encrypted).length > 0 ? encrypted : null;
+    }
+
+    if (config.preferredTtsProvider !== undefined) {
+      const value = config.preferredTtsProvider;
+      if (value == null || (typeof value === 'string' && value.trim() === '')) {
+        settings.preferredTtsProvider = null;
+      } else if (isTtsProviderId(value)) {
+        settings.preferredTtsProvider = value;
+      } else {
+        throw new BadRequestException(
+          `Preferred TTS provider must be one of: replicate_xtts, huggingface, openai, elevenlabs`,
+        );
+      }
+    }
+
+    const ttsProviderConfig = config.ttsProviderConfig;
+    if (ttsProviderConfig !== undefined && typeof ttsProviderConfig === 'object') {
+      const merged: Record<string, Record<string, unknown>> = {
+        ...(settings.ttsProviderConfig ?? {}),
+      };
+      for (const [providerId, providerConfig] of Object.entries(
+        ttsProviderConfig,
+      )) {
+        if (!isTtsProviderId(providerId)) continue;
+        if (providerConfig && typeof providerConfig === 'object') {
+          if (providerId === TtsProviderId.ElevenLabs && providerConfig.plan != null) {
+            const plan = String(providerConfig.plan).toLowerCase();
+            if (!(ELEVENLABS_PLANS as readonly string[]).includes(plan)) {
+              throw new BadRequestException(
+                `ElevenLabs plan must be one of: ${ELEVENLABS_PLANS.join(', ')}`,
+              );
+            }
+          }
+          merged[providerId] = {
+            ...(merged[providerId] ?? {}),
+            ...providerConfig,
+          };
+        }
+      }
+      settings.ttsProviderConfig =
+        Object.keys(merged).length > 0 ? merged : null;
+    }
+
+    if (config.chatResponseMode !== undefined) {
+      const value = config.chatResponseMode;
+      if (value == null || (typeof value === 'string' && value.trim() === '')) {
+        settings.chatResponseMode = null;
+      } else if (isChatResponseMode(value)) {
+        settings.chatResponseMode = value;
+      } else {
+        throw new BadRequestException(
+          `Chat response mode must be one of: text_only, audio_only, audio_and_text`,
+        );
+      }
+    }
+
+    if (config.voiceAutoSend !== undefined) {
+      settings.voiceAutoSend = !!config.voiceAutoSend;
     }
 
     settings = await this.workspaceSettingsRepository.save(settings);

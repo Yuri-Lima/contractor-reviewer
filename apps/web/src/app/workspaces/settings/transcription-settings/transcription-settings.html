@@ -29,7 +29,7 @@
             optionValue="id"
             [placeholder]="'transcription.preferredProvider' | translate"
             class="w-full"
-            styleClass="w-full"
+            class="w-full"
             [loading]="savingPreferred()"
             [disabled]="!canEditApiKeys()"
           >
@@ -70,7 +70,7 @@
                     [placeholder]="'transcription.apiKeyPlaceholder' | translate"
                     [toggleMask]="true"
                     [feedback]="false"
-                    styleClass="w-full"
+                    class="w-full"
                     inputStyleClass="w-full"
                     [disabled]="!canEditApiKeys()"
                   ></p-password>
@@ -99,6 +99,168 @@
               </div>
             </div>
           }
+        </div>
+      </div>
+    </p-card>
+
+    <p-card class="mt-6">
+      <ng-template pTemplate="header">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">
+            {{ 'tts.apiKeysTitle' | translate }}
+          </h2>
+        </div>
+      </ng-template>
+      <div class="p-4 space-y-6">
+        <p-message
+          severity="info"
+          [text]="'tts.workspaceDescription' | translate"
+          class="mb-4"
+        ></p-message>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {{ 'tts.preferredProvider' | translate }}
+          </label>
+          <p-select
+            [options]="ttsProviderOptions()"
+            [ngModel]="preferredTtsProvider() ?? ''"
+            (ngModelChange)="onPreferredTtsProviderChange($event)"
+            optionLabel="labelKey"
+            optionValue="id"
+            [placeholder]="'tts.preferredProvider' | translate"
+            class="w-full"
+            class="w-full"
+            [loading]="savingPreferredTts()"
+            [disabled]="!canEditApiKeys()"
+          >
+            <ng-template let-opt pTemplate="item">
+              {{ opt.labelKey | translate }}
+            </ng-template>
+            <ng-template let-selected pTemplate="selectedItem">
+              @if (selected) {
+                {{ selected.labelKey | translate }}
+              }
+            </ng-template>
+          </p-select>
+          <small class="text-gray-500 dark:text-gray-400 mt-1 block">
+            {{ 'tts.preferredProviderHint' | translate }}
+          </small>
+        </div>
+        <div class="space-y-6">
+          @for (p of ttsProviders; track p.id) {
+            <div class="flex flex-wrap items-end gap-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <div class="flex-1 min-w-[200px]">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  {{ p.labelKey | translate }}
+                </label>
+                <div class="flex items-center gap-2">
+                  <p-password
+                    [ngModel]="getTtsApiKeyInput(p.id)"
+                    (ngModelChange)="onTtsApiKeyInputChange(p.id, $event)"
+                    [placeholder]="'tts.apiKeyPlaceholder' | translate"
+                    [toggleMask]="true"
+                    [feedback]="false"
+                    class="w-full"
+                    inputStyleClass="w-full"
+                    [disabled]="!canEditApiKeys()"
+                  ></p-password>
+                  <p-button
+                    [label]="'common.save' | translate"
+                    icon="pi pi-check"
+                    [loading]="savingTtsKey() === p.id"
+                    [disabled]="savingTtsKey() === p.id || !canEditApiKeys()"
+                    (onClick)="saveTtsApiKey(p.id)"
+                    [pTooltip]="'common.save' | translate"
+                  ></p-button>
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                  @if (isTtsConfigured(p.id)) {
+                    <span class="text-sm text-green-600 dark:text-green-400">
+                      <i class="pi pi-check-circle mr-1"></i>
+                      {{ 'tts.apiKeyConfigured' | translate }}
+                    </span>
+                  } @else {
+                    <span class="text-sm text-amber-600 dark:text-amber-400">
+                      <i class="pi pi-exclamation-triangle mr-1"></i>
+                      {{ 'tts.apiKeyNotConfigured' | translate }}
+                    </span>
+                  }
+                </div>
+                @if (p.id === 'elevenlabs' && isTtsConfigured(p.id) && canEditApiKeys()) {
+                  <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {{ 'tts.planLabel' | translate }}
+                    </label>
+                    <p-select
+                      [options]="elevenlabsPlanOptions"
+                      [ngModel]="getTtsProviderPlan(p.id)"
+                      (ngModelChange)="onTtsProviderPlanChange(p.id, $event)"
+                      optionLabel="labelKey"
+                      optionValue="value"
+                      [placeholder]="'tts.planLabel' | translate"
+                      class="w-full"
+                      [loading]="savingTtsConfig() === p.id"
+                      [disabled]="savingTtsConfig() === p.id"
+                    >
+                      <ng-template let-opt pTemplate="item">
+                        {{ opt.labelKey | translate }}
+                      </ng-template>
+                      <ng-template let-selected pTemplate="selectedItem">
+                        @if (selected) {
+                          {{ selected.labelKey | translate }}
+                        }
+                      </ng-template>
+                    </p-select>
+                    <small class="text-gray-500 dark:text-gray-400 mt-1 block">
+                      {{ 'tts.planHint' | translate }}
+                    </small>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {{ 'chat.responseModeLabel' | translate }}
+          </label>
+          <p-select
+            [options]="chatResponseModeOptions"
+            [ngModel]="chatResponseMode()"
+            (ngModelChange)="onChatResponseModeChange($event)"
+            optionLabel="labelKey"
+            optionValue="value"
+            [placeholder]="'chat.responseModeLabel' | translate"
+            class="w-full"
+            class="w-full"
+            [loading]="savingChatMode()"
+          >
+            <ng-template let-opt pTemplate="item">
+              {{ opt.labelKey | translate }}
+            </ng-template>
+            <ng-template let-selected pTemplate="selectedItem">
+              @if (selected) {
+                {{ selected.labelKey | translate }}
+              }
+            </ng-template>
+          </p-select>
+          <small class="text-gray-500 dark:text-gray-400 mt-1 block">
+            {{ 'chat.responseModeHint' | translate }}
+          </small>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <p-checkbox
+            [ngModel]="voiceAutoSend()"
+            (ngModelChange)="onVoiceAutoSendChange($event)"
+            [binary]="true"
+            inputId="voiceAutoSend"
+            [disabled]="savingVoiceAutoSend()"
+          ></p-checkbox>
+          <label for="voiceAutoSend" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+            {{ 'chat.voiceAutoSend' | translate }}
+          </label>
         </div>
       </div>
     </p-card>

@@ -59,3 +59,9 @@ export interface FileContentResponse {
   fileName: string;
   parsedBy?: string;
 }
+
+/** Scope for file search: general (all columns) or single column */
+export type FileSearchScope = 'all' | 'fileName' | 'mimeType' | 'status' | 'createdAt';
+
+/** Search mode: fuzzy (pg_trgm) or contains (ILIKE) */
+export type SearchMode = 'fuzzy' | 'contains';

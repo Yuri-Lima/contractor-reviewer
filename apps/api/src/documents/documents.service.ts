@@ -403,16 +403,34 @@ export class DocumentsService {
   }
 
   /**
-   * Get paginated files for a document with filtering, sorting, and pagination
+   * Get paginated files for a document with filtering, sorting, and pagination.
+   * Supports general fuzzy search (q) via pg_trgm and column-specific filters.
    */
   async getDocumentFilesPaginated(
     documentId: string,
-    query: { offset?: number; limit?: number; sortField?: string; sortOrder?: number; fileName?: string; mimeType?: string; status?: string },
+    query: {
+      offset?: number;
+      limit?: number;
+      sortField?: string;
+      sortOrder?: number;
+      q?: string;
+      fileName?: string;
+      mimeType?: string;
+      status?: string;
+      searchMode?: 'fuzzy' | 'contains';
+      similarityThreshold?: number;
+      startDate?: string;
+      endDate?: string;
+    },
   ): Promise<{ files: DocumentFile[]; total: number; limit: number; offset: number }> {
     const limit = Math.min(query.limit || 25, 100);
     const offset = query.offset || 0;
+    const rawThreshold = query.similarityThreshold;
+    const parsedThreshold =
+      typeof rawThreshold === 'string' ? parseFloat(rawThreshold) : rawThreshold;
+    const threshold = Math.max(0, Math.min(1, parsedThreshold ?? 0.2));
+    const searchMode = query.searchMode ?? 'fuzzy';
 
-    // Treat missing or serialized "undefined" as not provided (avoids ORDER BY file.undefined and WHERE with "undefined")
     const has = (v: string | number | undefined): v is string | number =>
       v != null && v !== '' && String(v) !== 'undefined';
 
@@ -436,20 +454,84 @@ export class DocumentsService {
       .take(limit)
       .skip(offset);
 
-    if (has(query.fileName)) {
-      qb.andWhere('file.fileName ILIKE :fileName', { fileName: `%${query.fileName}%` });
-    }
-    if (has(query.mimeType)) {
-      qb.andWhere('file.mimeType = :mimeType', { mimeType: query.mimeType });
-    }
-    if (has(query.status)) {
-      qb.andWhere('file.status = :status', { status: query.status });
+    const useFuzzy = (q: string) => searchMode === 'fuzzy' && q.length >= 3;
+
+    // General search (q) - fuzzy across fileName, mimeType, status
+    if (has(query.q)) {
+      const q = String(query.q).trim();
+      if (useFuzzy(q)) {
+        try {
+          qb.andWhere(
+            `(similarity(file."fileName", :q) > :t OR similarity(file."mimeType", :q) > :t OR similarity(file."status"::text, :q) > :t)`,
+            { q, t: threshold },
+          );
+          qb.addOrderBy(
+            `GREATEST(COALESCE(similarity(file."fileName", :q), 0), COALESCE(similarity(file."mimeType", :q), 0), COALESCE(similarity(file."status"::text, :q), 0))`,
+            'DESC',
+          );
+        } catch (err) {
+          // Fallback to ILIKE if pg_trgm fails
+          console.warn('pg_trgm fuzzy search failed, falling back to ILIKE', err);
+          qb.andWhere(
+            `(file."fileName" ILIKE :qPattern OR file."mimeType" ILIKE :qPattern OR file."status"::text ILIKE :qPattern)`,
+            { qPattern: `%${q}%` },
+          );
+        }
+      } else {
+        const pattern = `%${q}%`;
+        qb.andWhere(
+          `(file."fileName" ILIKE :qPattern OR file."mimeType" ILIKE :qPattern OR file."status"::text ILIKE :qPattern)`,
+          { qPattern: pattern },
+        );
+      }
+    } else {
+      // Column-specific filters
+      if (has(query.fileName)) {
+        const val = String(query.fileName).trim();
+        if (useFuzzy(val)) {
+          try {
+            qb.andWhere('similarity(file."fileName", :fileName) > :t', {
+              fileName: val,
+              t: threshold,
+            });
+            qb.addOrderBy('similarity(file."fileName", :fileName)', 'DESC');
+          } catch (err) {
+            console.warn('pg_trgm fileName fuzzy failed, falling back to ILIKE', err);
+            qb.andWhere('file."fileName" ILIKE :fileName', { fileName: `%${val}%` });
+          }
+        } else {
+          qb.andWhere('file."fileName" ILIKE :fileName', { fileName: `%${val}%` });
+        }
+      }
+      if (has(query.mimeType)) {
+        qb.andWhere('file."mimeType" = :mimeType', { mimeType: query.mimeType });
+      }
+      if (has(query.status)) {
+        qb.andWhere('file."status" = :status', { status: query.status });
+      }
     }
 
-    if (has(query.sortField)) {
+    // Date range filter (createdAt)
+    if (has(query.startDate) && has(query.endDate)) {
+      const startDate = new Date(String(query.startDate) + 'T00:00:00.000Z');
+      const endDate = new Date(String(query.endDate) + 'T23:59:59.999Z');
+      qb.andWhere('file.createdAt BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      });
+    } else if (has(query.startDate)) {
+      const startDate = new Date(String(query.startDate) + 'T00:00:00.000Z');
+      qb.andWhere('file.createdAt >= :startDate', { startDate });
+    } else if (has(query.endDate)) {
+      const endDate = new Date(String(query.endDate) + 'T23:59:59.999Z');
+      qb.andWhere('file.createdAt <= :endDate', { endDate });
+    }
+
+    // Sort: only apply default sort if no fuzzy ordering was added
+    if (has(query.sortField) && !has(query.q) && !(has(query.fileName) && useFuzzy(String(query.fileName)))) {
       const order = query.sortOrder === -1 ? 'DESC' : 'ASC';
       qb.orderBy(`file.${query.sortField}`, order);
-    } else {
+    } else if (!has(query.q) && !(has(query.fileName) && useFuzzy(String(query.fileName)))) {
       qb.orderBy('file.createdAt', 'DESC');
     }
 

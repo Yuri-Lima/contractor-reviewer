@@ -19,6 +19,7 @@ import { PromptsModule } from '../prompts/prompts.module';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { TranscriptionModule } from '../transcription/transcription.module';
+import { TtsModule } from '../tts/tts.module';
 import { ChatMessageService } from './chat-message.service';
 import { VersionService } from './version.service';
 import { RedlineService } from './redline.service';
@@ -45,6 +46,7 @@ import { Embedding } from '../entities/embedding.entity';
     AuditModule,
     AuthModule,
     TranscriptionModule,
+    TtsModule,
   ],
   controllers: [DocumentsController, ChatController, RedlineController],
   providers: [DocumentsService, ChatMessageService, VersionService, RedlineService, DiffService],

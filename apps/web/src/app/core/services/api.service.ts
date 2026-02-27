@@ -8,11 +8,13 @@ import {
   User,
   Workspace,
   CreateWorkspaceRequest,
+  UpdateWorkspaceRequest,
   AddMemberRequest,
   WorkspaceMember,
   WorkspaceRole,
   Document,
   CreateDocumentRequest,
+  UpdateDocumentRequest,
   DocumentJob,
   ChatRequest,
   ChatResponse,
@@ -54,6 +56,13 @@ export class ApiService {
 
   getWorkspace(workspaceId: string): Observable<Workspace> {
     return this.http.get<Workspace>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.workspaces}/${workspaceId}`);
+  }
+
+  updateWorkspace(workspaceId: string, data: UpdateWorkspaceRequest): Observable<Workspace> {
+    return this.http.patch<Workspace>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.workspaces}/${workspaceId}`,
+      data,
+    );
   }
 
   deleteWorkspace(workspaceId: string): Observable<void> {
@@ -127,6 +136,17 @@ export class ApiService {
   getDocument(workspaceId: string, documentId: string): Observable<Document> {
     return this.http.get<Document>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}`,
+    );
+  }
+
+  updateDocument(
+    workspaceId: string,
+    documentId: string,
+    data: UpdateDocumentRequest,
+  ): Observable<Document> {
+    return this.http.patch<Document>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}`,
+      data,
     );
   }
 

@@ -92,9 +92,11 @@
                     (fileSelected)="onWorkspaceLogoSelected(workspace, $event)"
                   />
                   <div class="flex-1 min-w-0 overflow-hidden">
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate" [title]="getWorkspaceName(workspace)">
-                      {{ getWorkspaceName(workspace) }}
-                    </h3>
+                    <app-editable-title
+                      [value]="getWorkspaceName(workspace)"
+                      (valueChange)="onWorkspaceNameChange(workspace, $event)"
+                      [displayTruncate]="true"
+                    />
                     <p class="text-xs text-gray-500 dark:text-gray-400">
                       <i class="pi pi-calendar mr-1"></i>
                       {{ workspace.createdAt | localeDate: 'dd/MM/yyyy' }}

@@ -17,6 +17,7 @@ import {
   workspaceMembers,
 } from '../core/routes';
 import { FileUploadComponent } from '../core/components/file-upload';
+import { EditableTitleComponent } from '../core/components/editable-title/editable-title.component';
 import { ApiService } from '../core/services/api.service';
 import { OnboardingService } from '../onboarding/onboarding.service';
 import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
@@ -42,6 +43,7 @@ import { TranslatePipe } from '@ngx-translate/core';
     LocaleDatePipe,
     TranslatePipe,
     FileUploadComponent,
+    EditableTitleComponent,
   ],
   providers: [ConfirmationService, MessageService],
   templateUrl: './workspaces.html',
@@ -209,6 +211,28 @@ export class WorkspacesComponent implements OnInit, OnDestroy {
 
   getWorkspaceName(workspace: Workspace): string {
     return workspace.name || this.translateService.instant(_('workspaces.unnamed'));
+  }
+
+  onWorkspaceNameChange(workspace: Workspace, newName: string): void {
+    this.apiService.updateWorkspace(workspace.id, { name: newName }).subscribe({
+      next: (updated) => {
+        this.workspaces.update((ws) =>
+          ws.map((w) => (w.id === workspace.id ? { ...w, name: updated.name } : w)),
+        );
+        this.messageService.add({
+          severity: 'success',
+          summary: this.translateService.instant(_('common.success')),
+          detail: this.translateService.instant(_('workspaces.updateSuccess')),
+        });
+      },
+      error: (err) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translateService.instant(_('common.error')),
+          detail: err.error?.message ?? this.translateService.instant(_('workspaces.updateError')),
+        });
+      },
+    });
   }
 
   logoUrl(workspaceId: string): string | null {

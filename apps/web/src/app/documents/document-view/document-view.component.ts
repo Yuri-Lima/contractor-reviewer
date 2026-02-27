@@ -50,6 +50,7 @@ import { VersionsComponent } from '../versions/versions.component';
 import { FileContentDialogComponent } from '../file-content-dialog/file-content-dialog.component';
 import { BaseListComponent } from '../../core/components/base-list/base-list.component';
 import { FileUploadComponent } from '../../core/components/file-upload';
+import { EditableTitleComponent } from '../../core/components/editable-title/editable-title.component';
 import { BaseListConfig } from '../../core/components/base-list/base-list.config';
 import { LazyLoadEvent } from 'primeng/api';
 import { PaginationService } from '../../core/services/pagination.service';
@@ -119,13 +120,19 @@ interface ChatMessageWithAudio {
     LocaleDatePipe,
     TranslatePipe,
     FileUploadComponent,
+    EditableTitleComponent,
   ],
   providers: [ConfirmationService, MessageService],
   template: `
     <div class="document-view-container p-6 max-w-7xl mx-auto">
       <div class="document-header flex justify-between items-center mb-6">
         <div>
-          <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">{{ getDisplayTitle(document()) }}</h1>
+          <app-editable-title
+            [value]="getDisplayTitle(document())"
+            (valueChange)="onDocumentTitleChange($event)"
+            [displayTruncate]="false"
+            [size]="'lg'"
+          />
           <div class="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
             <span>{{ 'documents.status' | translate }}: 
               <span class="font-semibold" [class.text-green-600]="document()?.status === 'available'"
@@ -1097,6 +1104,29 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     if (!doc?.title) return '';
     const t = doc.title;
     return typeof t === 'string' ? t : String(t);
+  }
+
+  onDocumentTitleChange(newTitle: string): void {
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    if (!wsId || !docId) return;
+    this.apiService.updateDocument(wsId, docId, { title: newTitle }).subscribe({
+      next: (updated) => {
+        this.document.update((d) => (d ? { ...d, title: updated.title } : null));
+        this.messageService.add({
+          severity: 'success',
+          summary: this.translateService.instant(_('common.success')),
+          detail: this.translateService.instant(_('documents.updateSuccess')),
+        });
+      },
+      error: (err) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translateService.instant(_('common.error')),
+          detail: err.error?.message ?? this.translateService.instant(_('documents.updateError')),
+        });
+      },
+    });
   }
 
   /** Ensures jurisdiction is displayed as string */

@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Delete,
   Body,
   Param,
@@ -58,6 +59,17 @@ export class DocumentsController {
   @Roles(WorkspaceRole.VIEWER, WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
   async getDocuments(@WorkspaceId() workspaceId: string): Promise<Document[]> {
     return this.documentsService.findAll(workspaceId);
+  }
+
+  @Patch(':documentId')
+  @UseGuards(RolesGuard)
+  @Roles(WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
+  async updateDocument(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+    @Body() updateDto: { title?: string; description?: string },
+  ): Promise<Document> {
+    return this.documentsService.update(documentId, workspaceId, updateDto);
   }
 
   @Get(':documentId')

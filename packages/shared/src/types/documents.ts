@@ -49,6 +49,11 @@ export interface CreateDocumentRequest {
   description?: string;
 }
 
+export interface UpdateDocumentRequest {
+  title?: string;
+  description?: string;
+}
+
 export interface FileContentResponse {
   content: string;
   fileName: string;

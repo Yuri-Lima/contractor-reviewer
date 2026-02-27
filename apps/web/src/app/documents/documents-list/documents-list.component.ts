@@ -16,13 +16,14 @@ import { DocumentViewTabService } from '../../onboarding/tour/document-view-tab.
 import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { TranslateService } from '@ngx-translate/core';
 import { Document } from '@contractai-review/shared';
+import { EditableTitleComponent } from '../../core/components/editable-title/editable-title.component';
 import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
 import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-documents-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, Button, Card, Toolbar, TooltipModule, SharedModule, ConfirmDialog, Toast, ContextMenu, LocaleDatePipe, TranslatePipe],
+  imports: [CommonModule, RouterModule, Button, Card, Toolbar, TooltipModule, SharedModule, ConfirmDialog, Toast, ContextMenu, LocaleDatePipe, TranslatePipe, EditableTitleComponent],
   providers: [ConfirmationService, MessageService],
   template: `
     <p-contextMenu #documentContextMenu [model]="documentContextMenuItems()"></p-contextMenu>
@@ -115,7 +116,12 @@ import { TranslatePipe } from '@ngx-translate/core';
                 class="block no-underline"
                 (click)="$event.stopPropagation()"
               >
-                <h3 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">{{ doc.title }}</h3>
+                <app-editable-title
+                  [value]="doc.title"
+                  (valueChange)="onDocumentTitleChange(doc, $event)"
+                  [displayTruncate]="true"
+                  class="mb-2 block"
+                />
                 @if (doc.description) {
                   <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{{ doc.description }}</p>
                 }
@@ -210,6 +216,30 @@ export class DocumentsListComponent implements OnInit {
     this.apiService.getDocuments(this.workspaceId()).subscribe({
       next: (docs) => this.documents.set(docs),
       error: (err) => console.error('Error loading documents:', err),
+    });
+  }
+
+  onDocumentTitleChange(doc: Document, newTitle: string): void {
+    const wsId = this.workspaceId();
+    if (!wsId) return;
+    this.apiService.updateDocument(wsId, doc.id, { title: newTitle }).subscribe({
+      next: (updated) => {
+        this.documents.update((docs) =>
+          docs.map((d) => (d.id === doc.id ? { ...d, title: updated.title } : d)),
+        );
+        this.messageService.add({
+          severity: 'success',
+          summary: this.translateService.instant(_('common.success')),
+          detail: this.translateService.instant(_('documents.updateSuccess')),
+        });
+      },
+      error: (err) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translateService.instant(_('common.error')),
+          detail: err.error?.message ?? this.translateService.instant(_('documents.updateError')),
+        });
+      },
     });
   }
 

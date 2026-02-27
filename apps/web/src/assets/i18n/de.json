@@ -84,7 +84,9 @@
     "nameRequired": "Name des Arbeitsbereichs ist erforderlich",
     "unnamed": "Unbenannter Arbeitsbereich",
     "logoUploaded": "Arbeitsbereichs-Logo erfolgreich hochgeladen",
-    "logoUploadError": "Fehler beim Hochladen des Arbeitsbereichs-Logos"
+    "logoUploadError": "Fehler beim Hochladen des Arbeitsbereichs-Logos",
+    "updateSuccess": "Arbeitsbereich erfolgreich aktualisiert",
+    "updateError": "Fehler beim Aktualisieren des Arbeitsbereichs"
   },
   "sidebar": {
     "currentWorkspace": "Aktueller Arbeitsbereich"
@@ -98,6 +100,8 @@
     "delete": "Dokument löschen",
     "deleteSuccess": "Dokument erfolgreich gelöscht",
     "deleteError": "Fehler beim Löschen des Dokuments",
+    "updateSuccess": "Dokument erfolgreich aktualisiert",
+    "updateError": "Fehler beim Aktualisieren des Dokuments",
     "uploadSuccess": "Datei erfolgreich hochgeladen",
     "uploadError": "Fehler beim Hochladen der Datei",
     "noFiles": "Keine Dateien hochgeladen. Laden Sie eine Datei hoch, um zu beginnen.",

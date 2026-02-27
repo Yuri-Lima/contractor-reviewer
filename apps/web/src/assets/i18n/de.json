@@ -179,7 +179,20 @@
     "listening": "Zuhören...",
     "stopListening": "Zuhören beenden",
     "transcribeError": "Spracherkennung fehlgeschlagen. Bitte erneut versuchen oder Ihre Frage eingeben.",
-    "transcribeTimeout": "Spracherkennung abgelaufen. Bitte erneut versuchen."
+    "transcribeTimeout": "Spracherkennung abgelaufen. Bitte erneut versuchen.",
+    "responseModeLabel": "Chat-Antwortmodus",
+    "responseModeHint": "Wählen Sie, wie Assistanten-Antworten angezeigt werden.",
+    "responseModeSaved": "Antwortmodus gespeichert",
+    "responseMode": {
+      "text_only": "Nur Text",
+      "audio_only": "Nur Audio",
+      "audio_and_text": "Audio und Text"
+    },
+    "voiceAutoSend": "Nach Sprachaufnahme automatisch senden",
+    "synthesizing": "Sprache wird erzeugt...",
+    "playAudio": "Audio abspielen",
+    "pauseAudio": "Audio pausieren",
+    "audioError": "Audio-Erzeugung fehlgeschlagen. Überprüfen Sie Ihren TTS-API-Schlüssel in Arbeitsbereich-Einstellungen → Sprache."
   },
   "parsers": {
     "title": "Dokumenten-Parser",
@@ -563,6 +576,32 @@
     "loadError": "Fehler beim Laden der Transkriptionseinstellungen",
     "saveError": "Fehler beim Speichern des API-Schlüssels",
     "apiKeySaved": "API-Schlüssel erfolgreich gespeichert"
+  },
+  "tts": {
+    "workspaceDescription": "Konfigurieren Sie API-Schlüssel für Text-zu-Sprache. Chat-Antworten können vorgelesen werden, wenn aktiviert.",
+    "apiKeysTitle": "Text-zu-Sprache API-Schlüssel",
+    "apiKeysDescription": "Fügen Sie API-Schlüssel hinzu, um die Audiowiedergabe von Chat-Antworten zu aktivieren. Schlüssel werden verschlüsselt.",
+    "apiKeyPlaceholder": "API-Schlüssel einfügen",
+    "apiKeyConfigured": "Schlüssel konfiguriert",
+    "apiKeyNotConfigured": "Kein Schlüssel konfiguriert",
+    "apiKeySaved": "TTS-API-Schlüssel erfolgreich gespeichert",
+    "saveError": "Fehler beim Speichern des TTS-Schlüssels",
+    "loadError": "Fehler beim Laden der TTS-Einstellungen",
+    "replicateXtts": "Replicate (XTTS-v2)",
+    "huggingface": "Hugging Face (Kokoro)",
+    "openai": "OpenAI (gpt-4o-mini-tts)",
+    "elevenlabs": "ElevenLabs (Turbo v2.5)",
+    "preferredProvider": "Bevorzugter TTS-Anbieter",
+    "preferredProviderHint": "Auto verwendet zuerst den kostengünstigsten Anbieter (Hugging-Face-Free-Tier).",
+    "preferredProviderAuto": "Auto (kostengünstig zuerst)",
+    "preferredProviderSaved": "Bevorzugter TTS-Anbieter gespeichert",
+    "planLabel": "Plan / Stufe",
+    "planHint": "Kostenlos: MP3-Ausgabe. Pro und höher: WAV, mehr Stimmen.",
+    "elevenlabsPlanFree": "Kostenlos",
+    "elevenlabsPlanStarter": "Starter",
+    "elevenlabsPlanPro": "Pro",
+    "elevenlabsPlanScale": "Scale",
+    "elevenlabsPlanBusiness": "Business"
   },
   "workspaceSettings": {
     "title": "Arbeitsbereichseinstellungen",

@@ -179,7 +179,20 @@
     "listening": "Listening...",
     "stopListening": "Stop listening",
     "transcribeError": "Voice transcription failed. Please try again or type your question.",
-    "transcribeTimeout": "Voice transcription timed out. Please try again."
+    "transcribeTimeout": "Voice transcription timed out. Please try again.",
+    "responseModeLabel": "Chat response mode",
+    "responseModeHint": "Choose how assistant responses are displayed in the chat.",
+    "responseModeSaved": "Chat response mode saved",
+    "responseMode": {
+      "text_only": "Text only",
+      "audio_only": "Audio only",
+      "audio_and_text": "Audio and text"
+    },
+    "voiceAutoSend": "Auto-send message after voice recording",
+    "synthesizing": "Generating speech...",
+    "playAudio": "Play audio",
+    "pauseAudio": "Pause audio",
+    "audioError": "Failed to generate audio. Check your TTS API key in Workspace Settings → Voice."
   },
   "parsers": {
     "title": "Document Parsers",
@@ -567,6 +580,32 @@
     "loadError": "Error loading transcription settings",
     "saveError": "Error saving API key",
     "apiKeySaved": "API key saved successfully"
+  },
+  "tts": {
+    "workspaceDescription": "Configure API keys for text-to-speech. Chat responses can be read aloud when enabled.",
+    "apiKeysTitle": "Text-to-Speech API Keys",
+    "apiKeysDescription": "Add API keys to enable audio playback of chat responses. Keys are encrypted.",
+    "apiKeyPlaceholder": "Paste your API key",
+    "apiKeyConfigured": "Key configured",
+    "apiKeyNotConfigured": "No key configured",
+    "apiKeySaved": "TTS API key saved successfully",
+    "saveError": "Error saving TTS API key",
+    "loadError": "Error loading TTS settings",
+    "replicateXtts": "Replicate (XTTS-v2)",
+    "huggingface": "Hugging Face (Kokoro)",
+    "openai": "OpenAI (gpt-4o-mini-tts)",
+    "elevenlabs": "ElevenLabs (Turbo v2.5)",
+    "preferredProvider": "Preferred TTS provider",
+    "preferredProviderHint": "Auto uses the most cost-friendly provider first (Hugging Face free tier).",
+    "preferredProviderAuto": "Auto (cost-friendly first)",
+    "preferredProviderSaved": "Preferred TTS provider saved",
+    "planLabel": "Plan / Tier",
+    "planHint": "Free: MP3 output. Pro and above: WAV, more voices.",
+    "elevenlabsPlanFree": "Free",
+    "elevenlabsPlanStarter": "Starter",
+    "elevenlabsPlanPro": "Pro",
+    "elevenlabsPlanScale": "Scale",
+    "elevenlabsPlanBusiness": "Business"
   },
   "workspaceSettings": {
     "title": "Workspace Settings",

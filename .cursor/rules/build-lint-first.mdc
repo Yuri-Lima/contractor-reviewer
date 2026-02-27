@@ -1,0 +1,24 @@
+---
+description: Run lint before any build command
+alwaysApply: true
+---
+
+# Build: Lint Before Build
+
+**MANDATORY**: Before running any build command (`pnpm nx run *:build`, `nx run *:build`, `ng build`, `nest build`, etc.), always run lint first and fix any lint errors.
+
+## Workflow
+
+1. **Run lint** on the project(s) you intend to build:
+   - `pnpm nx run @contractai-review/shared:lint`
+   - `pnpm nx run api:lint`
+   - `pnpm nx run web:lint`
+   - Or workspace-wide: `pnpm lint` or `pnpm nx run-many -t lint`
+
+2. **Fix any lint errors** before proceeding to build.
+
+3. **Then run the build**.
+
+## Rationale
+
+Linting catches issues (unused imports, type errors, style violations) that can cause build failures or mask problems. Running lint first keeps the codebase clean and avoids wasted build cycles.

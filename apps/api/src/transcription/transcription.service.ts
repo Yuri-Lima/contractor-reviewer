@@ -3,7 +3,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { TranscriptionProviderRegistry } from './transcription-provider.registry';
 import type { ITranscriptionProvider, TranscriptionResult } from './interfaces/transcription-provider.interface';
 
-const TIMEOUT_MS = 60_000;
+/** Timeout for transcription (Huggingface/OpenAI can be slow; cold starts, long audio). */
+const TIMEOUT_MS = 120_000;
 
 @Injectable()
 export class TranscriptionService {
@@ -29,10 +30,15 @@ export class TranscriptionService {
     }
 
     const timeoutPromise = new Promise<TranscriptionResult>((_, reject) =>
-      setTimeout(
-        () => reject(new Error(`Transcription timeout after ${TIMEOUT_MS}ms`)),
-        TIMEOUT_MS,
-      ),
+      setTimeout(() => {
+        const err = new Error(
+          `Transcription timeout after ${TIMEOUT_MS}ms (provider=${provider.id}, audioSize=${audioBuffer.length})`,
+        );
+        this.logger.warn(
+          `Transcription timeout: provider=${provider.id} audioSize=${audioBuffer.length} mimeType=${mimeType}`,
+        );
+        reject(err);
+      }, TIMEOUT_MS),
     );
 
     const transcribePromise = provider.transcribe(audioBuffer, mimeType, {

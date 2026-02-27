@@ -1,15 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InferenceClient } from '@huggingface/inference';
+import { mapI18nToMlLang } from '@contractai-review/shared';
 import type { ITranscriptionProvider, TranscriptionResult } from '../interfaces/transcription-provider.interface';
-
-const I18N_TO_WHISPER_LANG: Record<string, string> = {
-  en: 'en',
-  es: 'es',
-  'pt-BR': 'pt',
-  pt: 'pt',
-  de: 'de',
-};
 
 @Injectable()
 export class HuggingFaceTranscriptionProvider implements ITranscriptionProvider {
@@ -40,7 +33,7 @@ export class HuggingFaceTranscriptionProvider implements ITranscriptionProvider 
   ): Promise<TranscriptionResult> {
     const token = this.resolveToken(options);
     const client = new InferenceClient(token);
-    const lang = options?.language ? this.mapLanguage(options.language) : undefined;
+    const lang = options?.language ? mapI18nToMlLang(options.language) : undefined;
     const normalizedMime = this.normalizeMimeType(mimeType);
     const data = new Blob([new Uint8Array(audioBuffer)], { type: normalizedMime });
 
@@ -61,7 +54,4 @@ export class HuggingFaceTranscriptionProvider implements ITranscriptionProvider 
     return { text: text.trim(), provider: this.id };
   }
 
-  private mapLanguage(i18nLang: string): string {
-    return I18N_TO_WHISPER_LANG[i18nLang] ?? i18nLang.split('-')[0] ?? 'en';
-  }
 }

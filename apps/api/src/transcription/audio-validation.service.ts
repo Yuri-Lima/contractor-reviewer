@@ -1,18 +1,21 @@
+import { Injectable } from '@nestjs/common';
 import {
   AUDIO_ALLOWED_EXTENSIONS,
   AUDIO_ALLOWED_MIME_TYPES,
   AUDIO_MAX_SIZE_BYTES,
 } from '@contractai-review/shared';
-
-export { AUDIO_ALLOWED_EXTENSIONS, AUDIO_ALLOWED_MIME_TYPES, AUDIO_MAX_SIZE_BYTES };
+import { FileTypeDetectionService } from '../file-type/file-type-detection.service';
 
 export interface AudioValidationResult {
   isValid: boolean;
   error?: string;
 }
 
-export class AudioValidator {
-  static validateExtension(fileName: string): AudioValidationResult {
+@Injectable()
+export class AudioValidationService {
+  constructor(private readonly fileTypeService: FileTypeDetectionService) {}
+
+  validateExtension(fileName: string): AudioValidationResult {
     const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.') || 0);
     if (!(AUDIO_ALLOWED_EXTENSIONS as readonly string[]).includes(ext)) {
       return {
@@ -23,7 +26,7 @@ export class AudioValidator {
     return { isValid: true };
   }
 
-  static validateSize(fileSize: number): AudioValidationResult {
+  validateSize(fileSize: number): AudioValidationResult {
     if (fileSize > AUDIO_MAX_SIZE_BYTES) {
       return {
         isValid: false,
@@ -36,7 +39,11 @@ export class AudioValidator {
     return { isValid: true };
   }
 
-  static validateMimeType(mimeType: string, buffer: Buffer): AudioValidationResult {
+  async validateMimeType(
+    mimeType: string,
+    buffer: Buffer,
+    options?: { signal?: AbortSignal },
+  ): Promise<AudioValidationResult> {
     const baseType = mimeType.split(';')[0].trim().toLowerCase();
     const isAllowed = (AUDIO_ALLOWED_MIME_TYPES as readonly string[]).some(
       (allowed) => allowed.toLowerCase() === baseType,
@@ -47,68 +54,48 @@ export class AudioValidator {
         error: `MIME type ${mimeType} is not allowed. Allowed: ${AUDIO_ALLOWED_MIME_TYPES.join(', ')}`,
       };
     }
-    const detected = this.detectMimeFromBuffer(buffer);
+    const detected = await this.fileTypeService.detect(buffer, { signal: options?.signal });
     if (detected) {
       const detectedAllowed = (AUDIO_ALLOWED_MIME_TYPES as readonly string[]).some(
-        (allowed) => allowed.toLowerCase() === detected,
+        (allowed) => allowed.toLowerCase() === detected.mime,
       );
       if (!detectedAllowed) {
         return {
           isValid: false,
-          error: `File signature does not match allowed audio format. Detected: ${detected}`,
+          error: `File signature does not match allowed audio format. Detected: ${detected.mime}`,
         };
       }
     }
     return { isValid: true };
   }
 
-  /**
-   * Returns the MIME type to use for downstream processing.
-   * Uses detected format from buffer when available; otherwise the declared base type.
-   */
-  static getEffectiveMimeType(mimeType: string, buffer: Buffer): string {
-    const detected = this.detectMimeFromBuffer(buffer);
+  async getEffectiveMimeType(
+    mimeType: string,
+    buffer: Buffer,
+    options?: { signal?: AbortSignal },
+  ): Promise<string> {
+    const detected = await this.fileTypeService.detect(buffer, { signal: options?.signal });
     if (detected) {
-      return detected;
+      if (detected.mime === 'audio/mp4' || detected.mime === 'video/mp4') {
+        return 'audio/m4a';
+      }
+      return detected.mime;
     }
     return mimeType.split(';')[0].trim().toLowerCase();
   }
 
-  private static detectMimeFromBuffer(buffer: Buffer): string | null {
-    if (buffer.length < 8) return null;
-    // WebM/MKV: 0x1A 0x45 0xDF 0xA3
-    if (buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3) {
-      return 'audio/webm';
-    }
-    // WAV: RIFF
-    if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46) {
-      return 'audio/wav';
-    }
-    // MP3: ID3 or FF FB/FA
-    if (
-      (buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33) ||
-      (buffer[0] === 0xff && (buffer[1] === 0xfb || buffer[1] === 0xfa))
-    ) {
-      return 'audio/mpeg';
-    }
-    // MP4/M4A: ftyp — use audio/m4a (HuggingFace ASR accepts m4a, not mp4)
-    if (buffer[4] === 0x66 && buffer[5] === 0x74 && buffer[6] === 0x79 && buffer[7] === 0x70) {
-      return 'audio/m4a';
-    }
-    return null;
-  }
-
-  static validate(
+  async validate(
     fileName: string,
     mimeType: string,
     fileSize: number,
     buffer: Buffer,
-  ): AudioValidationResult {
+    options?: { signal?: AbortSignal },
+  ): Promise<AudioValidationResult> {
     const extCheck = this.validateExtension(fileName);
     if (!extCheck.isValid) return extCheck;
     const sizeCheck = this.validateSize(fileSize);
     if (!sizeCheck.isValid) return sizeCheck;
-    const mimeCheck = this.validateMimeType(mimeType, buffer);
+    const mimeCheck = await this.validateMimeType(mimeType, buffer, options);
     if (!mimeCheck.isValid) return mimeCheck;
     return { isValid: true };
   }

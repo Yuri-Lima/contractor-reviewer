@@ -57,17 +57,12 @@ export class PgVectorStore implements IVectorStore {
   ): Promise<LegalChunkSearchResult[]> {
     const embeddingVector = arrayToVectorString(queryEmbedding);
 
+    // Use denormalized columns on embeddings - no JOIN with legal_sources (vector-DB separation ready)
     let query = `
       SELECT 
         e.*,
-        ls."sourceName",
-        ls."section",
-        ls."country",
-        ls."jurisdiction",
-        ls."url",
         1 - (e.embedding::vector <=> $1::vector) AS distance
       FROM embeddings e
-      LEFT JOIN legal_sources ls ON e."legalSourceId" = ls.id
       WHERE e.embedding IS NOT NULL
     `;
 
@@ -75,13 +70,13 @@ export class PgVectorStore implements IVectorStore {
     let paramIndex = 2;
 
     if (filters?.country) {
-      query += ` AND ls.country = $${paramIndex}`;
+      query += ` AND e.country = $${paramIndex}`;
       params.push(filters.country);
       paramIndex++;
     }
 
     if (filters?.jurisdiction) {
-      query += ` AND ls.jurisdiction = $${paramIndex}`;
+      query += ` AND e.jurisdiction = $${paramIndex}`;
       params.push(filters.jurisdiction);
       paramIndex++;
     }
@@ -92,15 +87,16 @@ export class PgVectorStore implements IVectorStore {
     const results = await this.embeddingRepository.query(query, params);
 
     return results.map((r: Record<string, unknown>) => {
-      const { distance, sourceName, section, country, jurisdiction, url, ...embeddingFields } = r;
+      const { distance, ...embeddingFields } = r;
+      const item = embeddingFields as unknown as Embedding;
       return {
-        item: embeddingFields as unknown as Embedding,
+        item,
         distance: parseFloat(String(distance)),
-        sourceName: sourceName as string | undefined,
-        section: section as string | undefined,
-        country: country as string | undefined,
-        jurisdiction: jurisdiction as string | undefined,
-        url: url as string | undefined,
+        sourceName: item.sourceName ?? undefined,
+        section: item.section ?? undefined,
+        country: item.country ?? undefined,
+        jurisdiction: item.jurisdiction ?? undefined,
+        url: item.url ?? undefined,
       };
     });
   }

@@ -1,10 +1,10 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository } from 'typeorm';
 import { DocumentJob, JobStatus } from '../entities/document-job.entity';
-import { Chunk } from '../entities/chunk.entity';
+import { CHUNK_REPOSITORY, IChunkRepository } from '../chunks/chunk-repository.interface';
 import { EmbeddingsService } from '../rag/embeddings.service';
 
 interface EmbeddingsJobData {
@@ -24,8 +24,8 @@ export class EmbeddingsProcessor extends WorkerHost {
   constructor(
     @InjectRepository(DocumentJob)
     private jobRepository: Repository<DocumentJob>,
-    @InjectRepository(Chunk)
-    private chunkRepository: Repository<Chunk>,
+    @Inject(CHUNK_REPOSITORY)
+    private chunkRepository: IChunkRepository,
     private embeddingsService: EmbeddingsService,
   ) {
     super();
@@ -67,9 +67,7 @@ export class EmbeddingsProcessor extends WorkerHost {
       await this.updateJobStatus(jobId, JobStatus.PROCESSING, 0);
 
       // Load chunks
-      const chunks = await this.chunkRepository.find({
-        where: { id: In(chunkIds) },
-      });
+      const chunks = await this.chunkRepository.findByIds(chunkIds);
 
       if (chunks.length === 0) {
         throw new Error('No chunks found');

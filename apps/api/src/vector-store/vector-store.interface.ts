@@ -23,16 +23,25 @@ export interface LegalChunkFilters {
   jurisdiction?: string;
 }
 
-/** Abstraction over vector store for similarity search. Swap implementations (pgvector, Pinecone, etc.) without changing consumers. */
+/**
+ * Abstraction over vector store for similarity search.
+ * Swap implementations (pgvector, Pinecone, etc.) without changing consumers.
+ *
+ * Return semantics:
+ * - Contract search: returns Chunk rows (text, pageNumber, paragraphId) - self-contained for citations
+ * - Legal search: returns Embedding rows with denormalized metadata (sourceName, section, country, jurisdiction, url)
+ *
+ * Consumers fetch document title (relational) separately for contract citation fileName.
+ */
 export interface IVectorStore {
-  /** Search contract chunks by embedding similarity within a document */
+  /** Search contract chunks by embedding similarity within a document. Returns chunk rows with text, pageNumber, paragraphId. */
   searchContractChunks(
     queryEmbedding: number[],
     documentId: string,
     limit?: number,
   ): Promise<VectorSearchResult<Chunk>[]>;
 
-  /** Search legal embeddings by embedding similarity with optional filters */
+  /** Search legal embeddings by embedding similarity. Uses denormalized columns (no JOIN). Returns embedding + sourceName, section, country, jurisdiction, url. */
   searchLegalChunks(
     queryEmbedding: number[],
     filters?: LegalChunkFilters,

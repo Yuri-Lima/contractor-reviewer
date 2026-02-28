@@ -1,12 +1,12 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository } from 'typeorm';
 import { DocumentFile } from '../entities/document-file.entity';
 import { Document } from '../entities/document.entity';
-import { Chunk } from '../entities/chunk.entity';
 import { ChatMessage } from '../entities/chat-message.entity';
 import { DocumentVersion } from '../entities/document-version.entity';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
+import { CHUNK_REPOSITORY, IChunkRepository } from '../chunks/chunk-repository.interface';
 import { RetentionService } from './retention.service';
 import { IStorageService } from '../storage/storage.interface';
 import { StorageServiceToken } from '../storage/storage.module';
@@ -20,8 +20,8 @@ export class PurgeService {
     private fileRepository: Repository<DocumentFile>,
     @InjectRepository(Document)
     private documentRepository: Repository<Document>,
-    @InjectRepository(Chunk)
-    private chunkRepository: Repository<Chunk>,
+    @Inject(CHUNK_REPOSITORY)
+    private chunkRepository: IChunkRepository,
     @InjectRepository(ChatMessage)
     private chatMessageRepository: Repository<ChatMessage>,
     @InjectRepository(DocumentVersion)
@@ -90,9 +90,9 @@ export class PurgeService {
     let errors = 0;
 
     try {
-      // Get all documents with chunks
+      // Load documents (no chunks relation - use ChunkRepository abstraction)
       const documents = await this.documentRepository.find({
-        relations: ['chunks'],
+        select: ['id', 'workspaceId', 'createdAt'],
       });
 
       for (const document of documents) {
@@ -102,13 +102,14 @@ export class PurgeService {
             document.createdAt,
           );
 
-          if (isExpired && document.chunks.length > 0) {
-            // Delete chunks (embeddings are in chunks table)
-            await this.chunkRepository.remove(document.chunks);
-            deleted += document.chunks.length;
-            this.logger.debug(
-              `Purged ${document.chunks.length} chunks for expired document: ${document.id}`,
-            );
+          if (isExpired) {
+            const count = await this.chunkRepository.deleteByDocumentId(document.id);
+            deleted += count;
+            if (count > 0) {
+              this.logger.debug(
+                `Purged ${count} chunks for expired document: ${document.id}`,
+              );
+            }
           }
         } catch (error) {
           errors++;

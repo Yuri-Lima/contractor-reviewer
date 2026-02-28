@@ -1,12 +1,12 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DocumentJob, JobStatus, JobType } from '../entities/document-job.entity';
-import { Chunk } from '../entities/chunk.entity';
 import { Document } from '../entities/document.entity';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
+import { CHUNK_REPOSITORY, IChunkRepository } from '../chunks/chunk-repository.interface';
 import { ChunkingService } from '../rag/chunking.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -30,8 +30,8 @@ export class ChunkingProcessor extends WorkerHost {
   constructor(
     @InjectRepository(DocumentJob)
     private jobRepository: Repository<DocumentJob>,
-    @InjectRepository(Chunk)
-    private chunkRepository: Repository<Chunk>,
+    @Inject(CHUNK_REPOSITORY)
+    private chunkRepository: IChunkRepository,
     @InjectRepository(Document)
     private documentRepository: Repository<Document>,
     @InjectRepository(WorkspaceSettings)
@@ -139,19 +139,17 @@ export class ChunkingProcessor extends WorkerHost {
       await this.updateJobStatus(jobId, JobStatus.PROCESSING, 50);
       this.logger.debug(`Job ${jobId}: Saving chunks to database, progress 50%`);
 
-      const chunkEntities = chunks.map((chunk) =>
-        this.chunkRepository.create({
-          documentId,
-          text: chunk.text,
-          pageNumber: chunk.pageNumber,
-          paragraphId: chunk.paragraphId,
-          startIndex: chunk.startIndex,
-          endIndex: chunk.endIndex,
-        }),
-      );
+      const chunkDtos = chunks.map((chunk) => ({
+        documentId,
+        text: chunk.text,
+        pageNumber: chunk.pageNumber,
+        paragraphId: chunk.paragraphId,
+        startIndex: chunk.startIndex,
+        endIndex: chunk.endIndex,
+      }));
 
       const savedChunks = await this.withTimeout(
-        this.chunkRepository.save(chunkEntities),
+        this.chunkRepository.create(chunkDtos),
         60000, // 60 second timeout for saving chunks
         `Failed to save chunks for document ${documentId}`,
       );

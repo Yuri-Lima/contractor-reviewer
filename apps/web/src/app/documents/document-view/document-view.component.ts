@@ -67,7 +67,7 @@ import { PaginationService } from '../../core/services/pagination.service';
 import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
 import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
 import { forkJoin, from, of } from 'rxjs';
-import { mergeMap, map, catchError, toArray } from 'rxjs/operators';
+import { mergeMap, map, catchError, toArray, switchMap, tap } from 'rxjs/operators';
 
 /** API request params for getDocumentFiles (pagination, sort, filters, fuzzy search) */
 interface FilesRequestParams {
@@ -192,21 +192,20 @@ interface ChatMessageWithAudio {
         </div>
       </div>
 
-      <!-- Job Progress Indicator -->
+      <!-- Job Progress Indicator (consolidated for multi-file uploads) -->
       @if (hasActiveJobs()) {
         <div class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <h3 class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">{{ 'documents.processing' | translate }}</h3>
+          <h3 class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">
+            {{ 'documents.processingFiles' | translate: { count: activeJobs().length } }}
+          </h3>
           <div class="space-y-3">
-            @for (job of activeJobs(); track job.id) {
-              <div class="job-progress-item">
-                <div class="flex justify-between items-center mb-1">
-                  <span class="text-sm text-gray-700 dark:text-gray-300">{{ getJobTypeLabel(job.type) }}</span>
-                  <span class="text-xs text-gray-600 dark:text-gray-400">{{ getJobProgress(job) }}%</span>
-                </div>
-                <p-progressBar [value]="getJobProgress(job)" [showValue]="false"></p-progressBar>
-                <span class="text-xs text-gray-500 dark:text-gray-400 mt-1 block">{{ getJobStatusLabel(job.status) }}</span>
+            <div class="job-progress-item">
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-sm text-gray-700 dark:text-gray-300">{{ consolidatedStageSummary() }}</span>
+                <span class="text-xs text-gray-600 dark:text-gray-400">{{ consolidatedProgress() }}%</span>
               </div>
-            }
+              <p-progressBar [value]="consolidatedProgress()" [showValue]="false"></p-progressBar>
+            </div>
           </div>
         </div>
       }
@@ -701,6 +700,24 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   failedJobs = computed(() => this.jobs().filter(j => j.status === 'failed'));
   hasActiveJobs = computed(() => this.activeJobs().length > 0);
   hasFailedJobs = computed(() => this.failedJobs().length > 0);
+
+  /** Aggregated progress: average of all active jobs */
+  consolidatedProgress = computed(() => {
+    const active = this.activeJobs();
+    if (!active.length) return 0;
+    const sum = active.reduce((acc, j) => acc + this.getJobProgress(j), 0);
+    return Math.round(sum / active.length);
+  });
+
+  /** Stage summary for display: e.g. "Parsing (2), Chunking (1)" */
+  consolidatedStageSummary = computed(() => {
+    const active = this.activeJobs();
+    const byType = new Map<string, number>();
+    active.forEach(j => byType.set(j.type, (byType.get(j.type) ?? 0) + 1));
+    return Array.from(byType.entries())
+      .map(([type, count]) => `${this.getJobTypeLabel(type)} (${count})`)
+      .join(', ');
+  });
   
   canDelete = computed(() => {
     // TODO: Check user role (ADMIN/OWNER)
@@ -1142,97 +1159,72 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     this.filesRequest.set({ workspaceId: wsId, documentId: docId, ...newParams });
   }
 
+  /**
+   * Apply API jobs to state: merge with cache, update signal, save to localStorage.
+   * Called from loadJobs and polling pipelines.
+   */
+  private applyJobsFromApi(documentId: string, apiJobs: DocumentJob[]): void {
+    const apiJobsMap = new Map(apiJobs.map(j => [j.id, j]));
+    const cachedJobs = this.getJobs(documentId);
+    const mergedJobs: DocumentJob[] = [...apiJobs];
+    cachedJobs.forEach(cachedJob => {
+      if (!apiJobsMap.has(cachedJob.id)) mergedJobs.push(cachedJob);
+    });
+    this.jobs.set(mergedJobs);
+    this.saveJobs(documentId, apiJobs);
+  }
+
   loadJobs(): void {
-    // Prevent concurrent calls
-    if (this.isLoadingJobs) {
-      return;
-    }
-    
+    if (this.isLoadingJobs) return;
     const documentId = this.documentId();
-    if (!documentId) {
-      return;
-    }
-    
+    if (!documentId) return;
     this.isLoadingJobs = true;
-    
-    // Load cached jobs from localStorage for immediate display (only if signal is empty)
     const currentJobs = this.jobs();
     if (currentJobs.length === 0) {
       const cachedJobs = this.getJobs(documentId);
-      if (cachedJobs.length > 0) {
-        this.jobs.set(cachedJobs);
-      }
+      if (cachedJobs.length > 0) this.jobs.set(cachedJobs);
     }
-    
-    // Fetch fresh jobs from API - API data always takes precedence
     this.apiService.getDocumentJobs(this.workspaceId(), documentId).subscribe({
       next: (apiJobs) => {
-        // API jobs are the source of truth - use them directly
-        // Only merge in cached jobs that aren't in API response (for edge cases)
-        const apiJobsMap = new Map(apiJobs.map(j => [j.id, j]));
-        const cachedJobs = this.getJobs(documentId);
-        const mergedJobs: DocumentJob[] = [...apiJobs];
-        
-        // Include cached jobs that aren't in API response (edge case handling)
-        cachedJobs.forEach(cachedJob => {
-          if (!apiJobsMap.has(cachedJob.id)) {
-            mergedJobs.push(cachedJob);
-          }
-        });
-        
-        // Update signal with merged result - API data always wins
-        this.jobs.set(mergedJobs);
-        
-        // Save API jobs to localStorage (they're the source of truth)
-        this.saveJobs(documentId, apiJobs);
-        
-        // Check if we should stop aggressive polling
-        const pendingJobIds = mergedJobs
-          .filter(j => j.status === 'pending' || j.status === 'processing')
-          .map(j => j.id);
-        
-        if (pendingJobIds.length === 0) {
+        this.applyJobsFromApi(documentId, apiJobs);
+        const mergedJobs = this.jobs();
+        if (!mergedJobs.some(j => j.status === 'pending' || j.status === 'processing')) {
           this.stopAggressivePolling();
         }
-        
         this.isLoadingJobs = false;
       },
       error: (err) => {
         console.error('Error loading jobs:', err);
-        // On error, keep cached jobs if available
         this.isLoadingJobs = false;
       },
     });
   }
 
   startJobsPolling(): void {
-    // Prevent multiple polling instances
-    if (this.pollingSubscription) {
-      this.stopJobsPolling();
-    }
-    
+    if (this.pollingSubscription) this.stopJobsPolling();
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    if (!wsId || !docId) return;
     let consecutiveNoActiveJobs = 0;
-    
     this.pollingSubscription = interval(500)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        // Always load jobs to get latest updates
-        this.loadJobs();
-        // Check after loading if we should stop
-        const currentJobs = this.jobs();
-        const hasPendingOrProcessing = currentJobs.some(
-          (j) => j.status === 'pending' || j.status === 'processing',
-        );
-        if (!hasPendingOrProcessing && currentJobs.length > 0) {
-          consecutiveNoActiveJobs++;
-          // Stop polling after 3 consecutive checks with no active jobs (1.5 seconds)
-          if (consecutiveNoActiveJobs >= 3) {
-            this.stopJobsPolling();
+      .pipe(
+        switchMap(() => this.apiService.getDocumentJobs(wsId, docId)),
+        tap(apiJobs => this.applyJobsFromApi(docId, apiJobs)),
+        tap(() => {
+          const jobs = this.jobs();
+          const hasPendingOrProcessing = jobs.some(
+            j => j.status === 'pending' || j.status === 'processing',
+          );
+          if (!hasPendingOrProcessing && jobs.length > 0) {
+            consecutiveNoActiveJobs++;
+            if (consecutiveNoActiveJobs >= 3) this.stopJobsPolling();
+          } else {
+            consecutiveNoActiveJobs = 0;
           }
-        } else {
-          consecutiveNoActiveJobs = 0; // Reset counter if we have active jobs
-        }
-      });
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe();
   }
 
   stopJobsPolling(): void {
@@ -1275,35 +1267,25 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   }
 
   startAggressivePolling(): void {
-    // Prevent multiple aggressive polling instances
-    if (this.aggressivePollingSubscription) {
-      this.stopAggressivePolling();
-    }
-    
+    if (this.aggressivePollingSubscription) this.stopAggressivePolling();
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    if (!wsId || !docId) return;
     const currentJobs = this.jobs();
-    const pendingJobIds = currentJobs
-      .filter(j => j.status === 'pending' || j.status === 'processing')
-      .map(j => j.id);
-      
-    if (pendingJobIds.length === 0) {
-      return; // No jobs to track
-    }
-    
-    this.aggressivePollingSubscription = interval(200) // Poll every 200ms
-      .pipe(takeUntil(this.destroyAggressive$))
-      .subscribe(() => {
-        this.loadJobs(); // This updates localStorage automatically
-        
-        const currentJobsAfterLoad = this.jobs();
-        const stillActive = currentJobsAfterLoad.filter(j => 
-          j.status === 'pending' || j.status === 'processing'
-        );
-        
-        if (stillActive.length === 0) {
-          // All tracked jobs completed
-          this.stopAggressivePolling();
-        }
-      });
+    if (!currentJobs.some(j => j.status === 'pending' || j.status === 'processing')) return;
+    this.aggressivePollingSubscription = interval(200)
+      .pipe(
+        switchMap(() => this.apiService.getDocumentJobs(wsId, docId)),
+        tap(apiJobs => this.applyJobsFromApi(docId, apiJobs)),
+        tap(() => {
+          const stillActive = this.jobs().filter(
+            j => j.status === 'pending' || j.status === 'processing',
+          );
+          if (stillActive.length === 0) this.stopAggressivePolling();
+        }),
+        takeUntil(this.destroyAggressive$),
+      )
+      .subscribe();
   }
 
   stopAggressivePolling(): void {

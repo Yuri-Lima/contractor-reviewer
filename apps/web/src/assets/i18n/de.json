@@ -132,6 +132,7 @@
     "similarityThreshold": "Ähnlichkeit",
     "similarityThresholdHelp": "Niedriger = toleranter bei Tippfehlern",
     "processing": "Verarbeitung läuft",
+    "processingFiles": "{{count}} Datei(en) werden verarbeitet",
     "titlePlaceholder": "Dokumenttitel",
     "descriptionPlaceholder": "Beschreibung (optional)",
     "creating": "Erstellen...",

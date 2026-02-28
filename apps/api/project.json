@@ -2,6 +2,13 @@
   "name": "api",
   "tags": ["scope:api"],
   "targets": {
+    "worker": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nest start --entryFile worker",
+        "cwd": "apps/api"
+      }
+    },
     "docker:build": {
       "executor": "nx:run-commands",
       "options": {

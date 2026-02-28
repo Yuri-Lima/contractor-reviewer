@@ -100,6 +100,7 @@ export class ChatController {
     @Param('documentId') documentId: string,
     @CurrentUser() user: { id: string },
     @RequestInfo() requestInfo: { ip: string; userAgent: string },
+    @ReqAbortSignal() signal: AbortSignal,
     @Body() chatDto: { question: string; language?: string },
   ): Promise<RagResponse> {
     try {
@@ -119,7 +120,8 @@ export class ChatController {
         documentId,
         workspaceId,
         jurisdiction,
-        chatDto.language || 'en', // Pass language, default to 'en'
+        chatDto.language || 'en',
+        { signal },
       );
       
       // Save chat message (respects no-logs configuration)
@@ -204,11 +206,16 @@ export class ChatController {
         );
       }
 
-      const result = await this.transcriptionService.transcribe(file.buffer, effectiveMimeType, {
-        language: body.language || 'en',
-        providerId: resolved.providerId,
-        apiKey: resolved.apiKey,
-      });
+      const result = await this.transcriptionService.transcribe(
+        file.buffer,
+        effectiveMimeType,
+        {
+          language: body.language || 'en',
+          providerId: resolved.providerId,
+          apiKey: resolved.apiKey,
+          signal,
+        },
+      );
       await this.auditService.createAuditLog(
         workspaceId,
         user.id,
@@ -243,6 +250,7 @@ export class ChatController {
     @RequestInfo() requestInfo: { ip: string; userAgent: string },
     @Res() res: Response,
     @Body() body: { text: string; language?: string },
+    @ReqAbortSignal() signal: AbortSignal,
   ): Promise<void> {
     if (!body.text || !body.text.trim()) {
       throw new BadRequestException('Text is required');
@@ -263,6 +271,7 @@ export class ChatController {
         apiKey: resolved.apiKey,
         language: body.language || 'en',
         providerConfig: resolved.config,
+        signal,
       });
 
       await this.auditService.createAuditLog(

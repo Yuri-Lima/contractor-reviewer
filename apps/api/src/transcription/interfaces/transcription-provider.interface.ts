@@ -4,6 +4,8 @@ export interface TranscriptionOptions {
   language?: string;
   /** API key override (from workspace settings). When set, used instead of env. */
   apiKey?: string;
+  /** AbortSignal for cancellation */
+  signal?: AbortSignal;
 }
 
 export interface ITranscriptionProvider {

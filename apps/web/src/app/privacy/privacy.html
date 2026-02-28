@@ -122,14 +122,25 @@
           <li>{{ ('privacy.exportItems.privacySettings' | translate) || 'Privacy settings' }}</li>
         </ul>
       </div>
-      <p-button
-        data-tour="privacy-export-btn"
-        [label]="('privacy.export' | translate) || 'Export Data'"
-        icon="pi pi-download"
-        (onClick)="exportData()"
-        [loading]="exporting()"
-        [pTooltip]="'tooltip.exportData' | translate"
-      ></p-button>
+      <div class="flex gap-2">
+        @if (exporting()) {
+          <p-button
+            [label]="('privacy.cancelExport' | translate) || 'Cancel'"
+            icon="pi pi-times"
+            severity="secondary"
+            [outlined]="true"
+            (onClick)="cancelExport()"
+          ></p-button>
+        }
+        <p-button
+          data-tour="privacy-export-btn"
+          [label]="('privacy.export' | translate) || 'Export Data'"
+          icon="pi pi-download"
+          (onClick)="exportData()"
+          [loading]="exporting()"
+          [pTooltip]="'tooltip.exportData' | translate"
+        ></p-button>
+      </div>
     </div>
   </p-card>
 

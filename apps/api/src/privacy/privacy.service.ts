@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { PrivacyExportData } from '@contractai-review/shared';
+import { abortAsPromise } from '../common/utils/abort-promise';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
 import { Document } from '../entities/document.entity';
 import { DocumentFile } from '../entities/document-file.entity';
@@ -32,13 +33,29 @@ export class PrivacyService {
   /**
    * Export privacy data (DSAR-lite)
    */
-  async exportPrivacyData(workspaceId: string, userId: string): Promise<PrivacyExportData> {
+  async exportPrivacyData(
+    workspaceId: string,
+    userId: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<PrivacyExportData> {
+    const exportPromise = this.doExportPrivacyData(workspaceId, userId);
+    if (options?.signal) {
+      return Promise.race([
+        exportPromise,
+        abortAsPromise(options.signal),
+      ]) as Promise<PrivacyExportData>;
+    }
+    return exportPromise;
+  }
+
+  private async doExportPrivacyData(
+    workspaceId: string,
+    userId: string,
+  ): Promise<PrivacyExportData> {
     // Get workspace settings to check no-logs status
-    const settings = await this.settingsRepository.findOne({
+    await this.settingsRepository.findOne({
       where: { workspaceId },
     });
-
-    const noLogsEnabled = settings?.noLogsEnabled || false;
 
     // Get documents for this workspace
     const documents = await this.documentRepository.find({

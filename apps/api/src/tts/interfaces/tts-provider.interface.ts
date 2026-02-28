@@ -8,6 +8,8 @@ export interface TtsSynthesizeOptions {
   voice?: string;
   /** Provider-specific config from workspace (plan, output format, etc.) */
   providerConfig?: TtsProviderConfig;
+  /** AbortSignal for cancellation */
+  signal?: AbortSignal;
 }
 
 export interface ITtsProvider {

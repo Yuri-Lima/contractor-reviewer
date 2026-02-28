@@ -661,6 +661,12 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   private uploadCancelled = false;
   /** AbortController for transcribe request; aborted on destroy */
   private transcribeAbortController: AbortController | null = null;
+  /** AbortController for chat request; aborted on destroy or new question */
+  private chatAbortController: AbortController | null = null;
+  /** AbortController for TTS synthesize; aborted on destroy or when synthesizing for different message */
+  private synthesizeAbortController: AbortController | null = null;
+  /** AbortController for file viewer downloads; aborted on close or when switching files */
+  private downloadAbortController: AbortController | null = null;
   fileObjectUrls = signal<Map<string, string>>(new Map());
   jobs = signal<DocumentJob[]>([]);
   private destroyAggressive$ = new Subject<void>();
@@ -837,6 +843,9 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.uploadAbortController?.abort();
     this.transcribeAbortController?.abort();
+    this.chatAbortController?.abort();
+    this.synthesizeAbortController?.abort();
+    this.downloadAbortController?.abort();
     this.stopAggressivePolling();
     this.stopCurrentAudio();
     // Release voice recording resources if user navigates away while recording
@@ -1657,6 +1666,9 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     const questionText = (questionTextOverride ?? this.question().trim()).trim();
     if (!questionText) return;
 
+    this.chatAbortController?.abort();
+    this.chatAbortController = new AbortController();
+
     this.loading.set(true);
     if (!questionTextOverride) {
       this.question.set('');
@@ -1666,10 +1678,15 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     const mode = this.chatResponseMode();
 
     this.apiService
-      .chat(this.workspaceId(), this.documentId(), {
-        question: questionText,
-        language: currentLang,
-      })
+      .chat(
+        this.workspaceId(),
+        this.documentId(),
+        {
+          question: questionText,
+          language: currentLang,
+        },
+        { signal: this.chatAbortController.signal },
+      )
       .subscribe({
         next: (response: ChatResponse) => {
           const wasFirstMessage = this.chatMessages().length === 0;
@@ -1697,8 +1714,9 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
           }
         },
         error: (err) => {
-          console.error('Error sending question:', err);
           this.loading.set(false);
+          if (err?.name === 'AbortError') return;
+          console.error('Error sending question:', err);
         },
       });
   }
@@ -1708,8 +1726,17 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     text: string,
     language: string,
   ): void {
+    this.synthesizeAbortController?.abort();
+    this.synthesizeAbortController = new AbortController();
+
     this.apiService
-      .synthesizeSpeech(this.workspaceId(), this.documentId(), text, language)
+      .synthesizeSpeech(
+        this.workspaceId(),
+        this.documentId(),
+        text,
+        language,
+        { signal: this.synthesizeAbortController.signal },
+      )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (blob) => {
@@ -1727,7 +1754,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
           });
           this.playMessageAudio(index);
         },
-        error: () => {
+        error: (err) => {
           this.chatMessages.update((messages) => {
             const next = [...messages];
             if (next[index]) {
@@ -1735,6 +1762,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
             }
             return next;
           });
+          if (err?.name === 'AbortError') return;
           this.messageService.add({
             severity: 'error',
             summary: this.translateService.instant(_('common.error')),
@@ -1815,77 +1843,117 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       return; // Already loaded
     }
 
-    this.apiService.downloadFileAsBlob(this.workspaceId(), this.documentId(), file.id).subscribe({
-      next: (blob) => {
-        const objectUrl = URL.createObjectURL(blob);
-        this.fileObjectUrls.update(urls => {
-          const newMap = new Map(urls);
-          newMap.set(file.id, objectUrl);
-          return newMap;
-        });
-      },
-      error: (err) => {
-        console.error('Error loading file:', err);
-        this.messageService.add({
-          severity: 'error',
-          summary: this.translateService.instant(_('common.error')),
-          detail: this.translateService.instant(_('documents.loadFileError')),
-        });
-      },
-    });
+    this.downloadAbortController?.abort();
+    this.downloadAbortController = new AbortController();
+
+    this.apiService
+      .downloadFileAsBlob(
+        this.workspaceId(),
+        this.documentId(),
+        file.id,
+        { signal: this.downloadAbortController.signal },
+      )
+      .subscribe({
+        next: (blob) => {
+          const objectUrl = URL.createObjectURL(blob);
+          this.fileObjectUrls.update(urls => {
+            const newMap = new Map(urls);
+            newMap.set(file.id, objectUrl);
+            return newMap;
+          });
+        },
+        error: (err) => {
+          if (err?.name === 'AbortError') return;
+          console.error('Error loading file:', err);
+          this.messageService.add({
+            severity: 'error',
+            summary: this.translateService.instant(_('common.error')),
+            detail: this.translateService.instant(_('documents.loadFileError')),
+          });
+        },
+      });
   }
 
   viewFile(file: DocumentFile): void {
+    this.downloadAbortController?.abort();
+    this.downloadAbortController = new AbortController();
+
     this.fileToView.set(file);
     this.textFileLoadComplete.set(false);
 
     const format = getViewerFormat(undefined, { fileName: file.fileName, mimeType: file.mimeType });
+    const signal = this.downloadAbortController.signal;
+
     if (format === 'text') {
-      this.apiService.downloadFileAsBlob(this.workspaceId(), this.documentId(), file.id).subscribe({
-        next: (blob) => {
-          blob.text().then(text => {
-            this.textFileContent.set(text);
+      this.apiService
+        .downloadFileAsBlob(
+          this.workspaceId(),
+          this.documentId(),
+          file.id,
+          { signal },
+        )
+        .subscribe({
+          next: (blob) => {
+            blob
+              .text()
+              .then(text => {
+                this.textFileContent.set(text);
+                this.textFileLoadComplete.set(true);
+              })
+              .catch(err => {
+                if (err?.name === 'AbortError') return;
+                console.error('Error reading text file:', err);
+                this.textFileContent.set(
+                  this.translateService.instant(_('documents.loadFileError')),
+                );
+                this.textFileLoadComplete.set(true);
+              });
+          },
+          error: (err) => {
             this.textFileLoadComplete.set(true);
-          }).catch(err => {
-            console.error('Error reading text file:', err);
-            this.textFileContent.set(this.translateService.instant(_('documents.loadFileError')));
-            this.textFileLoadComplete.set(true);
-          });
-        },
-        error: (err) => {
-          console.error('Error loading text file:', err);
-          this.textFileContent.set(this.translateService.instant(_('documents.loadFileError')));
-          this.textFileLoadComplete.set(true);
-        },
-      });
+            if (err?.name === 'AbortError') return;
+            console.error('Error loading text file:', err);
+            this.textFileContent.set(
+              this.translateService.instant(_('documents.loadFileError')),
+            );
+          },
+        });
     } else {
       // For PDFs and images, ensure blob is loaded before displaying
       const existingUrl = this.fileObjectUrls().get(file.id);
       if (!existingUrl) {
-        // Load blob and create object URL
-        this.apiService.downloadFileAsBlob(this.workspaceId(), this.documentId(), file.id).subscribe({
-          next: (blob) => {
-            const objectUrl = URL.createObjectURL(blob);
-            this.fileObjectUrls.update(urls => {
-              const newMap = new Map(urls);
-              newMap.set(file.id, objectUrl);
-              return newMap;
-            });
-          },
-          error: (err) => {
-            console.error('Error loading file:', err);
-            this.messageService.add({
-              severity: 'error',
-              summary: this.translateService.instant(_('common.error')),
-              detail: this.translateService.instant(_('documents.loadFileError')),
-            });
-          },
-        });
+        this.apiService
+          .downloadFileAsBlob(
+            this.workspaceId(),
+            this.documentId(),
+            file.id,
+            { signal },
+          )
+          .subscribe({
+            next: (blob) => {
+              const objectUrl = URL.createObjectURL(blob);
+              this.fileObjectUrls.update(urls => {
+                const newMap = new Map(urls);
+                newMap.set(file.id, objectUrl);
+                return newMap;
+              });
+            },
+            error: (err) => {
+              if (err?.name === 'AbortError') return;
+              console.error('Error loading file:', err);
+              this.messageService.add({
+                severity: 'error',
+                summary: this.translateService.instant(_('common.error')),
+                detail: this.translateService.instant(_('documents.loadFileError')),
+              });
+            },
+          });
       }
     }
   }
 
   closeFileViewer(): void {
+    this.downloadAbortController?.abort();
     this.fileToView.set(null);
     this.textFileContent.set('');
     this.textFileLoadComplete.set(false);

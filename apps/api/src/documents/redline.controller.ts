@@ -14,10 +14,6 @@ import {
   RedlinePlaybook,
   RedlineRequest,
   RedlineResponse,
-  RedlineChange,
-  DiffBlock,
-  ContractCitation,
-  LegalCitation,
 } from '@contractai-review/shared';
 import { WorkspaceRole } from '../entities/workspace-member.entity';
 import { WorkspaceId, CurrentUser } from '../workspace/decorators';
@@ -25,6 +21,7 @@ import { DocumentsService } from './documents.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction, TargetType } from '../entities/audit-log.entity';
 import { RequestInfo } from '../common/decorators/request-info.decorator';
+import { ReqAbortSignal } from '../common/decorators/req-abort-signal.decorator';
 import { VersionService } from './version.service';
 import { RedlineService } from './redline.service';
 import { DiffService } from './diff.service';
@@ -49,9 +46,10 @@ export class RedlineController {
     @CurrentUser() user: { id: string },
     @RequestInfo() requestInfo: { ip: string; userAgent: string },
     @Body() redlineDto: RedlineRequest,
+    @ReqAbortSignal() signal: AbortSignal,
   ): Promise<RedlineResponse> {
     // Verify document exists and belongs to workspace
-    const document = await this.documentsService.findById(documentId, workspaceId);
+    await this.documentsService.findById(documentId, workspaceId);
 
     if (!redlineDto.selectedText || !redlineDto.selectedText.trim()) {
       throw new Error('selectedText is required');
@@ -70,6 +68,7 @@ export class RedlineController {
       redlineDto.pageNumber,
       redlineDto.spanId,
       redlineDto.language || 'en', // Pass language, default to 'en'
+      { signal },
     );
 
     // Create version (respects no-logs configuration)

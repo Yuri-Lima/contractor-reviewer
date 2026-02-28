@@ -726,7 +726,10 @@
       "viewer": "Viewer"
     },
     "roleUpdated": "Role updated successfully",
-    "updateRoleError": "Error updating role"
+    "updateRoleError": "Error updating role",
+    "registerUser": "Register User",
+    "registerAndAdd": "Register and Add",
+    "userNotFoundRegister": "User not found. Complete registration (email, name, password) to add them."
   },
   "versions": {
     "title": "Document Versions",

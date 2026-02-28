@@ -11,6 +11,7 @@ import {
   CreateWorkspaceRequest,
   UpdateWorkspaceRequest,
   AddMemberRequest,
+  InviteMemberRequest,
   WorkspaceMember,
   WorkspaceRole,
   Document,
@@ -77,6 +78,16 @@ export class ApiService {
 
   addMember(workspaceId: string, data: AddMemberRequest): Observable<WorkspaceMember> {
     return this.http.post<WorkspaceMember>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.workspaces}/${workspaceId}/members`, data);
+  }
+
+  inviteMember(
+    workspaceId: string,
+    data: InviteMemberRequest,
+  ): Observable<WorkspaceMember> {
+    return this.http.post<WorkspaceMember>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.workspaces}/${workspaceId}/members/invite`,
+      data,
+    );
   }
 
   removeMember(workspaceId: string, userId: string): Observable<void> {

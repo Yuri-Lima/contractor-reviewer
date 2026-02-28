@@ -722,7 +722,10 @@
       "viewer": "Visualizador"
     },
     "roleUpdated": "Rol actualizado correctamente",
-    "updateRoleError": "Error al actualizar el rol"
+    "updateRoleError": "Error al actualizar el rol",
+    "registerUser": "Registrar Usuario",
+    "registerAndAdd": "Registrar y Añadir",
+    "userNotFoundRegister": "Usuario no encontrado. Complete el registro (correo, nombre, contraseña) para añadirlo."
   },
   "versions": {
     "title": "Versiones del Documento",

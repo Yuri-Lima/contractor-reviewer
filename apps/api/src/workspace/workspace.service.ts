@@ -1,9 +1,15 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WorkspaceMember, WorkspaceRole } from '../entities/workspace-member.entity';
 import { Workspace } from '../entities/workspace.entity';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
+import { AuthService } from '../auth/auth.service';
 
 @Injectable()
 export class WorkspaceService {
@@ -14,6 +20,7 @@ export class WorkspaceService {
     private workspaceMemberRepository: Repository<WorkspaceMember>,
     @InjectRepository(WorkspaceSettings)
     private workspaceSettingsRepository: Repository<WorkspaceSettings>,
+    private authService: AuthService,
   ) {}
 
   /**
@@ -272,6 +279,45 @@ export class WorkspaceService {
     });
 
     return this.workspaceMemberRepository.save(membership);
+  }
+
+  /**
+   * Invite a member by email. If user exists, add as member. If not, create user (requires name + password) then add.
+   */
+  async inviteMember(
+    workspaceId: string,
+    dto: { email: string; name?: string; password?: string; role: WorkspaceRole },
+  ): Promise<WorkspaceMember> {
+    const normalizedEmail = dto.email?.trim().toLowerCase();
+    if (!normalizedEmail) {
+      throw new BadRequestException('Email is required');
+    }
+
+    const existingUser = await this.authService.findByEmail(normalizedEmail);
+
+    if (existingUser) {
+      return this.addMember(workspaceId, existingUser.id, dto.role);
+    }
+
+    // User does not exist - require full registration
+    if (!dto.name?.trim()) {
+      throw new BadRequestException(
+        'User not found. Provide name to register and add them.',
+      );
+    }
+    if (!dto.password || dto.password.length < 8) {
+      throw new BadRequestException(
+        'User not found. Provide password (min 8 characters) to register and add them.',
+      );
+    }
+
+    const newUser = await this.authService.createUserOnly({
+      email: normalizedEmail,
+      name: dto.name.trim(),
+      password: dto.password,
+    });
+
+    return this.addMember(workspaceId, newUser.id, dto.role);
   }
 
   /**

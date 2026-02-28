@@ -3,19 +3,20 @@ import { Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
-import type { ImageAsset as ImageAssetType, ImageAssetContext } from '@contractai-review/shared';
+import type { Asset, AssetContext } from '@contractai-review/shared';
 import { NoopMalwareScanner, StorageServiceToken } from '../storage/storage.module';
 import type { IStorageService } from '../storage/storage.interface';
 import { StorageResolverService } from '../storage/storage-resolver.service';
 import { ImageAsset } from '../entities/image-asset.entity';
-import { ImageAssetStrategyRegistry } from './image-asset-strategy.registry';
-import { ImageValidator } from './image-validator';
+import { AssetStrategyRegistry } from './asset-strategy.registry';
+import { AssetValidator } from './asset-validator';
+
 @Injectable()
-export class ImageManagerService {
+export class AssetManagerService {
   constructor(
     @InjectRepository(ImageAsset)
     private readonly imageAssetRepository: Repository<ImageAsset>,
-    private readonly strategyRegistry: ImageAssetStrategyRegistry,
+    private readonly strategyRegistry: AssetStrategyRegistry,
     private readonly malwareScanner: NoopMalwareScanner,
     @Inject(StorageServiceToken)
     private readonly defaultStorage: IStorageService,
@@ -23,23 +24,29 @@ export class ImageManagerService {
   ) {}
 
   async uploadImage(
-    context: ImageAssetContext,
+    context: AssetContext,
     ownerId: string,
     file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
-  ): Promise<ImageAssetType> {
+    options?: { signal?: AbortSignal },
+  ): Promise<Asset> {
     const strategy = this.strategyRegistry.get(context);
 
-    const validation = await ImageValidator.validate(
+    const validation = await AssetValidator.validate(
       strategy,
       file.buffer,
       file.mimetype,
       file.originalname,
+      options,
     );
     if (!validation.isValid) {
       throw new BadRequestException(validation.error ?? 'Invalid image');
     }
 
-    const scanResult = await this.malwareScanner.scanFile(file.buffer, file.originalname);
+    const scanResult = await this.malwareScanner.scanFile(
+      file.buffer,
+      file.originalname,
+      options,
+    );
     if (!scanResult.safe) {
       throw new BadRequestException(`File rejected: ${scanResult.threat ?? 'Security scan failed'}`);
     }
@@ -59,6 +66,7 @@ export class ImageManagerService {
       file.mimetype,
       workspaceId,
       documentId,
+      options,
     );
 
     const existing = await this.imageAssetRepository.findOne({
@@ -82,7 +90,7 @@ export class ImageManagerService {
     return this.toApiAsset(saved);
   }
 
-  async getAsset(context: ImageAssetContext, ownerId: string): Promise<ImageAssetType | null> {
+  async getAsset(context: AssetContext, ownerId: string): Promise<Asset | null> {
     const asset = await this.imageAssetRepository.findOne({
       where: { context, ownerId },
     });
@@ -90,7 +98,7 @@ export class ImageManagerService {
   }
 
   async getImageUrl(
-    context: ImageAssetContext,
+    context: AssetContext,
     ownerId: string,
     variant: 'original' | 'thumb' | 'medium' = 'original',
     expiresIn = 3600,
@@ -112,7 +120,7 @@ export class ImageManagerService {
     return storage.getFileUrl(key, expiresIn);
   }
 
-  async getImageBuffer(context: ImageAssetContext, ownerId: string): Promise<{
+  async getImageBuffer(context: AssetContext, ownerId: string): Promise<{
     buffer: Buffer;
     mimeType: string;
   }> {
@@ -128,7 +136,7 @@ export class ImageManagerService {
     return { buffer, mimeType: asset.mimeType };
   }
 
-  async deleteImage(context: ImageAssetContext, ownerId: string): Promise<void> {
+  async deleteImage(context: AssetContext, ownerId: string): Promise<void> {
     const asset = await this.imageAssetRepository.findOne({
       where: { context, ownerId },
     });
@@ -150,7 +158,7 @@ export class ImageManagerService {
   }
 
   private async getStorageForContext(
-    context: ImageAssetContext,
+    context: AssetContext,
     ownerId: string,
   ): Promise<IStorageService> {
     if (context === 'avatar') {
@@ -161,7 +169,7 @@ export class ImageManagerService {
 
   private buildStorageKey(
     strategy: { getStoragePath: (ownerId: string, assetId?: string, ext?: string) => string },
-    context: ImageAssetContext,
+    context: AssetContext,
     ownerId: string,
     assetId: string,
     ext: string,
@@ -182,7 +190,7 @@ export class ImageManagerService {
     return [workspaceId, documentId, fileName];
   }
 
-  private toApiAsset(asset: ImageAsset): ImageAssetType {
+  private toApiAsset(asset: ImageAsset): Asset {
     return {
       id: asset.id,
       context: asset.context,

@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   Index,
 } from 'typeorm';
-import type { ImageAssetContext } from '@contractai-review/shared';
+import type { AssetContext } from '@contractai-review/shared';
 
 @Entity('image_assets')
 @Index(['context', 'ownerId'], { unique: true })
@@ -15,7 +15,7 @@ export class ImageAsset {
   id: string;
 
   @Column({ type: 'varchar', length: 50 })
-  context: ImageAssetContext;
+  context: AssetContext;
 
   @Column()
   ownerId: string;

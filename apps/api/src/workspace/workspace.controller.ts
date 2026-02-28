@@ -28,7 +28,8 @@ import { WorkspaceId, CurrentUser } from './decorators';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction, TargetType } from '../entities/audit-log.entity';
 import { RequestInfo } from '../common/decorators/request-info.decorator';
-import { ImageManagerService } from '../image-manager/image-manager.service';
+import { AssetManagerService } from '../asset-manager/asset-manager.service';
+import { ReqAbortSignal } from '../common/decorators/req-abort-signal.decorator';
 
 @Controller('workspaces')
 @UseGuards(JwtAuthGuard)
@@ -36,7 +37,7 @@ export class WorkspaceController {
   constructor(
     private workspaceService: WorkspaceService,
     private auditService: AuditService,
-    private imageManagerService: ImageManagerService,
+    private assetManagerService: AssetManagerService,
   ) {}
 
   @Get()
@@ -153,7 +154,7 @@ export class WorkspaceController {
   @UseGuards(WorkspaceGuard, RolesGuard)
   @Roles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN, WorkspaceRole.MEMBER, WorkspaceRole.VIEWER)
   async getWorkspaceLogoUrl(@WorkspaceId() workspaceId: string): Promise<{ url: string }> {
-    const url = await this.imageManagerService.getImageUrl(
+    const url = await this.assetManagerService.getImageUrl(
       'workspace_logo',
       workspaceId,
       'original',
@@ -170,11 +171,12 @@ export class WorkspaceController {
   async uploadWorkspaceLogo(
     @WorkspaceId() workspaceId: string,
     @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
+    @ReqAbortSignal() signal: AbortSignal,
   ): Promise<void> {
     if (!file) {
       throw new BadRequestException('File is required');
     }
-    await this.imageManagerService.uploadImage('workspace_logo', workspaceId, file);
+    await this.assetManagerService.uploadImage('workspace_logo', workspaceId, file, { signal });
   }
 
   @Get(':workspaceId/logo')
@@ -185,7 +187,7 @@ export class WorkspaceController {
     @Res() res: Response,
   ): Promise<void> {
     try {
-      const { buffer, mimeType } = await this.imageManagerService.getImageBuffer(
+      const { buffer, mimeType } = await this.assetManagerService.getImageBuffer(
         'workspace_logo',
         workspaceId,
       );
@@ -202,6 +204,6 @@ export class WorkspaceController {
   @Roles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteWorkspaceLogo(@WorkspaceId() workspaceId: string): Promise<void> {
-    await this.imageManagerService.deleteImage('workspace_logo', workspaceId);
+    await this.assetManagerService.deleteImage('workspace_logo', workspaceId);
   }
 }

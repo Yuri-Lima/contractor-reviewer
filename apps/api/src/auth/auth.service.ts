@@ -12,7 +12,7 @@ import {
 import { User } from '../entities/user.entity';
 import { LoginDto, RegisterDto } from './dto';
 import { WorkspaceMember, WorkspaceRole } from '../entities/workspace-member.entity';
-import { ImageManagerService } from '../image-manager/image-manager.service';
+import { AssetManagerService } from '../asset-manager/asset-manager.service';
 
 @Injectable()
 export class AuthService {
@@ -24,7 +24,7 @@ export class AuthService {
     @InjectRepository(WorkspaceMember)
     private workspaceMemberRepository: Repository<WorkspaceMember>,
     private jwtService: JwtService,
-    private imageManagerService: ImageManagerService,
+    private assetManagerService: AssetManagerService,
   ) {}
 
   private static getGravatarUrl(email: string): string {
@@ -33,7 +33,7 @@ export class AuthService {
   }
 
   async serializeUserWithAvatar(user: Omit<User, 'passwordHash'>): Promise<ApiUser> {
-    const asset = await this.imageManagerService.getAsset('avatar', user.id);
+    const asset = await this.assetManagerService.getAsset('avatar', user.id);
     const avatarUrl = asset
       ? 'account/avatar'
       : AuthService.getGravatarUrl(user.email);

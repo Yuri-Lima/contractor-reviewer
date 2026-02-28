@@ -1,14 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { FileTypeModule } from '../file-type/file-type.module';
 import { LocalStorageService } from './local-storage.service';
 import { S3StorageService } from './s3-storage.service';
 import { IStorageService } from './storage.interface';
 import { NoopMalwareScanner } from './malware-scanner.interface';
+import { DocumentUploadValidator } from './document-upload-validator.service';
 
 const STORAGE_SERVICE = 'STORAGE_SERVICE';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, FileTypeModule],
   providers: [
     {
       provide: STORAGE_SERVICE,
@@ -29,8 +31,9 @@ const STORAGE_SERVICE = 'STORAGE_SERVICE';
     LocalStorageService,
     S3StorageService,
     NoopMalwareScanner,
+    DocumentUploadValidator,
   ],
-  exports: [STORAGE_SERVICE, NoopMalwareScanner],
+  exports: [STORAGE_SERVICE, NoopMalwareScanner, DocumentUploadValidator],
 })
 export class StorageModule {}
 

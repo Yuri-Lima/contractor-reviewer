@@ -27,6 +27,12 @@ export class DocumentFile {
   @Column()
   mimeType: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  detectedExt: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  detectedMime: string | null;
+
   @Column('bigint')
   sizeBytes: number;
 

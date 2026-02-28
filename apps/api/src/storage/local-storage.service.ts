@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { IStorageService } from './storage.interface';
+import { IStorageService, StorageOptions } from './storage.interface';
 
 @Injectable()
 export class LocalStorageService implements IStorageService {
@@ -33,6 +33,7 @@ export class LocalStorageService implements IStorageService {
     mimeType: string,
     workspaceId: string,
     documentId: string,
+    _options?: StorageOptions,
   ): Promise<string> {
     const filePath = this.getFilePath(workspaceId, documentId, fileName);
     const dir = join(this.storagePath, workspaceId, documentId);
@@ -85,7 +86,7 @@ export class LocalStorageService implements IStorageService {
     return stats.size;
   }
 
-  async getFileBuffer(storageKey: string): Promise<Buffer> {
+  async getFileBuffer(storageKey: string, _options?: StorageOptions): Promise<Buffer> {
     const filePath = join(this.storagePath, storageKey);
     return await fs.readFile(filePath);
   }

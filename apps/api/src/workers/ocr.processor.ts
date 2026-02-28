@@ -12,6 +12,7 @@ import { OcrService } from '../rag/ocr.service';
 import { JurisdictionResolverService } from '../rag/jurisdiction-resolver.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { abortAsPromise } from '../common/utils/abort-promise';
 
 interface OcrJobData {
   jobId: string;
@@ -131,7 +132,11 @@ export class OcrProcessor extends WorkerHost {
     }
   }
 
-  async process(job: Job<OcrJobData>): Promise<void> {
+  async process(
+    job: Job<OcrJobData>,
+    _token?: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
     const { jobId, documentId, fileId, storageKey, mimeType } = job.data;
 
     this.logger.log(
@@ -157,9 +162,18 @@ export class OcrProcessor extends WorkerHost {
         await this.updateJobStatus(jobId, JobStatus.PROCESSING, 30);
         this.logger.debug(`Job ${jobId}: Starting OCR processing, progress 30%`);
 
-        // Extract text using OCR
+        // Extract text using OCR (best-effort cancellation via signal)
+        let ocrPromise = this.ocrService.extractTextFromPdf(storageKey, {
+          signal,
+        });
+        if (signal) {
+          ocrPromise = Promise.race([
+            ocrPromise,
+            abortAsPromise(signal),
+          ]);
+        }
         const ocrResult = await this.withTimeout(
-          this.ocrService.extractTextFromPdf(storageKey),
+          ocrPromise,
           300000, // 5 minute timeout for OCR (it's slow)
           `OCR processing failed for ${storageKey}`,
         );

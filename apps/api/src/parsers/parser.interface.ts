@@ -4,6 +4,8 @@ import { ParseResult } from '@contractai-review/shared';
 export interface ParserOptions {
   apiKey?: string;
   timeout?: number;
+  /** Job cancellation or request abort */
+  signal?: AbortSignal;
 }
 
 export interface DocumentParserAdapter {

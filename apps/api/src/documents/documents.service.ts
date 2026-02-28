@@ -7,6 +7,7 @@ import { DocumentJob, JobType, JobStatus } from '../entities/document-job.entity
 import { CHUNK_REPOSITORY, IChunkRepository } from '../chunks/chunk-repository.interface';
 import { DocumentDeletionOrchestrator } from './document-deletion.orchestrator';
 import { StorageServiceToken, IStorageService } from '../storage/storage.module';
+import { FileTypeDetectionService } from '../file-type/file-type-detection.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as fs from 'fs';
@@ -61,6 +62,7 @@ export class DocumentsService {
     private documentDeletionOrchestrator: DocumentDeletionOrchestrator,
     @Inject(StorageServiceToken)
     private storageService: IStorageService,
+    private fileTypeService: FileTypeDetectionService,
     @InjectQueue('parsing')
     private parsingQueue: Queue,
   ) {}
@@ -140,9 +142,12 @@ export class DocumentsService {
     workspaceId: string,
     file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
     parser?: string,
+    options?: { signal?: AbortSignal },
   ): Promise<DocumentFile> {
     // Verify document exists and belongs to workspace
     const document = await this.findById(documentId, workspaceId);
+
+    const storageOptions = options?.signal ? { signal: options.signal } : undefined;
 
     // Upload to storage
     const storageKey = await this.storageService.uploadFile(
@@ -151,13 +156,19 @@ export class DocumentsService {
       file.mimetype,
       workspaceId,
       documentId,
+      storageOptions,
     );
+
+    // Content-based detection for viewer routing
+    const detected = await this.fileTypeService.detect(file.buffer, { signal: options?.signal });
 
     // Create file record
     const documentFile = this.documentFileRepository.create({
       documentId,
       fileName: file.originalname,
       mimeType: file.mimetype,
+      detectedExt: detected?.ext ?? null,
+      detectedMime: detected?.mime ?? null,
       sizeBytes: file.size,
       storageKey,
       status: FileStatus.PROCESSING,

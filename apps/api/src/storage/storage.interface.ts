@@ -1,4 +1,11 @@
 /**
+ * Options for storage operations that support cancellation.
+ */
+export interface StorageOptions {
+  signal?: AbortSignal;
+}
+
+/**
  * Storage interface for S3/R2 compatible storage
  * Allows switching between S3/R2 and local filesystem for development
  */
@@ -12,6 +19,7 @@ export interface IStorageService {
     mimeType: string,
     workspaceId: string,
     documentId: string,
+    options?: StorageOptions,
   ): Promise<string>;
 
   /**
@@ -37,5 +45,5 @@ export interface IStorageService {
   /**
    * Get file as Buffer
    */
-  getFileBuffer(storageKey: string): Promise<Buffer>;
+  getFileBuffer(storageKey: string, options?: StorageOptions): Promise<Buffer>;
 }

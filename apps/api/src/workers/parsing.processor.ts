@@ -14,6 +14,7 @@ import { Queue } from 'bullmq';
 import { ParserFactoryService } from '../parsers/parser-factory.service';
 import { DocumentParser } from '@contractai-review/shared';
 import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
+import { abortAsPromise } from '../common/utils/abort-promise';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -149,7 +150,11 @@ export class ParsingProcessor extends WorkerHost {
     }
   }
 
-  async process(job: Job<ParsingJobData>): Promise<void> {
+  async process(
+    job: Job<ParsingJobData>,
+    _token?: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
     const { jobId, documentId, fileId, storageKey, mimeType, parser: parserParam, workspaceId: jobWorkspaceId } = job.data;
 
     writeLog('parsing.processor', 'Parsing job received', { jobId, documentId, fileId, mimeType, parser: parserParam }, 'C');
@@ -173,8 +178,18 @@ export class ParsingProcessor extends WorkerHost {
       let usedParser: string | undefined;
 
       if (['text/plain', 'text/markdown', 'text/x-markdown'].includes(mimeType)) {
+        let bufferPromise: Promise<Buffer> = this.storageService.getFileBuffer(
+          storageKey,
+          signal ? { signal } : undefined,
+        );
+        if (signal) {
+          bufferPromise = Promise.race([
+            bufferPromise,
+            abortAsPromise(signal),
+          ]);
+        }
         const fileBuffer = await this.withTimeout(
-          this.storageService.getFileBuffer(storageKey),
+          bufferPromise,
           30000,
           `Failed to read file ${storageKey}`,
         );
@@ -192,13 +207,26 @@ export class ParsingProcessor extends WorkerHost {
 
         await this.updateJobStatus(jobId, JobStatus.PROCESSING, 30);
 
+        let bufferPromise: Promise<Buffer> = this.storageService.getFileBuffer(
+          storageKey,
+          signal ? { signal } : undefined,
+        );
+        if (signal) {
+          bufferPromise = Promise.race([
+            bufferPromise,
+            abortAsPromise(signal),
+          ]);
+        }
         const fileBuffer = await this.withTimeout(
-          this.storageService.getFileBuffer(storageKey),
+          bufferPromise,
           30000,
           `Failed to read file ${storageKey}`,
         );
 
-        const result = await adapter.parse(fileBuffer, mimeType, options);
+        const result = await adapter.parse(fileBuffer, mimeType, {
+          ...options,
+          signal,
+        });
         extractedText = result.markdown ?? '';
         pageCount = result.pageCount ?? null;
         usedParser = parserId;

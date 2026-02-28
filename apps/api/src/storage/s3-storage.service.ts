@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { IStorageService } from './storage.interface';
+import { IStorageService, StorageOptions } from './storage.interface';
 
 @Injectable()
 export class S3StorageService implements IStorageService {
@@ -40,6 +40,7 @@ export class S3StorageService implements IStorageService {
     mimeType: string,
     workspaceId: string,
     documentId: string,
+    _options?: StorageOptions,
   ): Promise<string> {
     const storageKey = this.getStorageKey(workspaceId, documentId, fileName);
 
@@ -97,7 +98,7 @@ export class S3StorageService implements IStorageService {
     return response.ContentLength || 0;
   }
 
-  async getFileBuffer(storageKey: string): Promise<Buffer> {
+  async getFileBuffer(storageKey: string, _options?: import('./storage.interface').StorageOptions): Promise<Buffer> {
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: storageKey,

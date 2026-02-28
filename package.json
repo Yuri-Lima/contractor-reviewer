@@ -9,6 +9,7 @@
     "start:api": "nx run api:start",
     "start:worker": "nx run api:start:worker",
     "dev:web": "nx run web:serve",
+    "dev:all": "nx run-many --targets=dev,worker,serve -p api,web --parallel=3",
     "build": "nx run-many -t build -p shared,api,web",
     "build:api": "nx run api:build",
     "build:web": "nx run web:build",

@@ -13615,7 +13615,7 @@ snapshots:
       sass-loader: 16.0.6(@rspack/core@1.6.8)(sass-embedded@1.97.3)(sass@1.97.1)(webpack@5.104.1)
       source-map-loader: 5.0.0(webpack@5.104.1)
       style-loader: 3.3.4(webpack@5.104.1)
-      terser-webpack-plugin: 5.3.16(webpack@5.104.1(esbuild@0.27.2))
+      terser-webpack-plugin: 5.3.16(webpack@5.104.1)
       ts-loader: 9.5.4(typescript@5.9.3)(webpack@5.104.1)
       tsconfig-paths-webpack-plugin: 4.2.0
       tslib: 2.8.1
@@ -20066,7 +20066,7 @@ snapshots:
     optionalDependencies:
       esbuild: 0.27.2
 
-  terser-webpack-plugin@5.3.16(webpack@5.104.1(esbuild@0.27.2)):
+  terser-webpack-plugin@5.3.16(webpack@5.104.1):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       jest-worker: 27.5.1
@@ -20699,7 +20699,7 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 4.3.3
       tapable: 2.3.0
-      terser-webpack-plugin: 5.3.16(webpack@5.104.1(esbuild@0.27.2))
+      terser-webpack-plugin: 5.3.16(webpack@5.104.1)
       watchpack: 2.5.1
       webpack-sources: 3.3.3
     transitivePeerDependencies:

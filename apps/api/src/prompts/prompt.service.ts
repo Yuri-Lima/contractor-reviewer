@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Prompt } from '../entities/prompt.entity';
-import { RedlinePlaybook } from '@contractai-review/shared';
+import { RedlinePlaybook, getLanguageDisplayName } from '@contractai-review/shared';
 
 /** Known prompt keys for admin UI */
 export const PROMPT_KEYS = [
@@ -117,14 +117,6 @@ export interface RedlinePromptParams {
 
 @Injectable()
 export class PromptService {
-  private readonly languageMap: Record<string, string> = {
-    en: 'English',
-    es: 'Spanish',
-    'pt-BR': 'Portuguese (Brazil)',
-    pt: 'Portuguese',
-    de: 'German',
-  };
-
   constructor(
     @InjectRepository(Prompt)
     private promptRepository: Repository<Prompt>,
@@ -181,7 +173,7 @@ export class PromptService {
    * Get language display name from code.
    */
   getLanguageName(languageCode: string): string {
-    return this.languageMap[languageCode] || 'English';
+    return getLanguageDisplayName(languageCode);
   }
 
   /**

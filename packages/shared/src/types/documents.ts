@@ -21,6 +21,8 @@ export interface DocumentFile {
   documentId: string;
   fileName: string;
   mimeType: string;
+  detectedExt?: string;
+  detectedMime?: string;
   sizeBytes: number;
   status: FileStatus;
   storageKey: string;

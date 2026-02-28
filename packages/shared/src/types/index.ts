@@ -8,7 +8,7 @@ export * from './common';
 export * from './prompts';
 export * from './parsers';
 export * from './onboarding';
-export * from './image-asset';
+export * from './asset';
 export * from './user-storage';
 export * from './transcription';
 export * from './tts';

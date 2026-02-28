@@ -18,6 +18,13 @@ Before parsing, files are validated by the storage module. Allowed formats: `.pd
 
 ## Self-Hosted Parsers (Docling, PDFPlumber)
 
+**Quick verification:** Before uploading, verify parser services are running:
+
+1. Start services: `docker-compose up -d docling pdfplumber`
+2. Run `pnpm run verify:parsers` — checks both Docling and PDFPlumber
+3. Or call `GET /api/health/parsers` — returns `{ docling: { ok, url, error? }, pdfplumber: { ok, url, error? } }`
+4. If upload fails with `ECONNREFUSED`, the service is not running — start it with `docker-compose up docling`
+
 ### Docling
 
 - **Source:** [IBM Docling](https://github.com/DS4SD/docling) — Python microservice
@@ -36,6 +43,8 @@ Before parsing, files are validated by the storage module. Allowed formats: `.pd
 docker-compose up -d docling
 # Verify: curl http://localhost:8000/health
 ```
+
+**Quick verification:** Run `pnpm run verify:parsers` to check if Docling and PDFPlumber are reachable. If Docling fails, you'll see `ECONNREFUSED` in the upload error — start it with `docker-compose up docling`.
 
 ### PDFPlumber
 

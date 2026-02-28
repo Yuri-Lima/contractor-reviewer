@@ -77,6 +77,38 @@ export class AuthService {
     };
   }
 
+  /**
+   * Create a user without returning a token (caller's session stays intact).
+   * Used by workspace admins to register new users when inviting them.
+   */
+  async createUserOnly(dto: { email: string; name?: string; password: string }): Promise<ApiUser> {
+    const normalizedEmail = dto.email?.trim().toLowerCase();
+    if (!normalizedEmail) {
+      throw new BadRequestException('Email is required');
+    }
+
+    const existingUser = await this.userRepository.findOne({
+      where: { email: normalizedEmail },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    const userEntity = this.userRepository.create({
+      email: normalizedEmail,
+      passwordHash,
+      name: dto.name?.trim() || normalizedEmail,
+    });
+
+    const savedUser = await this.userRepository.save(userEntity);
+
+    const { passwordHash: _, ...userWithoutPassword } = savedUser;
+    return this.serializeUserWithAvatar(userWithoutPassword);
+  }
+
   async validateUser(email: string, password: string): Promise<Omit<User, 'passwordHash'> | null> {
     const normalizedEmail = email?.trim().toLowerCase();
     if (!normalizedEmail) return null;

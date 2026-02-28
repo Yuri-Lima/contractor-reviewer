@@ -6,17 +6,19 @@ import { Button } from 'primeng/button';
 import { Toolbar } from 'primeng/toolbar';
 import { TooltipModule } from 'primeng/tooltip';
 import { InputText } from 'primeng/inputtext';
+import { Password } from 'primeng/password';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Toast } from 'primeng/toast';
+import { Message } from 'primeng/message';
 import { Tag } from 'primeng/tag';
 import { Card } from 'primeng/card';
 import { ConfirmationService, MessageService, SharedModule } from 'primeng/api';
 import type { MenuItem } from 'primeng/api';
 import { ContextMenu } from 'primeng/contextmenu';
 import { ApiService } from '../../core/services/api.service';
-import { WorkspaceMember, WorkspaceRole, AddMemberRequest } from '@contractai-review/shared';
+import { WorkspaceMember, WorkspaceRole } from '@contractai-review/shared';
 import { AuthService } from '../../core/services/auth.service';
 import { TranslateService } from '@ngx-translate/core';
 import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
@@ -35,10 +37,12 @@ import { BaseListConfig } from '../../core/components/base-list/base-list.config
     TooltipModule,
     SharedModule,
     InputText,
+    Password,
     SelectModule,
     TableModule,
     ConfirmDialog,
     Toast,
+    Message,
     Tag,
     Card,
     LocaleDatePipe,
@@ -75,6 +79,7 @@ export class WorkspaceMembersComponent implements OnInit {
   loading = signal(false);
   addingMember = signal(false);
   showAddForm = signal(false);
+  showRegisterFields = signal(false);
   currentUserId = signal<string>('');
   selectedMember = signal<WorkspaceMember | null>(null);
 
@@ -210,8 +215,7 @@ export class WorkspaceMembersComponent implements OnInit {
               summary: this.translateService.instant('common.success'),
               detail: this.translateService.instant('workspaceMembers.addSuccess'),
             });
-            this.showAddForm.set(false);
-            this.addMemberForm.reset();
+            this.resetAddForm();
             this.loadMembers();
             this.addingMember.set(false);
           },
@@ -249,31 +253,125 @@ export class WorkspaceMembersComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error searching user:', err);
-        // Mapear erros do backend para chaves de tradução no frontend
-        let errorMessage: string;
-        
-        if (err.status === 404) {
-          // Usuário não encontrado
-          errorMessage = this.translateService.instant('workspaceMembers.userNotFound');
-        } else if (err.status === 400) {
-          // Email inválido ou faltando
-          errorMessage = this.translateService.instant('workspaceMembers.invalidEmail');
-        } else if (err.status === 0) {
-          // Erro de rede
-          errorMessage = this.translateService.instant('errors.network');
-        } else {
-          // Erro genérico
-          errorMessage = this.translateService.instant('workspaceMembers.searchUserError');
-        }
-        
-        this.messageService.add({
-          severity: 'error',
-          summary: this.translateService.instant('common.error'),
-          detail: errorMessage,
-        });
         this.addingMember.set(false);
+        if (err.status === 404) {
+          // User not found - show full registration form
+          this.showRegisterFields.set(true);
+          this.addMemberForm.addControl(
+            'name',
+            this.fb.control('', Validators.required),
+          );
+          this.addMemberForm.addControl(
+            'password',
+            this.fb.control('', [
+              Validators.required,
+              Validators.minLength(8),
+            ]),
+          );
+        } else {
+          let errorMessage: string;
+          if (err.status === 400) {
+            errorMessage = this.translateService.instant(
+              'workspaceMembers.invalidEmail',
+            );
+          } else if (err.status === 0) {
+            errorMessage = this.translateService.instant('errors.network');
+          } else {
+            errorMessage = this.translateService.instant(
+              'workspaceMembers.searchUserError',
+            );
+          }
+          this.messageService.add({
+            severity: 'error',
+            summary: this.translateService.instant('common.error'),
+            detail: errorMessage,
+          });
+        }
       },
     });
+  }
+
+  onRegisterAndAdd(): void {
+    if (!this.showRegisterFields()) return;
+    const email = this.addMemberForm.value.email?.trim().toLowerCase() || '';
+    const name = this.addMemberForm.value.name?.trim() || '';
+    const password = this.addMemberForm.value.password || '';
+    const role = this.addMemberForm.value.role;
+
+    if (!email || !name || !password || password.length < 8) {
+      this.messageService.add({
+        severity: 'error',
+        summary: this.translateService.instant('common.error'),
+        detail: this.translateService.instant(
+          'workspaceMembers.userNotFoundRegister',
+        ),
+      });
+      return;
+    }
+
+    this.addingMember.set(true);
+    this.apiService
+      .inviteMember(this.workspaceId(), { email, name, password, role })
+      .subscribe({
+        next: () => {
+          this.messageService.add({
+            severity: 'success',
+            summary: this.translateService.instant('common.success'),
+            detail: this.translateService.instant('workspaceMembers.addSuccess'),
+          });
+          this.resetAddForm();
+          this.loadMembers();
+          this.addingMember.set(false);
+        },
+        error: (err) => {
+          console.error('Error inviting member:', err);
+          let errorMessage: string;
+          if (err.status === 403) {
+            if (err.error?.message?.includes('already a member')) {
+              errorMessage = this.translateService.instant(
+                'workspaceMembers.alreadyMember',
+              );
+            } else {
+              errorMessage = this.translateService.instant(
+                'workspaceMembers.permissionDenied',
+              );
+            }
+          } else if (err.status === 409) {
+            errorMessage = this.translateService.instant(
+              'workspaceMembers.userNotFound',
+            );
+          } else if (err.status === 400) {
+            errorMessage =
+              err.error?.message ||
+              this.translateService.instant('workspaceMembers.addMemberError');
+          } else if (err.status === 0) {
+            errorMessage = this.translateService.instant('errors.network');
+          } else {
+            errorMessage = this.translateService.instant(
+              'workspaceMembers.addMemberError',
+            );
+          }
+          this.messageService.add({
+            severity: 'error',
+            summary: this.translateService.instant('common.error'),
+            detail: errorMessage,
+          });
+          this.addingMember.set(false);
+        },
+      });
+  }
+
+  resetAddForm(): void {
+    this.showRegisterFields.set(false);
+    if (this.addMemberForm.contains('name')) {
+      this.addMemberForm.removeControl('name');
+      this.addMemberForm.removeControl('password');
+    }
+    this.addMemberForm.reset({
+      email: '',
+      role: WorkspaceRole.MEMBER,
+    });
+    this.showAddForm.set(false);
   }
 
   confirmRemove(member: WorkspaceMember): void {

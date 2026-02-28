@@ -12,6 +12,7 @@ import { WorkspaceGuard, RolesGuard } from './guards';
 import { ParsersModule } from '../parsers/parsers.module';
 import { AuditModule } from '../audit/audit.module';
 import { AssetManagerModule } from '../asset-manager/asset-manager.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AssetManagerModule } from '../asset-manager/asset-manager.module';
     forwardRef(() => ParsersModule),
     forwardRef(() => AuditModule),
     AssetManagerModule,
+    AuthModule,
   ],
   controllers: [WorkspaceController, WorkspaceSettingsController, WorkspaceParsersController],
   providers: [WorkspaceService, WorkspaceSettingsService, WorkspaceGuard, RolesGuard],

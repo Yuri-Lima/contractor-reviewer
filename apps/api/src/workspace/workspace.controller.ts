@@ -94,6 +94,39 @@ export class WorkspaceController {
     return this.workspaceService.getMembers(workspaceId);
   }
 
+  @Post(':workspaceId/members/invite')
+  @UseGuards(WorkspaceGuard, RolesGuard)
+  @Roles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  @HttpCode(HttpStatus.CREATED)
+  async inviteMember(
+    @WorkspaceId() workspaceId: string,
+    @Body()
+    inviteDto: {
+      email: string;
+      name?: string;
+      password?: string;
+      role: WorkspaceRole;
+    },
+    @CurrentUser() currentUser: { id: string },
+    @RequestInfo() requestInfo: { ip: string; userAgent: string },
+  ): Promise<WorkspaceMember> {
+    const member = await this.workspaceService.inviteMember(
+      workspaceId,
+      inviteDto,
+    );
+    await this.auditService.createAuditLog(
+      workspaceId,
+      currentUser.id,
+      AuditAction.MEMBER_ADD,
+      TargetType.USER,
+      member.userId,
+      requestInfo.ip,
+      requestInfo.userAgent,
+      { addedUserId: member.userId, role: inviteDto.role },
+    );
+    return member;
+  }
+
   @Post(':workspaceId/members')
   @UseGuards(WorkspaceGuard, RolesGuard)
   @Roles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)

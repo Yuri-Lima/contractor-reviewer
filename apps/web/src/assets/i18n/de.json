@@ -722,7 +722,10 @@
       "viewer": "Betrachter"
     },
     "roleUpdated": "Rolle erfolgreich aktualisiert",
-    "updateRoleError": "Fehler beim Aktualisieren der Rolle"
+    "updateRoleError": "Fehler beim Aktualisieren der Rolle",
+    "registerUser": "Benutzer registrieren",
+    "registerAndAdd": "Registrieren und hinzufügen",
+    "userNotFoundRegister": "Benutzer nicht gefunden. Führen Sie die vollständige Registrierung (E-Mail, Name, Passwort) durch, um sie hinzuzufügen."
   },
   "versions": {
     "title": "Dokumentversionen",

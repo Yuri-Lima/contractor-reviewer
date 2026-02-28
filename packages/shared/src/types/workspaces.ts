@@ -97,3 +97,10 @@ export interface AddMemberRequest {
   userId: string;
   role: WorkspaceRole;
 }
+
+export interface InviteMemberRequest {
+  email: string;
+  name?: string;
+  password?: string;
+  role: WorkspaceRole;
+}

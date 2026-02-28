@@ -728,7 +728,10 @@
       "viewer": "Visualizador"
     },
     "roleUpdated": "Função atualizada com sucesso",
-    "updateRoleError": "Erro ao atualizar função"
+    "updateRoleError": "Erro ao atualizar função",
+    "registerUser": "Registrar Usuário",
+    "registerAndAdd": "Registrar e Adicionar",
+    "userNotFoundRegister": "Usuário não encontrado. Complete o registro (email, nome, senha) para adicioná-lo."
   },
   "versions": {
     "title": "Versões do Documento",

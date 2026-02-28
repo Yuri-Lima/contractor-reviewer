@@ -15,7 +15,8 @@ import { AuditModule } from './audit/audit.module';
 import { RetentionModule } from './retention/retention.module';
 import { PromptsModule } from './prompts/prompts.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
-import { ImageManagerModule } from './image-manager/image-manager.module';
+import { AssetManagerModule } from './asset-manager/asset-manager.module';
+import { FileTypeModule } from './file-type/file-type.module';
 import { HealthModule } from './health/health.module';
 import { typeOrmModuleOptions } from './typeorm.options';
 
@@ -61,7 +62,8 @@ if (!isWorker) {
     RetentionModule,
     PromptsModule,
     OnboardingModule,
-    ImageManagerModule,
+    AssetManagerModule,
+    FileTypeModule,
     HealthModule,
   ],
   controllers: AppController ? [AppController] : [],

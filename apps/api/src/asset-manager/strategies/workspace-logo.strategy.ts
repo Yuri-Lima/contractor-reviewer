@@ -1,33 +1,30 @@
 import { Injectable } from '@nestjs/common';
-import {
-  IMAGE_ASSET_EXTENSIONS,
-  IMAGE_ASSET_MIME_TYPES,
-} from '@contractai-review/shared';
-import type { ImageAssetStrategyConfig } from '@contractai-review/shared';
-import type {
-  IImageAssetStrategy,
-  ImageValidationResult,
-} from '../interfaces/image-asset-strategy.interface';
+import { IMAGE_ASSET_EXTENSIONS, IMAGE_ASSET_MIME_TYPES } from '@contractai-review/shared';
+import { FileTypeDetectionService } from '../../file-type/file-type-detection.service';
+import type { AssetStrategyConfig } from '@contractai-review/shared';
+import type { IAssetStrategy, AssetValidationResult } from '../interfaces/asset-strategy.interface';
 
-const AVATAR_MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
-const AVATAR_MAX_WIDTH = 512;
+const LOGO_MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
+const LOGO_MAX_WIDTH = 256;
 
 @Injectable()
-export class AvatarStrategy implements IImageAssetStrategy {
-  readonly config: ImageAssetStrategyConfig = {
-    context: 'avatar',
-    maxSizeBytes: AVATAR_MAX_SIZE_BYTES,
-    maxWidth: AVATAR_MAX_WIDTH,
+export class WorkspaceLogoStrategy implements IAssetStrategy {
+  readonly config: AssetStrategyConfig = {
+    context: 'workspace_logo',
+    maxSizeBytes: LOGO_MAX_SIZE_BYTES,
+    maxWidth: LOGO_MAX_WIDTH,
     allowedMimeTypes: IMAGE_ASSET_MIME_TYPES,
-    pathPrefix: 'assets/avatars',
+    pathPrefix: 'assets/workspaces',
   };
+
+  constructor(private readonly fileTypeService: FileTypeDetectionService) {}
 
   async validate(
     buffer: Buffer,
     mimeType: string,
     fileName: string,
-  ): Promise<ImageValidationResult> {
-    // Extension check
+    options?: { signal?: AbortSignal },
+  ): Promise<AssetValidationResult> {
     const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
     if (!(IMAGE_ASSET_EXTENSIONS as readonly string[]).includes(ext)) {
       return {
@@ -36,8 +33,6 @@ export class AvatarStrategy implements IImageAssetStrategy {
         errorKey: 'settings.avatarErrorExtension',
       };
     }
-
-    // Size check
     if (buffer.length > this.config.maxSizeBytes) {
       return {
         isValid: false,
@@ -52,8 +47,6 @@ export class AvatarStrategy implements IImageAssetStrategy {
         errorKey: 'settings.avatarErrorEmpty',
       };
     }
-
-    // MIME check
     if (!(this.config.allowedMimeTypes as readonly string[]).includes(mimeType)) {
       return {
         isValid: false,
@@ -61,33 +54,21 @@ export class AvatarStrategy implements IImageAssetStrategy {
         errorKey: 'settings.avatarErrorMime',
       };
     }
-
-    // Magic bytes validation
-    const detectedMime = this.detectMimeFromBuffer(buffer);
-    if (detectedMime && detectedMime !== mimeType) {
+    const detected = await this.fileTypeService.detect(buffer, {
+      signal: options?.signal,
+    });
+    if (detected && detected.mime !== mimeType) {
       return {
         isValid: false,
         error: `File signature does not match declared MIME type`,
         errorKey: 'settings.avatarErrorSignature',
       };
     }
-
     return { isValid: true };
   }
 
   getStoragePath(ownerId: string, assetId?: string, ext?: string): string {
-    const fileName = assetId && ext ? `${assetId}.${ext}` : 'avatar.png';
-    return `${this.config.pathPrefix}/${ownerId}/${fileName}`;
-  }
-
-  private detectMimeFromBuffer(buffer: Buffer): string | null {
-    if (buffer.length < 4) return null;
-    if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
-      return 'image/png';
-    }
-    if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
-      return 'image/jpeg';
-    }
-    return null;
+    const fileName = assetId && ext ? `${assetId}.${ext}` : 'logo.png';
+    return `${this.config.pathPrefix}/${ownerId}/logo/${fileName}`;
   }
 }

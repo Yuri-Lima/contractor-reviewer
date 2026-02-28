@@ -9,6 +9,7 @@ import {
   toUserFriendlyParserError,
   getUnderlyingCause,
 } from '../parse-error.helper';
+import { combineAbortSignals } from '../../common/utils/combine-abort-signals';
 
 const SUPPORTED_MIMES = new Set([
   'application/pdf',
@@ -42,8 +43,12 @@ export class DoclingAdapter implements DocumentParserAdapter {
     }
 
     const timeout = options?.timeout ?? 60000;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), timeout);
+    const signal = combineAbortSignals([
+      timeoutController.signal,
+      options?.signal,
+    ]);
 
     const formData = new FormData();
     const ext = this.getExtension(mimeType);
@@ -54,7 +59,7 @@ export class DoclingAdapter implements DocumentParserAdapter {
       const res = await fetch(`${this.baseUrl}/convert`, {
         method: 'POST',
         body: formData,
-        signal: controller.signal,
+        signal,
         headers: {}, // FormData sets Content-Type with boundary
       });
 

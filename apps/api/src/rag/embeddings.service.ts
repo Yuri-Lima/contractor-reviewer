@@ -41,7 +41,10 @@ export class EmbeddingsService {
   /**
    * Generate embeddings for multiple texts (batched)
    */
-  async generateEmbeddings(texts: string[]): Promise<number[][]> {
+  async generateEmbeddings(
+    texts: string[],
+    options?: { signal?: AbortSignal },
+  ): Promise<number[][]> {
     if (texts.length === 0) {
       return [];
     }
@@ -53,15 +56,18 @@ export class EmbeddingsService {
       const batch = texts.slice(i, i + this.batchSize);
 
       try {
-        const response = await this.openai.embeddings.create({
-          model: this.model,
-          input: batch,
-        });
+        const response = await this.openai.embeddings.create(
+          {
+            model: this.model,
+            input: batch,
+          },
+          { signal: options?.signal },
+        );
 
         const batchEmbeddings = response.data.map((item: { embedding: number[] }) => item.embedding);
         embeddings.push(...batchEmbeddings);
       } catch (error) {
-        throw new Error(`Failed to generate embeddings batch: ${error.message}`);
+        throw new Error(`Failed to generate embeddings batch: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 

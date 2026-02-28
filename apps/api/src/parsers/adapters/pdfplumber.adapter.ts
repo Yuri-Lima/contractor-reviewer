@@ -9,6 +9,7 @@ import {
   toUserFriendlyParserError,
   getUnderlyingCause,
 } from '../parse-error.helper';
+import { combineAbortSignals } from '../../common/utils/combine-abort-signals';
 
 const SUPPORTED_MIMES = new Set(['application/pdf']);
 
@@ -38,8 +39,12 @@ export class PdfplumberAdapter implements DocumentParserAdapter {
     }
 
     const timeout = options?.timeout ?? 60000;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), timeout);
+    const signal = combineAbortSignals([
+      timeoutController.signal,
+      options?.signal,
+    ]);
 
     const formData = new FormData();
     const blob = new Blob([new Uint8Array(fileBuffer)], { type: mimeType });
@@ -49,7 +54,7 @@ export class PdfplumberAdapter implements DocumentParserAdapter {
       const res = await fetch(`${this.baseUrl}/extract`, {
         method: 'POST',
         body: formData,
-        signal: controller.signal,
+        signal,
       });
 
       clearTimeout(timeoutId);

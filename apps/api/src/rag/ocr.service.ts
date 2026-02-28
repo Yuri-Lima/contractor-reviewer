@@ -46,9 +46,14 @@ export class OcrService {
   /**
    * Extract text from PDF using OCR
    */
-  async extractTextFromPdf(storageKey: string): Promise<OcrResult> {
+  async extractTextFromPdf(
+    storageKey: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<OcrResult> {
     // Get PDF buffer from storage
-    const pdfBuffer = await this.storageService.getFileBuffer(storageKey);
+    const pdfBuffer = await this.storageService.getFileBuffer(storageKey, {
+      signal: options?.signal,
+    });
 
     // Convert PDF to images
     const images = await this.convertPdfToImages(pdfBuffer);

@@ -10,6 +10,7 @@ import { CHUNK_REPOSITORY, IChunkRepository } from '../chunks/chunk-repository.i
 import { ChunkingService } from '../rag/chunking.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { abortAsPromise } from '../common/utils/abort-promise';
 
 interface ChunkingJobData {
   jobId: string;
@@ -92,7 +93,11 @@ export class ChunkingProcessor extends WorkerHost {
     this.logger.log(`[PROGRESS] Job ${jobId} (${job.type}): status=${status}, progress=${finalProgress}%`);
   }
 
-  async process(job: Job<ChunkingJobData>): Promise<void> {
+  async process(
+    job: Job<ChunkingJobData>,
+    _token?: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
     const { jobId, documentId, text, pageCount } = job.data;
 
     this.logger.log(
@@ -148,8 +153,15 @@ export class ChunkingProcessor extends WorkerHost {
         endIndex: chunk.endIndex,
       }));
 
+      let createPromise = this.chunkRepository.create(chunkDtos);
+      if (signal) {
+        createPromise = Promise.race([
+          createPromise,
+          abortAsPromise(signal),
+        ]);
+      }
       const savedChunks = await this.withTimeout(
-        this.chunkRepository.create(chunkDtos),
+        createPromise,
         60000, // 60 second timeout for saving chunks
         `Failed to save chunks for document ${documentId}`,
       );

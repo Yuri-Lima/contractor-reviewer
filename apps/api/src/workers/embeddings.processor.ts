@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { DocumentJob, JobStatus } from '../entities/document-job.entity';
 import { CHUNK_REPOSITORY, IChunkRepository } from '../chunks/chunk-repository.interface';
 import { EmbeddingsService } from '../rag/embeddings.service';
+import { abortAsPromise } from '../common/utils/abort-promise';
 
 interface EmbeddingsJobData {
   jobId: string;
@@ -60,7 +61,11 @@ export class EmbeddingsProcessor extends WorkerHost {
     this.logger.log(`[PROGRESS] Job ${jobId} (${job.type}): status=${status}, progress=${finalProgress}%`);
   }
 
-  async process(job: Job<EmbeddingsJobData>): Promise<void> {
+  async process(
+    job: Job<EmbeddingsJobData>,
+    _token?: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
     const { jobId, chunkIds } = job.data;
 
     try {
@@ -95,8 +100,17 @@ export class EmbeddingsProcessor extends WorkerHost {
           Math.floor((processed / chunksToEmbed.length) * 90),
         );
 
-        // Generate embeddings
-        const embeddings = await this.embeddingsService.generateEmbeddings(texts);
+        // Generate embeddings (best-effort cancellation via signal)
+        let embedPromise = this.embeddingsService.generateEmbeddings(texts, {
+          signal,
+        });
+        if (signal) {
+          embedPromise = Promise.race([
+            embedPromise,
+            abortAsPromise(signal),
+          ]);
+        }
+        const embeddings = await embedPromise;
 
         // Update chunks with embeddings
         for (let j = 0; j < batch.length; j++) {

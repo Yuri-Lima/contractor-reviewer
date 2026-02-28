@@ -10,6 +10,7 @@ import { DocumentJob } from '../entities/document-job.entity';
 import { ChatMessage } from '../entities/chat-message.entity';
 import { DocumentVersion } from '../entities/document-version.entity';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
+import { FileTypeModule } from '../file-type/file-type.module';
 import { StorageModule } from '../storage/storage.module';
 import { QueueModule } from '../queue/queue.module';
 import { WorkspaceModule } from '../workspace/workspace.module';
@@ -39,6 +40,7 @@ import { ChunksModule } from '../chunks/chunks.module';
       Embedding,
     ]),
     ChunksModule,
+    FileTypeModule,
     StorageModule,
     QueueModule,
     WorkspaceModule,

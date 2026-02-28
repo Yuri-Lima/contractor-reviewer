@@ -28,11 +28,12 @@ import { VersionService } from './version.service';
 import { Document } from '../entities/document.entity';
 import { DocumentFile } from '../entities/document-file.entity';
 import { DocumentVersion } from '../entities/document-version.entity';
-import { UploadValidator } from '../storage/upload-validator';
+import { DocumentUploadValidator } from '../storage/document-upload-validator.service';
 import { NoopMalwareScanner } from '../storage/malware-scanner.interface';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction, TargetType } from '../entities/audit-log.entity';
 import { RequestInfo } from '../common/decorators/request-info.decorator';
+import { ReqAbortSignal } from '../common/decorators/req-abort-signal.decorator';
 
 @Controller('workspaces/:workspaceId/documents')
 @UseGuards(JwtAuthGuard, WorkspaceGuard)
@@ -40,6 +41,7 @@ export class DocumentsController {
   constructor(
     private documentsService: DocumentsService,
     private versionService: VersionService,
+    private documentUploadValidator: DocumentUploadValidator,
     private malwareScanner: NoopMalwareScanner,
     private auditService: AuditService,
   ) {}
@@ -110,6 +112,7 @@ export class DocumentsController {
     @Param('documentId') documentId: string,
     @CurrentUser() user: { id: string },
     @RequestInfo() requestInfo: { ip: string; userAgent: string },
+    @ReqAbortSignal() signal: AbortSignal,
     @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
     @Body() body: { parser?: string },
   ) {
@@ -117,12 +120,15 @@ export class DocumentsController {
       throw new BadRequestException('File is required');
     }
 
+    const options = { signal };
+
     // Validate file
-    const validation = UploadValidator.validateFile(
+    const validation = await this.documentUploadValidator.validateFile(
       file.originalname,
       file.mimetype,
       file.size,
       file.buffer,
+      options,
     );
 
     if (!validation.isValid) {
@@ -130,7 +136,7 @@ export class DocumentsController {
     }
 
     // Scan for malware (noop for now)
-    const scanResult = await this.malwareScanner.scanFile(file.buffer, file.originalname);
+    const scanResult = await this.malwareScanner.scanFile(file.buffer, file.originalname, options);
     if (!scanResult.safe) {
       throw new BadRequestException(`File rejected: ${scanResult.threat || 'Malware detected'}`);
     }
@@ -140,7 +146,13 @@ export class DocumentsController {
     if (parser && !validParsers.includes(parser)) {
       throw new BadRequestException(`Invalid parser: ${parser}. Valid: ${validParsers.join(', ')}`);
     }
-    const uploadedFile = await this.documentsService.uploadFile(documentId, workspaceId, file, parser);
+    const uploadedFile = await this.documentsService.uploadFile(
+      documentId,
+      workspaceId,
+      file,
+      parser,
+      options,
+    );
     
     // Log upload action
     await this.auditService.createAuditLog(

@@ -24,11 +24,12 @@ import { DocumentsService } from './documents.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction, TargetType, TtsProviderId } from '@contractai-review/shared';
 import { RequestInfo } from '../common/decorators/request-info.decorator';
+import { ReqAbortSignal } from '../common/decorators/req-abort-signal.decorator';
 import { ChatMessageService } from './chat-message.service';
 import { TranscriptionService } from '../transcription/transcription.service';
 import { TtsService } from '../tts/tts.service';
 import { AuthService } from '../auth/auth.service';
-import { AudioValidator } from '../transcription/audio-validator';
+import { AudioValidationService } from '../transcription/audio-validation.service';
 import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
@@ -49,6 +50,7 @@ export class ChatController {
     private ttsService: TtsService,
     private workspaceSettingsService: WorkspaceSettingsService,
     private authService: AuthService,
+    private audioValidationService: AudioValidationService,
   ) {}
 
   /** Log real error details (name, message, stack, cause, HTTP response when present). */
@@ -165,22 +167,29 @@ export class ChatController {
     @Param('documentId') documentId: string,
     @CurrentUser() user: { id: string },
     @RequestInfo() requestInfo: { ip: string; userAgent: string },
+    @ReqAbortSignal() signal: AbortSignal,
     @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string; size: number } | undefined,
     @Body() body: TranscribeBodyDto,
   ): Promise<{ text: string }> {
     if (!file) {
       throw new BadRequestException('Audio file is required');
     }
-    const validation = AudioValidator.validate(
+    const options = { signal };
+    const validation = await this.audioValidationService.validate(
       file.originalname,
       file.mimetype,
       file.size,
       file.buffer,
+      options,
     );
     if (!validation.isValid) {
       throw new BadRequestException(validation.error);
     }
-    const effectiveMimeType = AudioValidator.getEffectiveMimeType(file.mimetype, file.buffer);
+    const effectiveMimeType = await this.audioValidationService.getEffectiveMimeType(
+      file.mimetype,
+      file.buffer,
+      options,
+    );
     try {
       await this.documentsService.findById(documentId, workspaceId);
 

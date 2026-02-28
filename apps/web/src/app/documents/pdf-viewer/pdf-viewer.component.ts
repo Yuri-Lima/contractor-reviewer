@@ -78,7 +78,7 @@ export interface TextSelection {
       </div>
       @if (loading()) {
         <div class="p-4 text-center text-sm text-gray-600 dark:text-gray-400">
-          Carregando PDF...
+          {{ 'documents.loadingPdf' | translate }}
         </div>
       }
       @if (error()) {
@@ -160,7 +160,7 @@ export class PdfViewerComponent {
       if (!this.pdfjsLib) {
         this.pdfjsLib = await import('pdfjs-dist');
         // Set worker
-        this.pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${this.pdfjsLib.version}/pdf.worker.min.js`;
+        this.pdfjsLib.GlobalWorkerOptions.workerSrc = '/assets/pdf/pdf.worker.min.mjs';
       }
 
       const loadingTask = this.pdfjsLib.getDocument(this.fileUrl());

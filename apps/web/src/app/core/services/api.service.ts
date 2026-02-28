@@ -1,8 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, from } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { API_CONFIG } from '../config/api.config';
+import { AuthService } from './auth.service';
 import { getAudioExtensionFromMime } from '@contractai-review/shared/constants';
 import {
   User,
@@ -43,7 +44,8 @@ import {
   providedIn: 'root',
 })
 export class ApiService {
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
+  private authService = inject(AuthService);
 
   // Workspaces
   getWorkspaces(): Observable<Workspace[]> {
@@ -94,12 +96,46 @@ export class ApiService {
     );
   }
 
-  uploadWorkspaceLogo(workspaceId: string, file: File): Observable<void> {
+  uploadWorkspaceLogo(
+    workspaceId: string,
+    file: File,
+    options?: { signal?: AbortSignal },
+  ): Observable<void> {
+    if (options?.signal !== undefined) {
+      return this.fetchUploadWorkspaceLogo(workspaceId, file, options.signal);
+    }
     const formData = new FormData();
     formData.append('file', file);
     return this.http.post<void>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.workspaces}/${workspaceId}/logo`,
       formData,
+    );
+  }
+
+  private fetchUploadWorkspaceLogo(
+    workspaceId: string,
+    file: File,
+    signal: AbortSignal,
+  ): Observable<void> {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.workspaces}/${workspaceId}/logo`;
+    const formData = new FormData();
+    formData.append('file', file);
+    const headers: Record<string, string> = {};
+    const token = this.authService.getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return from(
+      fetch(url, { method: 'POST', body: formData, signal, headers }).then(
+        async (res) => {
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw {
+              status: res.status,
+              error: body,
+              message: body?.message ?? res.statusText,
+            };
+          }
+        },
+      ),
     );
   }
 
@@ -162,13 +198,59 @@ export class ApiService {
     );
   }
 
-  uploadFile(workspaceId: string, documentId: string, file: File, parser?: string): Observable<any> {
+  uploadFile(
+    workspaceId: string,
+    documentId: string,
+    file: File,
+    parser?: string,
+    options?: { signal?: AbortSignal },
+  ): Observable<DocumentFile> {
+    if (options?.signal !== undefined) {
+      return this.fetchUploadFile(
+        workspaceId,
+        documentId,
+        file,
+        parser,
+        options.signal,
+      );
+    }
     const formData = new FormData();
     formData.append('file', file);
     if (parser) formData.append('parser', parser);
-    return this.http.post(
+    return this.http.post<DocumentFile>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/files`,
       formData,
+    );
+  }
+
+  private fetchUploadFile(
+    workspaceId: string,
+    documentId: string,
+    file: File,
+    parser?: string,
+    signal?: AbortSignal,
+  ): Observable<DocumentFile> {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/files`;
+    const formData = new FormData();
+    formData.append('file', file);
+    if (parser) formData.append('parser', parser);
+    const headers: Record<string, string> = {};
+    const token = this.authService.getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return from(
+      fetch(url, { method: 'POST', body: formData, signal, headers }).then(
+        async (res) => {
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw {
+              status: res.status,
+              error: body,
+              message: body?.message ?? res.statusText,
+            };
+          }
+          return res.json() as Promise<DocumentFile>;
+        },
+      ),
     );
   }
 
@@ -234,7 +316,17 @@ export class ApiService {
     documentId: string,
     audioBlob: Blob,
     language?: string,
+    options?: { signal?: AbortSignal },
   ): Observable<{ text: string }> {
+    if (options?.signal !== undefined) {
+      return this.fetchTranscribe(
+        workspaceId,
+        documentId,
+        audioBlob,
+        language,
+        options.signal,
+      );
+    }
     const formData = new FormData();
     const ext = getAudioExtensionFromMime(audioBlob.type || 'audio/webm');
     formData.append('audio', audioBlob, `audio.${ext}`);
@@ -244,6 +336,38 @@ export class ApiService {
     return this.http.post<{ text: string }>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}/transcribe`,
       formData,
+    );
+  }
+
+  private fetchTranscribe(
+    workspaceId: string,
+    documentId: string,
+    audioBlob: Blob,
+    language?: string,
+    signal?: AbortSignal,
+  ): Observable<{ text: string }> {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}/transcribe`;
+    const formData = new FormData();
+    const ext = getAudioExtensionFromMime(audioBlob.type || 'audio/webm');
+    formData.append('audio', audioBlob, `audio.${ext}`);
+    if (language) formData.append('language', language);
+    const headers: Record<string, string> = {};
+    const token = this.authService.getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return from(
+      fetch(url, { method: 'POST', body: formData, signal, headers }).then(
+        async (res) => {
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw {
+              status: res.status,
+              error: body,
+              message: body?.message ?? res.statusText,
+            };
+          }
+          return res.json() as Promise<{ text: string }>;
+        },
+      ),
     );
   }
 
@@ -420,12 +544,45 @@ export class ApiService {
     return this.http.get<User>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}`);
   }
 
-  uploadAvatar(file: File): Observable<User> {
+  uploadAvatar(
+    file: File,
+    options?: { signal?: AbortSignal },
+  ): Observable<User> {
+    if (options?.signal !== undefined) {
+      return this.fetchUploadAvatar(file, options.signal);
+    }
     const formData = new FormData();
     formData.append('file', file);
     return this.http.post<User>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}/avatar`,
       formData,
+    );
+  }
+
+  private fetchUploadAvatar(
+    file: File,
+    signal: AbortSignal,
+  ): Observable<User> {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}/avatar`;
+    const formData = new FormData();
+    formData.append('file', file);
+    const headers: Record<string, string> = {};
+    const token = this.authService.getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return from(
+      fetch(url, { method: 'POST', body: formData, signal, headers }).then(
+        async (res) => {
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw {
+              status: res.status,
+              error: body,
+              message: body?.message ?? res.statusText,
+            };
+          }
+          return res.json() as Promise<User>;
+        },
+      ),
     );
   }
 

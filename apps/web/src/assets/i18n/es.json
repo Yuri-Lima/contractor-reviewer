@@ -105,6 +105,7 @@
     "updateError": "Error al actualizar el documento",
     "uploadSuccess": "Archivo subido con éxito",
     "uploadError": "Error al subir el archivo",
+    "cancelUpload": "Cancelar subida",
     "noFiles": "No se han subido archivos. Sube un archivo para comenzar.",
     "noDocumentsFound": "No se encontraron documentos. Crea un nuevo documento para comenzar.",
     "viewFile": "Ver archivo",
@@ -149,6 +150,7 @@
     "confirmDeleteFilesMessage": "¿Estás seguro de que deseas eliminar {{count}} archivos? Esta acción no se puede deshacer.",
     "deleteFilesSuccess": "{{count}} archivo(s) eliminado(s) correctamente",
     "loadFileError": "Error al cargar archivo",
+    "loadingPdf": "Cargando PDF...",
     "loadPdfError": "Error al cargar PDF",
     "renderPageError": "Error al renderizar página",
     "jobType": {
@@ -322,6 +324,12 @@
     "notProcessed": "Archivo aún no procesado. El contenido estará disponible cuando finalice el análisis.",
     "refresh": "Actualizar Contenido",
     "selectTextHint": "Seleccione texto para crear redline"
+  },
+  "documentViewer": {
+    "loading": "Cargando...",
+    "error": "Error al cargar documento",
+    "previewNotAvailable": "Vista previa no disponible para este formato.",
+    "downloadToView": "Descargue el archivo para verlo."
   },
   "privacy": {
     "title": "Configuración de privacidad",

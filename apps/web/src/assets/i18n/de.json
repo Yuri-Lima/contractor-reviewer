@@ -105,6 +105,7 @@
     "updateError": "Fehler beim Aktualisieren des Dokuments",
     "uploadSuccess": "Datei erfolgreich hochgeladen",
     "uploadError": "Fehler beim Hochladen der Datei",
+    "cancelUpload": "Upload abbrechen",
     "noFiles": "Keine Dateien hochgeladen. Laden Sie eine Datei hoch, um zu beginnen.",
     "noDocumentsFound": "Keine Dokumente gefunden. Erstellen Sie ein neues Dokument, um zu beginnen.",
     "viewFile": "Datei anzeigen",
@@ -149,6 +150,7 @@
     "confirmDeleteFilesMessage": "Sind Sie sicher, dass Sie {{count}} Dateien löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
     "deleteFilesSuccess": "{{count}} Datei(en) erfolgreich gelöscht",
     "loadFileError": "Fehler beim Laden der Datei",
+    "loadingPdf": "PDF wird geladen...",
     "loadPdfError": "Fehler beim Laden des PDFs",
     "renderPageError": "Fehler beim Rendern der Seite",
     "jobType": {
@@ -322,6 +324,12 @@
     "notProcessed": "Datei noch nicht verarbeitet. Inhalt ist verfügbar, sobald die Analyse abgeschlossen ist.",
     "refresh": "Inhalt aktualisieren",
     "selectTextHint": "Text auswählen, um Redline zu erstellen"
+  },
+  "documentViewer": {
+    "loading": "Laden...",
+    "error": "Fehler beim Laden des Dokuments",
+    "previewNotAvailable": "Vorschau für dieses Format nicht verfügbar.",
+    "downloadToView": "Datei herunterladen, um sie anzuzeigen."
   },
   "privacy": {
     "title": "Datenschutzeinstellungen",

@@ -105,6 +105,7 @@
     "updateError": "Error updating document",
     "uploadSuccess": "File uploaded successfully",
     "uploadError": "Failed to upload file",
+    "cancelUpload": "Cancel Upload",
     "noFiles": "No files uploaded. Upload a file to get started.",
     "noDocumentsFound": "No documents found. Create a new document to get started.",
     "viewFile": "View File",
@@ -155,6 +156,7 @@
     "confirmDeleteFilesMessage": "Are you sure you want to delete {{count}} files? This action cannot be undone.",
     "deleteFilesSuccess": "{{count}} file(s) deleted successfully",
     "loadFileError": "Error loading file",
+    "loadingPdf": "Loading PDF...",
     "loadPdfError": "Error loading PDF",
     "renderPageError": "Error rendering page",
     "jobType": {
@@ -322,6 +324,12 @@
     "notProcessed": "File not yet processed. Content will be available after parsing completes.",
     "refresh": "Refresh Content",
     "selectTextHint": "Select text to create redline"
+  },
+  "documentViewer": {
+    "loading": "Loading...",
+    "error": "Error loading document",
+    "previewNotAvailable": "Preview not available for this format.",
+    "downloadToView": "Download the file to view it."
   },
   "privacy": {
     "title": "Privacy Settings",

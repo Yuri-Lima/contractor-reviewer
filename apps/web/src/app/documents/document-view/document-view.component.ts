@@ -39,6 +39,7 @@ import {
   MAX_FILE_SIZE_BYTES,
   MAX_BATCH_SIZE_BYTES,
   MAX_BATCH_FILE_COUNT,
+  getViewerFormat,
   type ChatResponseMode,
   type FileSearchScope,
 } from '@contractai-review/shared';
@@ -49,7 +50,7 @@ const CHAT_MODE = {
   AudioOnly: 'audio_only',
   AudioAndText: 'audio_and_text',
 } as const;
-import { PdfViewerComponent } from '../pdf-viewer/pdf-viewer.component';
+import { DocumentViewerComponent } from '../document-viewer/document-viewer.component';
 import { RedlineComponent } from '../redline/redline.component';
 import { VersionsComponent } from '../versions/versions.component';
 import { FileContentDialogComponent } from '../file-content-dialog/file-content-dialog.component';
@@ -66,7 +67,7 @@ import { LazyLoadEvent } from 'primeng/api';
 import { PaginationService } from '../../core/services/pagination.service';
 import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
 import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
-import { forkJoin, from, of } from 'rxjs';
+import { forkJoin, from, of, EMPTY } from 'rxjs';
 import { mergeMap, map, catchError, toArray, switchMap, tap } from 'rxjs/operators';
 
 /** API request params for getDocumentFiles (pagination, sort, filters, fuzzy search) */
@@ -127,7 +128,7 @@ interface ChatMessageWithAudio {
     Card,
     Dialog,
     SelectModule,
-    PdfViewerComponent,
+    DocumentViewerComponent,
     RedlineComponent,
     VersionsComponent,
     FileContentDialogComponent,
@@ -491,22 +492,14 @@ interface ChatMessageWithAudio {
               <p-button icon="pi pi-times" [text]="true" (onClick)="closeFileViewer()" severity="secondary" [pTooltip]="'tooltip.close' | translate"></p-button>
             </div>
             <div class="p-4">
-              @if (fileToView() && isPdfFile(fileToView()!)) {
-                <app-pdf-viewer
-                  [fileUrl]="getFileObjectUrl(fileToView()!.id)"
-                  [fileName]="fileToView()!.fileName"
-                ></app-pdf-viewer>
-              }
-              @if (fileToView() && isImageFile(fileToView()!)) {
-                <div class="flex justify-center">
-                  <img [src]="getFileObjectUrl(fileToView()!.id)" [alt]="fileToView()!.fileName" class="max-w-full h-auto" />
-                </div>
-              }
-              @if (fileToView() && isTextFile(fileToView()!)) {
-                <div class="p-4 bg-gray-50 dark:bg-gray-900 rounded">
-                  <pre class="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200">{{ textFileContent() }}</pre>
-                </div>
-              }
+              <app-document-viewer
+                [file]="fileToView()"
+                [blobUrl]="fileToView() ? getFileObjectUrl(fileToView()!.id) : null"
+                [textContent]="textFileContent()"
+                [loading]="viewerLoading()"
+                (textSelected)="onTextSelectedForRedline($event)"
+                (downloadRequested)="onViewerDownloadRequested()"
+              />
             </div>
           </div>
         </div>
@@ -553,9 +546,13 @@ interface ChatMessageWithAudio {
           </div>
         </div>
         <ng-template pTemplate="footer">
-          <p-button [label]="'common.cancel' | translate" severity="secondary" [outlined]="true" (onClick)="cancelParserDialog()"></p-button>
-          <p-button [label]="'parsers.uploadWithParser' | translate" (onClick)="confirmParserSelection()"
-            [disabled]="!canConfirmUpload() || uploadingFiles()"></p-button>
+          @if (uploadingFiles()) {
+            <p-button [label]="'documents.cancelUpload' | translate" severity="secondary" [outlined]="true" (onClick)="cancelUpload()"></p-button>
+          } @else {
+            <p-button [label]="'common.cancel' | translate" severity="secondary" [outlined]="true" (onClick)="cancelParserDialog()"></p-button>
+            <p-button [label]="'parsers.uploadWithParser' | translate" (onClick)="confirmParserSelection()"
+              [disabled]="!canConfirmUpload()"></p-button>
+          }
         </ng-template>
       </p-dialog>
 
@@ -639,6 +636,16 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   ];
   activeTab = signal<string | number>('0');
   textFileContent = signal<string>('');
+  viewerLoading = computed(() => {
+    const file = this.fileToView();
+    if (!file) return false;
+    const format = getViewerFormat(undefined, { fileName: file.fileName, mimeType: file.mimeType });
+    if (format === 'text') {
+      return !this.textFileLoadComplete();
+    }
+    return !this.fileObjectUrls().has(file.id);
+  });
+  private textFileLoadComplete = signal(false);
   parsers = signal<ParserInfo[]>([]);
   showParserDialog = signal(false);
   selectedParser = signal<string>('docling');
@@ -648,6 +655,12 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   pendingFiles = signal<File[] | null>(null);
   /** True while upload is in progress (disables confirm button to prevent double-submit) */
   uploadingFiles = signal(false);
+  /** AbortController for in-flight uploads; aborted on cancel or destroy */
+  private uploadAbortController: AbortController | null = null;
+  /** Set when user explicitly cancels upload; suppresses success/error toasts */
+  private uploadCancelled = false;
+  /** AbortController for transcribe request; aborted on destroy */
+  private transcribeAbortController: AbortController | null = null;
   fileObjectUrls = signal<Map<string, string>>(new Map());
   jobs = signal<DocumentJob[]>([]);
   private destroyAggressive$ = new Subject<void>();
@@ -822,6 +835,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.uploadAbortController?.abort();
+    this.transcribeAbortController?.abort();
     this.stopAggressivePolling();
     this.stopCurrentAudio();
     // Release voice recording resources if user navigates away while recording
@@ -852,11 +867,15 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       try {
         const blob = await this.voiceRecordingService.stopRecording();
         const lang = this.translateService.getCurrentLang() || 'en';
+        this.transcribeAbortController = new AbortController();
         this.apiService
-          .transcribe(this.workspaceId(), this.documentId(), blob, lang)
+          .transcribe(this.workspaceId(), this.documentId(), blob, lang, {
+            signal: this.transcribeAbortController.signal,
+          })
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next: (res) => {
+              this.transcribeAbortController = null;
               this.voiceTranscribing.set(false);
               if (this.voiceAutoSend() && res.text?.trim()) {
                 this.sendQuestion(res.text.trim());
@@ -867,12 +886,14 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
               }
             },
             error: (err) => {
+              this.transcribeAbortController = null;
+              this.voiceTranscribing.set(false);
+              if (err?.name === 'AbortError') return;
               this.messageService.add({
                 severity: 'error',
                 summary: this.translateService.instant(_('common.error')),
                 detail: err?.error?.message ?? this.translateService.instant(_('chat.transcribeError')),
               });
-              this.voiceTranscribing.set(false);
             },
           });
       } catch (err:any) {
@@ -1457,6 +1478,18 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   }
 
   cancelParserDialog(): void {
+    if (this.uploadingFiles()) {
+      this.cancelUpload();
+    }
+    this.showParserDialog.set(false);
+    this.pendingFile.set(null);
+    this.pendingFiles.set(null);
+  }
+
+  cancelUpload(): void {
+    this.uploadCancelled = true;
+    this.uploadAbortController?.abort();
+    this.uploadingFiles.set(false);
     this.showParserDialog.set(false);
     this.pendingFile.set(null);
     this.pendingFiles.set(null);
@@ -1476,6 +1509,9 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       return;
     }
     this.uploadingFiles.set(true);
+    this.uploadCancelled = false;
+    this.uploadAbortController = new AbortController();
+    const signal = this.uploadAbortController.signal;
     const wsId = this.workspaceId();
     const docId = this.documentId();
     const total = validFiles.length;
@@ -1484,23 +1520,35 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       .pipe(
         mergeMap(
           (file) =>
-            this.apiService.uploadFile(wsId, docId, file, parser).pipe(
+            this.apiService.uploadFile(wsId, docId, file, parser, { signal }).pipe(
               map(() => ({ success: true as const })),
               catchError((err) => {
+                if (err?.name === 'AbortError') {
+                  return EMPTY;
+                }
                 const fileName = file?.name ?? 'unknown';
                 console.error('Error uploading file:', fileName, err);
                 return of({
                   success: false as const,
-                  errorMessage: err?.error?.message as string | undefined,
+                  errorMessage: err?.error?.message ?? err?.message as string | undefined,
                 });
               }),
             ),
           2,
         ),
         toArray(),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (results) => {
+          if (this.uploadCancelled) {
+            this.uploadingFiles.set(false);
+            this.uploadAbortController = null;
+            this.showParserDialog.set(false);
+            this.pendingFile.set(null);
+            this.pendingFiles.set(null);
+            return;
+          }
           const successCount = results.filter((r) => r.success).length;
           const failCount = results.filter((r) => !r.success).length;
           const firstError = results.find((r) => !r.success && 'errorMessage' in r && r.errorMessage) as
@@ -1577,9 +1625,11 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           this.uploadingFiles.set(false);
+          this.uploadAbortController = null;
+          if (err?.name === 'AbortError') return;
           console.error('Error during batch upload:', err);
           const detail =
-            err?.error?.message || this.translateService.instant(_('documents.uploadError'));
+            err?.error?.message ?? err?.message ?? this.translateService.instant(_('documents.uploadError'));
           this.messageService.add({
             severity: 'error',
             summary: this.translateService.instant(_('common.error')),
@@ -1787,21 +1837,25 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
 
   viewFile(file: DocumentFile): void {
     this.fileToView.set(file);
+    this.textFileLoadComplete.set(false);
 
-    if (this.isTextFile(file)) {
-      // Load text content using HttpClient with authentication
+    const format = getViewerFormat(undefined, { fileName: file.fileName, mimeType: file.mimeType });
+    if (format === 'text') {
       this.apiService.downloadFileAsBlob(this.workspaceId(), this.documentId(), file.id).subscribe({
         next: (blob) => {
           blob.text().then(text => {
             this.textFileContent.set(text);
+            this.textFileLoadComplete.set(true);
           }).catch(err => {
             console.error('Error reading text file:', err);
             this.textFileContent.set(this.translateService.instant(_('documents.loadFileError')));
+            this.textFileLoadComplete.set(true);
           });
         },
         error: (err) => {
           console.error('Error loading text file:', err);
           this.textFileContent.set(this.translateService.instant(_('documents.loadFileError')));
+          this.textFileLoadComplete.set(true);
         },
       });
     } else {
@@ -1834,6 +1888,22 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   closeFileViewer(): void {
     this.fileToView.set(null);
     this.textFileContent.set('');
+    this.textFileLoadComplete.set(false);
+  }
+
+  onTextSelectedForRedline(event: { text: string }): void {
+    const redline = this.redlineComponent();
+    if (redline) {
+      redline.onTextSelectedFromContent({ text: event.text });
+    }
+    this.activeTab.set('1');
+  }
+
+  onViewerDownloadRequested(): void {
+    const file = this.fileToView();
+    if (file) {
+      this.downloadFile(file);
+    }
   }
 
   downloadFile(file: DocumentFile): void {
@@ -1858,24 +1928,6 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         });
       },
     });
-  }
-
-  isPdfFile(file: DocumentFile): boolean {
-    return file.mimeType === 'application/pdf' || file.fileName.toLowerCase().endsWith('.pdf');
-  }
-
-  isImageFile(file: DocumentFile): boolean {
-    return file.mimeType.startsWith('image/') || /\.(png|jpg|jpeg|gif|webp)$/i.test(file.fileName);
-  }
-
-  isTextFile(file: DocumentFile): boolean {
-    return (
-      file.mimeType === 'text/plain' ||
-      file.mimeType === 'text/markdown' ||
-      file.mimeType === 'text/x-markdown' ||
-      file.fileName.toLowerCase().endsWith('.txt') ||
-      file.fileName.toLowerCase().endsWith('.md')
-    );
   }
 
   formatFileSize(bytes: number): string {

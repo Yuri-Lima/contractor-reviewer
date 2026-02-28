@@ -134,6 +134,7 @@
     "similarityThreshold": "Similaridade",
     "similarityThresholdHelp": "Menor = mais tolerante a erros",
     "processing": "Processamento em andamento",
+    "processingFiles": "Processando {{count}} arquivo(s)",
     "titlePlaceholder": "Título do documento",
     "descriptionPlaceholder": "Descrição (opcional)",
     "creating": "Criando...",

@@ -138,6 +138,7 @@
     "similarityThresholdHelp": "Lower = more typo-tolerant",
     "uploadFile": "Upload File",
     "processing": "Processing in progress",
+    "processingFiles": "Processing {{count}} file(s)",
     "titlePlaceholder": "Document title",
     "descriptionPlaceholder": "Description (optional)",
     "creating": "Creating...",

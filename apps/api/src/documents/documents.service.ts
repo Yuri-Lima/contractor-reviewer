@@ -1,11 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Document, DocumentStatus } from '../entities/document.entity';
 import { DocumentFile, FileStatus } from '../entities/document-file.entity';
 import { DocumentJob, JobType, JobStatus } from '../entities/document-job.entity';
-import { Chunk } from '../entities/chunk.entity';
-import { Inject } from '@nestjs/common';
+import { CHUNK_REPOSITORY, IChunkRepository } from '../chunks/chunk-repository.interface';
+import { DocumentDeletionOrchestrator } from './document-deletion.orchestrator';
 import { StorageServiceToken, IStorageService } from '../storage/storage.module';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -56,8 +56,9 @@ export class DocumentsService {
     private documentFileRepository: Repository<DocumentFile>,
     @InjectRepository(DocumentJob)
     private documentJobRepository: Repository<DocumentJob>,
-    @InjectRepository(Chunk)
-    private chunkRepository: Repository<Chunk>,
+    @Inject(CHUNK_REPOSITORY)
+    private chunkRepository: IChunkRepository,
+    private documentDeletionOrchestrator: DocumentDeletionOrchestrator,
     @Inject(StorageServiceToken)
     private storageService: IStorageService,
     @InjectQueue('parsing')
@@ -547,16 +548,7 @@ export class DocumentsService {
     // Verify document exists and belongs to workspace
     await this.findById(documentId, workspaceId);
 
-    // Get all chunks for the document, ordered by pageNumber and startIndex
-    const chunks = await this.chunkRepository.find({
-      where: { documentId },
-      order: {
-        pageNumber: 'ASC',
-        startIndex: 'ASC',
-      },
-    });
-
-    // Concatenate text from all chunks
+    const chunks = await this.chunkRepository.findByDocumentId(documentId);
     return chunks.map((chunk) => chunk.text).join('\n\n');
   }
 
@@ -601,35 +593,6 @@ export class DocumentsService {
    * Returns true if document was deleted, false if it didn't exist
    */
   async delete(documentId: string, workspaceId: string): Promise<boolean> {
-    const document = await this.documentRepository.findOne({
-      where: { id: documentId, workspaceId },
-      relations: ['files', 'chunks'],
-    });
-
-    // Idempotent: if document doesn't exist, return false (already deleted)
-    if (!document) {
-      return false;
-    }
-
-    // Delete files from storage
-    for (const file of document.files) {
-      try {
-        await this.storageService.deleteFile(file.storageKey);
-      } catch (error) {
-        // Log error but continue (file may already be deleted)
-        // Never log file content or storage keys with sensitive data
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`Failed to delete file (id: ${file.id}):`, errorMessage);
-      }
-    }
-
-    // Delete chunks (embeddings are in chunks table)
-    if (document.chunks && document.chunks.length > 0) {
-      await this.chunkRepository.remove(document.chunks);
-    }
-
-    // Delete document (cascade will delete files and jobs)
-    await this.documentRepository.remove(document);
-    return true;
+    return this.documentDeletionOrchestrator.deleteDocument(documentId, workspaceId);
   }
 }

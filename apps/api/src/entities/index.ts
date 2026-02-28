@@ -1,3 +1,4 @@
+export * from './entity-boundaries';
 export * from './user.entity';
 export * from './workspace.entity';
 export * from './workspace-member.entity';

@@ -6,8 +6,8 @@ import { EmbeddingsProcessor } from './embeddings.processor';
 import { DocumentJob } from '../entities/document-job.entity';
 import { DocumentFile } from '../entities/document-file.entity';
 import { Document } from '../entities/document.entity';
-import { Chunk } from '../entities/chunk.entity';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
+import { ChunksModule } from '../chunks/chunks.module';
 import { StorageModule } from '../storage/storage.module';
 import { RagModule } from '../rag/rag.module';
 import { QueueModule } from '../queue/queue.module';
@@ -53,7 +53,8 @@ function writeLog(location: string, message: string, data: any, hypothesisId: st
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([DocumentJob, DocumentFile, Document, Chunk, WorkspaceSettings]),
+    TypeOrmModule.forFeature([DocumentJob, DocumentFile, Document, WorkspaceSettings]),
+    ChunksModule,
     StorageModule,
     RagModule,
     QueueModule,

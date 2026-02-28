@@ -21,6 +21,22 @@ export class Embedding {
   @Column({ type: 'text' })
   text: string;
 
+  /** Denormalized from legal_sources for vector-DB separation (no JOIN needed) */
+  @Column({ nullable: true })
+  sourceName: string;
+
+  /** Denormalized from legal_sources */
+  @Column({ nullable: true })
+  country: string;
+
+  /** Denormalized from legal_sources */
+  @Column({ nullable: true })
+  jurisdiction: string;
+
+  /** Denormalized from legal_sources */
+  @Column({ nullable: true })
+  url: string;
+
   // Note: embedding is stored as 'vector' type in PostgreSQL (via migration)
   // Vector operations (similarity search) should use raw SQL queries
   @Column({ type: 'text', transformer: vectorTransformer })

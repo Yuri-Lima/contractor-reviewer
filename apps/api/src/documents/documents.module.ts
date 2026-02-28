@@ -7,7 +7,6 @@ import { RedlineController } from './redline.controller';
 import { Document } from '../entities/document.entity';
 import { DocumentFile } from '../entities/document-file.entity';
 import { DocumentJob } from '../entities/document-job.entity';
-import { Chunk } from '../entities/chunk.entity';
 import { ChatMessage } from '../entities/chat-message.entity';
 import { DocumentVersion } from '../entities/document-version.entity';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
@@ -24,7 +23,9 @@ import { ChatMessageService } from './chat-message.service';
 import { VersionService } from './version.service';
 import { RedlineService } from './redline.service';
 import { DiffService } from './diff.service';
+import { DocumentDeletionOrchestrator } from './document-deletion.orchestrator';
 import { Embedding } from '../entities/embedding.entity';
+import { ChunksModule } from '../chunks/chunks.module';
 
 @Module({
   imports: [
@@ -32,12 +33,12 @@ import { Embedding } from '../entities/embedding.entity';
       Document,
       DocumentFile,
       DocumentJob,
-      Chunk,
       ChatMessage,
       DocumentVersion,
       WorkspaceSettings,
       Embedding,
     ]),
+    ChunksModule,
     StorageModule,
     QueueModule,
     WorkspaceModule,
@@ -49,7 +50,14 @@ import { Embedding } from '../entities/embedding.entity';
     TtsModule,
   ],
   controllers: [DocumentsController, ChatController, RedlineController],
-  providers: [DocumentsService, ChatMessageService, VersionService, RedlineService, DiffService],
+  providers: [
+    DocumentsService,
+    ChatMessageService,
+    VersionService,
+    RedlineService,
+    DiffService,
+    DocumentDeletionOrchestrator,
+  ],
   exports: [DocumentsService, ChatMessageService, VersionService, RedlineService, DiffService],
 })
 export class DocumentsModule {}

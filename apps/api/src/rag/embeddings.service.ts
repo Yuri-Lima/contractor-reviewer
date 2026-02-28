@@ -25,16 +25,24 @@ export class EmbeddingsService {
   /**
    * Generate embedding for a single text
    */
-  async generateEmbedding(text: string): Promise<number[]> {
+  async generateEmbedding(
+    text: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<number[]> {
     try {
-      const response = await this.openai.embeddings.create({
-        model: this.model,
-        input: text,
-      });
+      const response = await this.openai.embeddings.create(
+        {
+          model: this.model,
+          input: text,
+        },
+        { signal: options?.signal },
+      );
 
       return response.data[0].embedding;
     } catch (error) {
-      throw new Error(`Failed to generate embedding: ${error.message}`);
+      throw new Error(
+        `Failed to generate embedding: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 

@@ -77,11 +77,15 @@ export class RagService {
     documentId: string,
     workspaceId: string,
     jurisdiction?: string,
-    language: string = 'en', // Add language parameter with default
+    language: string = 'en',
+    options?: { signal?: AbortSignal },
   ): Promise<RagResponse> {
     try {
       // Generate embedding for the question
-      const questionEmbedding = await this.embeddingsService.generateEmbedding(question);
+      const questionEmbedding = await this.embeddingsService.generateEmbedding(
+        question,
+        options,
+      );
 
       // Search contract chunks
       const contractChunks = await this.searchContractChunks(
@@ -167,6 +171,7 @@ export class RagService {
       legalChunks,
       language,
       workspaceId,
+      options,
     );
 
     const notFound = contractChunks.length === 0 && legalChunks.length === 0;
@@ -211,6 +216,7 @@ export class RagService {
     legalChunks: LegalChunkSearchResult[],
     language: string = 'en',
     workspaceId?: string,
+    options?: { signal?: AbortSignal },
   ): Promise<string> {
     // Build context from chunks
     const contractContext = contractChunks
@@ -234,15 +240,18 @@ export class RagService {
     );
 
     try {
-      const response = await this.openaiClient.chat.completions.create({
-        model: this.chatModel,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-        temperature: 0.3, // Lower temperature for more factual responses
-        max_tokens: 500,
-      });
+      const response = await this.openaiClient.chat.completions.create(
+        {
+          model: this.chatModel,
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: user },
+          ],
+          temperature: 0.3,
+          max_tokens: 500,
+        },
+        { signal: options?.signal },
+      );
 
       return response.choices[0].message.content || 'NOT FOUND';
     } catch (error) {

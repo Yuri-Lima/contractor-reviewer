@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { TtsProviderId, TtsProviderConfig } from '@contractai-review/shared';
 import { TtsProviderRegistry } from './tts-provider.registry';
 import type { TtsSynthesizeOptions } from './interfaces/tts-provider.interface';
+import { abortAsPromise } from '../common/utils/abort-promise';
 
 const TIMEOUT_MS = 120_000;
 
@@ -19,6 +20,7 @@ export class TtsService {
       language?: string;
       voice?: string;
       providerConfig?: TtsProviderConfig;
+      signal?: AbortSignal;
     },
   ): Promise<Buffer> {
     const provider = this.registry.get(options.providerId);
@@ -33,6 +35,7 @@ export class TtsService {
       language: options.language || 'en',
       voice: options.voice,
       providerConfig: options.providerConfig,
+      signal: options.signal,
     };
 
     const timeoutPromise = new Promise<Buffer>((_, reject) =>
@@ -44,8 +47,13 @@ export class TtsService {
     );
 
     const synthesizePromise = provider.synthesize(text, opts);
+    const abortPromise = abortAsPromise(options.signal);
 
-    const result = await Promise.race([synthesizePromise, timeoutPromise]);
+    const result = await Promise.race([
+      synthesizePromise,
+      abortPromise,
+      timeoutPromise,
+    ]);
     this.logger.debug(
       `TTS synthesis completed (provider=${options.providerId}, size=${result.length})`,
     );

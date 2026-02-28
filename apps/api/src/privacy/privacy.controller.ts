@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Body,
-  Param,
   UseGuards,
   Res,
   HttpCode,
@@ -19,6 +18,7 @@ import { PrivacyService } from './privacy.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction, TargetType } from '../entities/audit-log.entity';
 import { RequestInfo } from '../common/decorators/request-info.decorator';
+import { ReqAbortSignal } from '../common/decorators/req-abort-signal.decorator';
 
 @Controller('workspaces/:workspaceId/privacy')
 @UseGuards(JwtAuthGuard, WorkspaceGuard)
@@ -36,8 +36,11 @@ export class PrivacyController {
     @CurrentUser() user: { id: string },
     @RequestInfo() requestInfo: { ip: string; userAgent: string },
     @Res() res: Response,
+    @ReqAbortSignal() signal: AbortSignal,
   ): Promise<void> {
-    const exportData = await this.privacyService.exportPrivacyData(workspaceId, user.id);
+    const exportData = await this.privacyService.exportPrivacyData(workspaceId, user.id, {
+      signal,
+    });
 
     // Log export action
     await this.auditService.createAuditLog(

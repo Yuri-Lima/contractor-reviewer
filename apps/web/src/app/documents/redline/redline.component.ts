@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -55,7 +55,7 @@ import { DiffMatchPatch, DiffOp } from 'diff-match-patch-ts';
     }
   `],
 })
-export class RedlineComponent implements OnInit {
+export class RedlineComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private apiService = inject(ApiService);
   private authService = inject(AuthService);
@@ -70,6 +70,7 @@ export class RedlineComponent implements OnInit {
   workspaceId = signal('');
   documentId = signal('');
   generating = signal(false);
+  private redlineAbortController: AbortController | null = null;
   applying = signal(false);
   redlineResult = signal<RedlineResponse | null>(null);
   currentUser = signal<any>(null);
@@ -109,6 +110,14 @@ export class RedlineComponent implements OnInit {
     this.currentUser.set(this.authService.currentUser());
   }
 
+  ngOnDestroy(): void {
+    this.redlineAbortController?.abort();
+  }
+
+  cancelGenerate(): void {
+    this.redlineAbortController?.abort();
+  }
+
   getPlaybookDescription(playbook: RedlinePlaybook | null): string {
     if (!playbook) return this.translateService.instant(_('redline.selectPlaybook'));
     const descriptions: Record<RedlinePlaybook, string> = {
@@ -130,6 +139,9 @@ export class RedlineComponent implements OnInit {
       return;
     }
 
+    this.redlineAbortController?.abort();
+    this.redlineAbortController = new AbortController();
+
     this.generating.set(true);
     this.decisions.set(new Map());
     this.editingMode.set('view');
@@ -149,26 +161,33 @@ export class RedlineComponent implements OnInit {
       endIndex: this.selectedEndIndex(),
     };
 
-    this.apiService.generateRedline(this.workspaceId(), this.documentId(), request).subscribe({
-      next: (response) => {
-        this.redlineResult.set(response);
-        this.messageService.add({
-          severity: 'success',
-          summary: this.translateService.instant(_('common.success')),
-          detail: this.translateService.instant(_('redline.generateSuccess'), { count: response.changes.length }),
-        });
-        this.generating.set(false);
-      },
-      error: (err) => {
-        console.error('Error generating redline:', err);
-        this.messageService.add({
-          severity: 'error',
-          summary: this.translateService.instant(_('common.error')),
-          detail: err.error?.message || this.translateService.instant(_('redline.generateError')),
-        });
-        this.generating.set(false);
-      },
-    });
+    this.apiService
+      .generateRedline(this.workspaceId(), this.documentId(), request, {
+        signal: this.redlineAbortController.signal,
+      })
+      .subscribe({
+        next: (response) => {
+          this.redlineResult.set(response);
+          this.messageService.add({
+            severity: 'success',
+            summary: this.translateService.instant(_('common.success')),
+            detail: this.translateService.instant(_('redline.generateSuccess'), {
+              count: response.changes.length,
+            }),
+          });
+          this.generating.set(false);
+        },
+        error: (err) => {
+          this.generating.set(false);
+          if (err?.name === 'AbortError') return;
+          console.error('Error generating redline:', err);
+          this.messageService.add({
+            severity: 'error',
+            summary: this.translateService.instant(_('common.error')),
+            detail: err.error?.message || this.translateService.instant(_('redline.generateError')),
+          });
+        },
+      });
   }
 
   acceptBlock(blockId: string): void {

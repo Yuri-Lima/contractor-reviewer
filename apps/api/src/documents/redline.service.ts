@@ -45,10 +45,13 @@ export class RedlineService {
     objective?: string,
     pageNumber?: number,
     spanId?: string,
-    language: string = 'en', // Add language parameter with default
+    language: string = 'en',
+    options?: { signal?: AbortSignal },
   ): Promise<RedlineChange> {
     // Validate that selectedText exists in the document
-    const selectedTextEmbedding = await this.embeddingsService.generateEmbedding(selectedText);
+    const selectedTextEmbedding = await this.embeddingsService.generateEmbedding(selectedText, {
+      signal: options?.signal,
+    });
     
     // Search contract chunks using vector similarity
     const contractChunks = await this.vectorStore.searchContractChunks(selectedTextEmbedding, documentId, 5);
@@ -107,16 +110,19 @@ export class RedlineService {
     );
 
     try {
-      const response = await this.openaiClient.chat.completions.create({
-        model: this.chatModel,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-        temperature: 0.3,
-        max_tokens: 1000,
-        response_format: { type: 'json_object' },
-      });
+      const response = await this.openaiClient.chat.completions.create(
+        {
+          model: this.chatModel,
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: user },
+          ],
+          temperature: 0.3,
+          max_tokens: 1000,
+          response_format: { type: 'json_object' },
+        },
+        options?.signal ? { signal: options.signal } : undefined,
+      );
 
       const content = response.choices[0].message.content;
       if (!content) {

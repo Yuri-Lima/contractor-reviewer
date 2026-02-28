@@ -24,12 +24,15 @@ export class OpenAITtsAdapter implements ITtsProvider {
     const client = new OpenAI({ apiKey });
     const voice = options?.voice || DEFAULT_VOICE;
 
-    const response = await client.audio.speech.create({
-      model: MODEL,
-      voice: voice as 'alloy' | 'ash' | 'ballad' | 'coral' | 'echo' | 'fable' | 'nova' | 'onyx' | 'sage' | 'shimmer' | 'verse' | 'marin' | 'cedar',
-      input: text,
-      response_format: 'wav',
-    });
+    const response = await client.audio.speech.create(
+      {
+        model: MODEL,
+        voice: voice as 'alloy' | 'ash' | 'ballad' | 'coral' | 'echo' | 'fable' | 'nova' | 'onyx' | 'sage' | 'shimmer' | 'verse' | 'marin' | 'cedar',
+        input: text,
+        response_format: 'wav',
+      },
+      options?.signal ? { signal: options.signal } : undefined,
+    );
 
     const arrayBuffer = await response.arrayBuffer();
     return Buffer.from(arrayBuffer);

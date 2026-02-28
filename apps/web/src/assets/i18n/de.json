@@ -265,6 +265,7 @@
     "addInstructions": "Fügen Sie spezifische Anweisungen für den Redline hinzu...",
     "instructionsDescription": "Zusätzliche Anweisungen, die bei der Generierung des Redlines berücksichtigt werden",
     "generate": "Redline generieren",
+    "cancelGenerate": "Abbrechen",
     "generated": "Redline generiert",
     "proposal": "Redline-Vorschlag",
     "proposedBy": "Vorgeschlagen von",
@@ -356,6 +357,7 @@
       "privacySettings": "Datenschutzeinstellungen"
     },
     "export": "Daten exportieren",
+    "cancelExport": "Abbrechen",
     "saveSuccess": "No-Logs-Einstellungen gespeichert",
     "saveError": "Fehler beim Speichern der Einstellungen",
     "exportSuccess": "Daten erfolgreich exportiert",

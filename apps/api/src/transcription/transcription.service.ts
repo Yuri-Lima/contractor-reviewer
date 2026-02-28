@@ -2,6 +2,7 @@ import type { TranscriptionProviderId } from '@contractai-review/shared';
 import { Injectable, Logger } from '@nestjs/common';
 import { TranscriptionProviderRegistry } from './transcription-provider.registry';
 import type { ITranscriptionProvider, TranscriptionResult } from './interfaces/transcription-provider.interface';
+import { abortAsPromise } from '../common/utils/abort-promise';
 
 /** Timeout for transcription (Huggingface/OpenAI can be slow; cold starts, long audio). */
 const TIMEOUT_MS = 120_000;
@@ -15,7 +16,12 @@ export class TranscriptionService {
   async transcribe(
     audioBuffer: Buffer,
     mimeType: string,
-    options?: { language?: string; providerId?: TranscriptionProviderId; apiKey?: string },
+    options?: {
+      language?: string;
+      providerId?: TranscriptionProviderId;
+      apiKey?: string;
+      signal?: AbortSignal;
+    },
   ): Promise<TranscriptionResult> {
     let provider: ITranscriptionProvider;
     if (options?.providerId) {
@@ -44,9 +50,16 @@ export class TranscriptionService {
     const transcribePromise = provider.transcribe(audioBuffer, mimeType, {
       language: options?.language,
       apiKey: options?.apiKey,
+      signal: options?.signal,
     });
 
-    const result = await Promise.race([transcribePromise, timeoutPromise]);
+    const abortPromise = abortAsPromise(options?.signal);
+
+    const result = await Promise.race([
+      transcribePromise,
+      abortPromise,
+      timeoutPromise,
+    ]);
     this.logger.debug(
       `Transcription completed (provider=${provider.id}, size=${audioBuffer.length})`,
     );

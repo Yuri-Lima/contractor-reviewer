@@ -84,6 +84,15 @@
     </p-card>
 
     <div class="flex gap-2 justify-end">
+      @if (generating()) {
+        <p-button
+          [label]="'redline.cancelGenerate' | translate"
+          icon="pi pi-times"
+          severity="secondary"
+          [outlined]="true"
+          (onClick)="cancelGenerate()"
+        ></p-button>
+      }
       <p-button
         data-tour="redline-generate-btn"
         type="submit"

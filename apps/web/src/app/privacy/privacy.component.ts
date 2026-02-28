@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject, computed, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -45,7 +45,7 @@ interface NoLogsConfig {
     }
   `],
 })
-export class PrivacyComponent implements OnInit {
+export class PrivacyComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private apiService = inject(ApiService);
   private fb = inject(FormBuilder);
@@ -55,6 +55,7 @@ export class PrivacyComponent implements OnInit {
   workspaceId = signal('');
   saving = signal(false);
   exporting = signal(false);
+  private exportAbortController: AbortController | null = null;
 
   // Computed property for days suffix
   daysSuffix = computed(() => ` ${this.translateService.instant(_('common.days'))}`);
@@ -89,6 +90,14 @@ export class PrivacyComponent implements OnInit {
     const wsId = this.route.snapshot.paramMap.get('workspaceId') || '';
     this.workspaceId.set(wsId);
     this.loadNoLogsConfig();
+  }
+
+  ngOnDestroy(): void {
+    this.exportAbortController?.abort();
+  }
+
+  cancelExport(): void {
+    this.exportAbortController?.abort();
   }
 
   loadNoLogsConfig(): void {
@@ -188,31 +197,39 @@ export class PrivacyComponent implements OnInit {
   }
 
   exportData(): void {
+    this.exportAbortController?.abort();
+    this.exportAbortController = new AbortController();
+
     this.exporting.set(true);
-    this.apiService.exportPrivacyData(this.workspaceId()).subscribe({
-      next: (blob) => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `privacy-export-${this.workspaceId()}-${Date.now()}.json`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-        this.messageService.add({
-          severity: 'success',
-          summary: this.translateService.instant(_('common.success')),
-          detail: this.translateService.instant(_('privacy.exportSuccess')),
-        });
-        this.exporting.set(false);
-      },
-      error: (err) => {
-        console.error('Error exporting data:', err);
-        this.messageService.add({
-          severity: 'error',
-          summary: this.translateService.instant(_('common.error')),
-          detail: this.translateService.instant(_('privacy.exportError')),
-        });
-        this.exporting.set(false);
-      },
-    });
+    this.apiService
+      .exportPrivacyData(this.workspaceId(), {
+        signal: this.exportAbortController.signal,
+      })
+      .subscribe({
+        next: (blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `privacy-export-${this.workspaceId()}-${Date.now()}.json`;
+          a.click();
+          window.URL.revokeObjectURL(url);
+          this.messageService.add({
+            severity: 'success',
+            summary: this.translateService.instant(_('common.success')),
+            detail: this.translateService.instant(_('privacy.exportSuccess')),
+          });
+          this.exporting.set(false);
+        },
+        error: (err) => {
+          this.exporting.set(false);
+          if (err?.name === 'AbortError') return;
+          console.error('Error exporting data:', err);
+          this.messageService.add({
+            severity: 'error',
+            summary: this.translateService.instant(_('common.error')),
+            detail: this.translateService.instant(_('privacy.exportError')),
+          });
+        },
+      });
   }
 }

@@ -258,10 +258,48 @@ export class ApiService {
     return `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/files/${fileId}/download`;
   }
 
-  downloadFileAsBlob(workspaceId: string, documentId: string, fileId: string): Observable<Blob> {
+  downloadFileAsBlob(
+    workspaceId: string,
+    documentId: string,
+    fileId: string,
+    options?: { signal?: AbortSignal },
+  ): Observable<Blob> {
+    if (options?.signal !== undefined) {
+      return this.fetchDownloadFileAsBlob(
+        workspaceId,
+        documentId,
+        fileId,
+        options.signal,
+      );
+    }
     return this.http.get(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/files/${fileId}/download`,
       { responseType: 'blob' },
+    ) as Observable<Blob>;
+  }
+
+  private fetchDownloadFileAsBlob(
+    workspaceId: string,
+    documentId: string,
+    fileId: string,
+    signal: AbortSignal,
+  ): Observable<Blob> {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/files/${fileId}/download`;
+    const headers: Record<string, string> = {};
+    const token = this.authService.getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return from(
+      fetch(url, { method: 'GET', signal, headers }).then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw {
+            status: res.status,
+            error: body,
+            message: body?.message ?? res.statusText,
+          };
+        }
+        return res.blob();
+      }),
     );
   }
 
@@ -291,10 +329,50 @@ export class ApiService {
   }
 
   // Chat
-  chat(workspaceId: string, documentId: string, request: ChatRequest): Observable<ChatResponse> {
+  chat(
+    workspaceId: string,
+    documentId: string,
+    request: ChatRequest,
+    options?: { signal?: AbortSignal },
+  ): Observable<ChatResponse> {
+    if (options?.signal !== undefined) {
+      return this.fetchChat(workspaceId, documentId, request, options.signal);
+    }
     return this.http.post<ChatResponse>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}`,
       request,
+    );
+  }
+
+  private fetchChat(
+    workspaceId: string,
+    documentId: string,
+    request: ChatRequest,
+    signal: AbortSignal,
+  ): Observable<ChatResponse> {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    const token = this.authService.getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return from(
+      fetch(url, {
+        method: 'POST',
+        body: JSON.stringify(request),
+        signal,
+        headers,
+      }).then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw {
+            status: res.status,
+            error: body,
+            message: body?.message ?? res.statusText,
+          };
+        }
+        return res.json() as Promise<ChatResponse>;
+      }),
     );
   }
 
@@ -303,11 +381,54 @@ export class ApiService {
     documentId: string,
     text: string,
     language?: string,
+    options?: { signal?: AbortSignal },
   ): Observable<Blob> {
+    if (options?.signal !== undefined) {
+      return this.fetchSynthesizeSpeech(
+        workspaceId,
+        documentId,
+        text,
+        language,
+        options.signal,
+      );
+    }
     return this.http.post(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}/synthesize`,
       { text, language },
       { responseType: 'blob' },
+    ) as Observable<Blob>;
+  }
+
+  private fetchSynthesizeSpeech(
+    workspaceId: string,
+    documentId: string,
+    text: string,
+    language: string | undefined,
+    signal: AbortSignal,
+  ): Observable<Blob> {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}/synthesize`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    const token = this.authService.getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return from(
+      fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ text, language }),
+        signal,
+        headers,
+      }).then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw {
+            status: res.status,
+            error: body,
+            message: body?.message ?? res.statusText,
+          };
+        }
+        return res.blob();
+      }),
     );
   }
 
@@ -372,10 +493,55 @@ export class ApiService {
   }
 
   // Redline
-  generateRedline(workspaceId: string, documentId: string, request: RedlineRequest): Observable<RedlineResponse> {
+  generateRedline(
+    workspaceId: string,
+    documentId: string,
+    request: RedlineRequest,
+    options?: { signal?: AbortSignal },
+  ): Observable<RedlineResponse> {
+    if (options?.signal !== undefined) {
+      return this.fetchGenerateRedline(
+        workspaceId,
+        documentId,
+        request,
+        options.signal,
+      );
+    }
     return this.http.post<RedlineResponse>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.redline(workspaceId, documentId)}`,
       request,
+    );
+  }
+
+  private fetchGenerateRedline(
+    workspaceId: string,
+    documentId: string,
+    request: RedlineRequest,
+    signal: AbortSignal,
+  ): Observable<RedlineResponse> {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.redline(workspaceId, documentId)}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    const token = this.authService.getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return from(
+      fetch(url, {
+        method: 'POST',
+        body: JSON.stringify(request),
+        signal,
+        headers,
+      }).then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw {
+            status: res.status,
+            error: body,
+            message: body?.message ?? res.statusText,
+          };
+        }
+        return res.json() as Promise<RedlineResponse>;
+      }),
     );
   }
 
@@ -418,10 +584,40 @@ export class ApiService {
   }
 
   // Privacy
-  exportPrivacyData(workspaceId: string): Observable<any> {
-    return this.http.get(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.privacy(workspaceId)}/export`, {
-      responseType: 'blob',
-    });
+  exportPrivacyData(
+    workspaceId: string,
+    options?: { signal?: AbortSignal },
+  ): Observable<Blob> {
+    if (options?.signal !== undefined) {
+      return this.fetchExportPrivacyData(workspaceId, options.signal);
+    }
+    return this.http.get(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.privacy(workspaceId)}/export`,
+      { responseType: 'blob' },
+    ) as Observable<Blob>;
+  }
+
+  private fetchExportPrivacyData(
+    workspaceId: string,
+    signal: AbortSignal,
+  ): Observable<Blob> {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.privacy(workspaceId)}/export`;
+    const headers: Record<string, string> = {};
+    const token = this.authService.getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return from(
+      fetch(url, { method: 'GET', signal, headers }).then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw {
+            status: res.status,
+            error: body,
+            message: body?.message ?? res.statusText,
+          };
+        }
+        return res.blob();
+      }),
+    );
   }
 
   getNoLogsConfig(workspaceId: string): Observable<{ enabled: boolean; config?: any }> {

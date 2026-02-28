@@ -1,6 +1,7 @@
 import Replicate from 'replicate';
 import { mapI18nToMlLang, TtsProviderId } from '@contractai-review/shared';
 import type { ITtsProvider, TtsSynthesizeOptions } from '../interfaces/tts-provider.interface';
+import { abortAsPromise } from '../../common/utils/abort-promise';
 
 const MODEL = 'lucataco/xtts-v2';
 
@@ -41,7 +42,7 @@ export class ReplicateXttsAdapter implements ITtsProvider {
 
     const lang = options?.language ? mapI18nToMlLang(options.language) : 'en';
 
-    const output = await replicate.run(MODEL as `${string}/${string}`, {
+    const runPromise = replicate.run(MODEL as `${string}/${string}`, {
       input: {
         text,
         speaker: this.defaultSpeakerUrl,
@@ -49,11 +50,18 @@ export class ReplicateXttsAdapter implements ITtsProvider {
       },
     });
 
+    const output = options?.signal
+      ? await Promise.race([
+          runPromise,
+          abortAsPromise(options.signal),
+        ])
+      : await runPromise;
+
     if (typeof output !== 'string') {
       throw new Error('Replicate XTTS returned unexpected output format');
     }
 
-    const audioResponse = await fetch(output);
+    const audioResponse = await fetch(output, { signal: options?.signal });
     if (!audioResponse.ok) {
       throw new Error(
         `Failed to fetch Replicate audio: ${audioResponse.status} ${audioResponse.statusText}`,

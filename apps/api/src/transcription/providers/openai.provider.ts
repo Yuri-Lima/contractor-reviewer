@@ -21,7 +21,7 @@ export class OpenAITranscriptionProvider implements ITranscriptionProvider {
   async transcribe(
     audioBuffer: Buffer,
     mimeType: string,
-    options?: { language?: string; apiKey?: string },
+    options?: { language?: string; apiKey?: string; signal?: AbortSignal },
   ): Promise<TranscriptionResult> {
     const apiKey = this.resolveApiKey(options);
     const client = new OpenAI({ apiKey });
@@ -30,11 +30,14 @@ export class OpenAITranscriptionProvider implements ITranscriptionProvider {
       type: mimeType,
     });
 
-    const transcription = await client.audio.transcriptions.create({
-      file,
-      model: this.model,
-      language: options?.language?.split('-')[0] ?? undefined,
-    });
+    const transcription = await client.audio.transcriptions.create(
+      {
+        file,
+        model: this.model,
+        language: options?.language?.split('-')[0] ?? undefined,
+      },
+      options?.signal ? { signal: options.signal } : undefined,
+    );
 
     return {
       text: transcription.text?.trim() ?? '',

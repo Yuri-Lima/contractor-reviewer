@@ -18,6 +18,7 @@
     "kill:port": "./scripts/kill-port.sh 3000 4400 8000 8001",
     "docker:push": "./scripts/build-and-push.sh",
     "verify:deploy": "./scripts/verify-deployment.sh",
+    "verify:parsers": "./scripts/verify-parsers.sh",
     "lint": "nx run-many -t lint --all",
     "test": "nx run-many -t test --all",
     "docker:build": "nx run-many -t docker:build -p api,web"

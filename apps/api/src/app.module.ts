@@ -16,6 +16,7 @@ import { RetentionModule } from './retention/retention.module';
 import { PromptsModule } from './prompts/prompts.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { ImageManagerModule } from './image-manager/image-manager.module';
+import { HealthModule } from './health/health.module';
 import { typeOrmModuleOptions } from './typeorm.options';
 
 // Conditionally import AppController - only for API server, not worker
@@ -61,6 +62,7 @@ if (!isWorker) {
     PromptsModule,
     OnboardingModule,
     ImageManagerModule,
+    HealthModule,
   ],
   controllers: AppController ? [AppController] : [],
 })

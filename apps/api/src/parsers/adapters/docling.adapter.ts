@@ -81,17 +81,27 @@ export class DoclingAdapter implements DocumentParserAdapter {
     } catch (err) {
       if (err instanceof Error) {
         if (err.name === 'AbortError') {
-          throw new Error(
+          const timeoutErr = new Error(
             `Docling conversion timed out after ${timeout}ms. Service may be unavailable.`,
           );
+          (timeoutErr as Error & { cause?: unknown }).cause = err;
+          throw timeoutErr;
         }
       }
       const cause = getUnderlyingCause(err);
+      const causeCode = err && typeof err === 'object' && 'cause' in err
+        ? (err as { cause?: { code?: string } }).cause?.code
+        : undefined;
+      const errCode = err && typeof err === 'object' && 'code' in err
+        ? (err as { code?: string }).code
+        : undefined;
       this.logger.warn(
         `Docling unavailable: ${this.baseUrl}`,
-        cause ? { cause } : undefined,
+        { cause, causeCode, errCode, message: err instanceof Error ? err.message : String(err) },
       );
-      throw new Error(toUserFriendlyParserError('Docling', err));
+      const parserErr = new Error(toUserFriendlyParserError('Docling', err));
+      (parserErr as Error & { cause?: unknown }).cause = err;
+      throw parserErr;
     }
   }
 

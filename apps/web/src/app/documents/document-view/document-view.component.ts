@@ -19,7 +19,7 @@ import { Tag } from 'primeng/tag';
 import { Card } from 'primeng/card';
 import { interval, Subject } from 'rxjs';
 import { takeUntil, timeout } from 'rxjs';
-import { workspaceDocuments } from '../../core/routes';
+import { workspaceDocuments, documentSettings } from '../../core/routes';
 import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { ApiService } from '../../core/services/api.service';
 import { VoiceRecordingService } from '../../core/services/voice-recording.service';
@@ -40,6 +40,7 @@ import {
   MAX_BATCH_SIZE_BYTES,
   MAX_BATCH_FILE_COUNT,
   getViewerFormat,
+  WorkspaceRole,
   type ChatResponseMode,
   type FileSearchScope,
 } from '@contractai-review/shared';
@@ -168,6 +169,15 @@ interface ChatMessageWithAudio {
           </div>
         </div>
         <div class="document-actions flex gap-2">
+          @if (canEditPrompts()) {
+            <p-button
+              icon="pi pi-cog"
+              [outlined]="true"
+              severity="secondary"
+              [routerLink]="documentSettings(workspaceId(), documentId())"
+              [pTooltip]="'documentSettings.title' | translate"
+            ></p-button>
+          }
           <app-file-upload
             trigger="button"
             [accept]="fileInputAccept"
@@ -592,6 +602,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
 
   redlineComponent = viewChild<RedlineComponent>('redlineComponent');
 
+  readonly documentSettings = documentSettings;
+
   /** Expose enum for template comparisons. Uses fallback when shared package fails to load. */
   readonly ChatResponseMode = ChatResponseModeValues ?? CHAT_MODE;
 
@@ -635,6 +647,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     { value: 'createdAt', labelKey: 'documents.createdAt' },
   ];
   activeTab = signal<string | number>('0');
+  /** Only OWNER and ADMIN can edit prompts; set from workspace settings */
+  canEditPrompts = signal(false);
   textFileContent = signal<string>('');
   viewerLoading = computed(() => {
     const file = this.fileToView();
@@ -956,6 +970,10 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         const mode = settings.chatResponseMode ?? (ChatResponseModeValues ?? CHAT_MODE).TextOnly;
         this.chatResponseMode.set(mode);
         this.voiceAutoSend.set(settings.voiceAutoSend ?? false);
+        this.canEditPrompts.set(
+          settings.currentUserRole === WorkspaceRole.OWNER ||
+            settings.currentUserRole === WorkspaceRole.ADMIN,
+        );
       },
       error: () => {},
     });

@@ -1,0 +1,38 @@
+<div class="document-settings-container p-6 max-w-4xl mx-auto" style="min-height: 400px;" data-testid="document-settings-page">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">
+      {{ 'documentSettings.title' | translate }}: {{ getDisplayTitle(document()) }}
+    </h1>
+    <a
+      [routerLink]="workspaceDocument(workspaceId(), documentId())"
+      class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+    >
+      {{ 'common.back' | translate }}
+    </a>
+  </div>
+
+  @if (loading()) {
+    <p class="text-gray-600 dark:text-gray-400">{{ 'common.loading' | translate }}</p>
+  } @else {
+    <p-tabs [value]="activeTab()" (valueChange)="setActiveTab($event)">
+      <p-tablist>
+        <p-tab value="prompts" class="flex items-center gap-2">
+          <i class="pi pi-pencil"></i>
+          <span>{{ 'documentSettings.tabPrompts' | translate }}</span>
+        </p-tab>
+      </p-tablist>
+      <p-tabpanels>
+        <p-tabpanel value="prompts">
+          <div class="p-4">
+            <app-document-prompts-editor
+              [workspaceId]="workspaceId()"
+              [documentId]="documentId()"
+            ></app-document-prompts-editor>
+          </div>
+        </p-tabpanel>
+      </p-tabpanels>
+    </p-tabs>
+  }
+
+  <p-toast></p-toast>
+</div>

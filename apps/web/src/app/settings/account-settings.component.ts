@@ -15,6 +15,7 @@ import { Avatar } from 'primeng/avatar';
 import { TabsModule } from 'primeng/tabs';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { FileUploadComponent } from '../core/components/file-upload';
+import { GlobalPromptsEditorComponent } from './global-prompts-editor/global-prompts-editor.component';
 import { ApiService } from '../core/services/api.service';
 import { AuthService } from '../core/services/auth.service';
 import { AvatarService } from '../core/services/avatar.service';
@@ -49,6 +50,7 @@ import {
     TabsModule,
     TranslatePipe,
     FileUploadComponent,
+    GlobalPromptsEditorComponent,
   ],
   providers: [ConfirmationService, MessageService],
   templateUrl: './account-settings.html',

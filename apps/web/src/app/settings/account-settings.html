@@ -7,6 +7,10 @@
         <i class="pi pi-user"></i>
         <span>{{ 'settings.profileTab' | translate }}</span>
       </p-tab>
+      <p-tab value="globalPrompts" class="flex items-center gap-2">
+        <i class="pi pi-pencil"></i>
+        <span>{{ 'settings.globalPromptsTab' | translate }}</span>
+      </p-tab>
       <p-tab value="storage" class="flex items-center gap-2">
         <i class="pi pi-database"></i>
         <span>{{ 'settings.storageTab' | translate }}</span>
@@ -173,6 +177,12 @@
       </form>
     </div>
   </p-card>
+      </p-tabpanel>
+
+      <p-tabpanel value="globalPrompts">
+        <div class="p-4" data-tour="account-global-prompts">
+          <app-global-prompts-editor></app-global-prompts-editor>
+        </div>
       </p-tabpanel>
 
       <p-tabpanel value="storage">

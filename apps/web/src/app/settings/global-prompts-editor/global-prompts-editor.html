@@ -1,0 +1,72 @@
+<div class="global-prompts-editor p-4">
+  <p-message severity="info" class="mb-6">
+    {{ 'prompts.globalDescription' | translate }}
+  </p-message>
+
+  @if (loading()) {
+    <p class="text-gray-600 dark:text-gray-400">{{ 'common.loading' | translate }}</p>
+  } @else {
+    <p-accordion [value]="[]" [multiple]="true">
+      @for (prompt of prompts(); track prompt.key) {
+        <p-accordion-panel [value]="prompt.key">
+          <p-accordion-header>
+            <span class="flex items-center gap-2 w-full">
+              <span>{{ getLabelKey(prompt.key) | translate }}</span>
+              <span
+                class="text-xs px-2 py-0.5 rounded ml-auto"
+                [class.bg-gray-100]="true"
+                [class.text-gray-600]="true"
+                [class.dark:bg-gray-700]="true"
+                [class.dark:text-gray-300]="true"
+              >
+                {{ 'prompts.sourceGlobal' | translate }}
+              </span>
+            </span>
+          </p-accordion-header>
+          <p-accordion-content>
+            <div class="space-y-4">
+              @if (prompt.description) {
+                <small class="text-gray-500 dark:text-gray-400 block">
+                  {{ prompt.description }}
+                </small>
+              }
+              <small class="text-gray-500 dark:text-gray-400 block">
+                {{ 'prompts.templateVariablesHint' | translate }}
+              </small>
+              <textarea
+                pTextarea
+                [ngModel]="getContent(prompt.key)"
+                (ngModelChange)="onContentChange(prompt.key, $event)"
+                rows="10"
+                [autoResize]="true"
+                class="w-full font-mono text-sm"
+              ></textarea>
+              <div class="flex gap-2 justify-end">
+                @if (prompt.hasOverride) {
+                  <p-button
+                    [label]="'prompts.resetToDefault' | translate"
+                    icon="pi pi-refresh"
+                    severity="secondary"
+                    [outlined]="true"
+                    [loading]="savingKey() === prompt.key"
+                    [disabled]="savingKey() === prompt.key"
+                    (onClick)="onReset(prompt.key)"
+                    [pTooltip]="'prompts.resetToDefault' | translate"
+                  ></p-button>
+                }
+                <p-button
+                  [label]="'prompts.save' | translate"
+                  icon="pi pi-check"
+                  [loading]="savingKey() === prompt.key"
+                  [disabled]="!hasChanges(prompt.key) || savingKey() === prompt.key"
+                  (onClick)="onSave(prompt.key)"
+                  [pTooltip]="'common.save' | translate"
+                ></p-button>
+              </div>
+            </div>
+          </p-accordion-content>
+        </p-accordion-panel>
+      }
+    </p-accordion>
+  }
+</div>

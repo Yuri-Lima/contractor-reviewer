@@ -77,6 +77,14 @@ export class WorkspaceSettings {
   @Column({ type: 'boolean', default: false })
   voiceAutoSend: boolean;
 
+  /** Include global prompts when building combined prompt (additive model) */
+  @Column({ type: 'boolean', default: true })
+  promptScopeIncludeGlobal: boolean;
+
+  /** Include workspace prompts when building combined prompt (additive model) */
+  @Column({ type: 'boolean', default: true })
+  promptScopeIncludeWorkspace: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

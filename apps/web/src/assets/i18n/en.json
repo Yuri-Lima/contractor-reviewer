@@ -198,6 +198,10 @@
     "uploadBatchSuccess": "{{count}} file(s) uploaded successfully",
     "uploadPartialError": "{{success}} of {{total}} files uploaded. {{failed}} failed."
   },
+  "documentSettings": {
+    "title": "Document Settings",
+    "tabPrompts": "AI Prompts"
+  },
   "chat": {
     "voiceInput": "Voice input",
     "voiceInputUnsupported": "Voice input is not supported in this browser",
@@ -438,6 +442,7 @@
     "avatarError": "Error uploading avatar",
     "avatarSizeError": "Image must be 2MB or less. Use PNG or JPEG.",
     "profileTab": "Profile",
+    "globalPromptsTab": "AI Prompts",
     "storageTab": "Storage",
     "storageProvider": "Provider",
     "bucketEndpoint": "Endpoint URL",
@@ -670,6 +675,12 @@
   "prompts": {
     "tabTitle": "AI Prompts",
     "description": "Customize system prompts for chat and redline generation. Override global defaults per workspace.",
+    "globalDescription": "Edit global AI prompts that apply to all workspaces and documents. These defaults are used when workspace or document overrides are not set.",
+    "includeGlobal": "Include global prompts",
+    "includeWorkspace": "Include workspace prompts",
+    "includeDocument": "Include document prompts",
+    "documentDescription": "Customize AI prompts for this document. Document prompts are combined with workspace and global. Applies only to this document's chat and redline.",
+    "sourceDocument": "Document override",
     "chatSystem": "Chat system prompt",
     "chatUser": "Chat user prompt",
     "redlineSystem": "Redline system prompt",

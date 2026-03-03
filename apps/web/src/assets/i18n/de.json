@@ -198,6 +198,10 @@
     "uploadBatchSuccess": "{{count}} Datei(en) erfolgreich hochgeladen",
     "uploadPartialError": "{{success}} von {{total}} Dateien hochgeladen. {{failed}} fehlgeschlagen."
   },
+  "documentSettings": {
+    "title": "Dokumenteinstellungen",
+    "tabPrompts": "KI-Prompts"
+  },
   "chat": {
     "voiceInput": "Spracheingabe",
     "voiceInputUnsupported": "Spracheingabe wird in diesem Browser nicht unterstützt",
@@ -438,6 +442,7 @@
     "avatarError": "Fehler beim Hochladen des Avatars",
     "avatarSizeError": "Das Bild muss 2MB oder weniger sein. Verwenden Sie PNG oder JPEG.",
     "profileTab": "Profil",
+    "globalPromptsTab": "KI-Prompts",
     "storageTab": "Speicher",
     "storageProvider": "Anbieter",
     "bucketEndpoint": "Endpoint-URL",
@@ -666,6 +671,12 @@
   "prompts": {
     "tabTitle": "KI-Prompts",
     "description": "Passen Sie System-Prompts für Chat und Redline-Generierung an. Überschreiben Sie globale Standardwerte pro Workspace.",
+    "globalDescription": "Bearbeiten Sie globale KI-Prompts, die für alle Workspaces und Dokumente gelten. Diese Standardwerte werden verwendet, wenn keine Workspace- oder Dokumentüberschreibungen festgelegt sind.",
+    "includeGlobal": "Globale Prompts einbeziehen",
+    "includeWorkspace": "Workspace-Prompts einbeziehen",
+    "includeDocument": "Dokument-Prompts einbeziehen",
+    "documentDescription": "Passen Sie KI-Prompts für dieses Dokument an. Dokument-Prompts werden mit Workspace- und Global-Prompts kombiniert. Gilt nur für Chat und Redline dieses Dokuments.",
+    "sourceDocument": "Dokumentüberschreibung",
     "chatSystem": "Chat-System-Prompt",
     "chatUser": "Chat-Benutzer-Prompt",
     "redlineSystem": "Redline-System-Prompt",

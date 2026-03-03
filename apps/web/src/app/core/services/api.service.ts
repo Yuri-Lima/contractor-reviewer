@@ -673,6 +673,26 @@ export class ApiService {
     );
   }
 
+  // Global prompts (account settings)
+  getAccountPrompts(): Observable<ListPromptsResponse> {
+    return this.http.get<ListPromptsResponse>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.accountPrompts()}`,
+    );
+  }
+
+  updateAccountPrompt(key: string, content: string): Observable<PromptResponse> {
+    return this.http.put<PromptResponse>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.accountPrompts()}/${encodeURIComponent(key)}`,
+      { content },
+    );
+  }
+
+  resetAccountPrompt(key: string): Observable<void> {
+    return this.http.delete<void>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.accountPrompts()}/${encodeURIComponent(key)}`,
+    );
+  }
+
   // Prompts (admin)
   getPrompts(workspaceId: string): Observable<ListPromptsResponse> {
     return this.http.get<ListPromptsResponse>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.prompts(workspaceId)}`);
@@ -694,6 +714,48 @@ export class ApiService {
   resetPrompt(workspaceId: string, key: string): Observable<void> {
     return this.http.delete<void>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.prompts(workspaceId)}/${encodeURIComponent(key)}`,
+    );
+  }
+
+  // Document prompts (admin)
+  getDocumentPrompts(
+    workspaceId: string,
+    documentId: string,
+  ): Observable<ListPromptsResponse> {
+    return this.http.get<ListPromptsResponse>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documentPrompts(workspaceId, documentId)}`,
+    );
+  }
+
+  getDocumentPrompt(
+    workspaceId: string,
+    documentId: string,
+    key: string,
+  ): Observable<PromptResponse> {
+    return this.http.get<PromptResponse>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documentPrompts(workspaceId, documentId)}/${encodeURIComponent(key)}`,
+    );
+  }
+
+  updateDocumentPrompt(
+    workspaceId: string,
+    documentId: string,
+    key: string,
+    content: string,
+  ): Observable<PromptResponse> {
+    return this.http.put<PromptResponse>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documentPrompts(workspaceId, documentId)}/${encodeURIComponent(key)}`,
+      { content },
+    );
+  }
+
+  resetDocumentPrompt(
+    workspaceId: string,
+    documentId: string,
+    key: string,
+  ): Observable<void> {
+    return this.http.delete<void>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documentPrompts(workspaceId, documentId)}/${encodeURIComponent(key)}`,
     );
   }
 

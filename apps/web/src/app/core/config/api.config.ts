@@ -48,6 +48,7 @@ export const API_CONFIG = {
       search: '/auth/users/search',
     },
     account: '/account',
+    accountPrompts: () => '/account/prompts',
     onboarding: '/onboarding',
     workspaces: '/workspaces',
     documents: (workspaceId: string) => `/workspaces/${workspaceId}/documents`,
@@ -58,6 +59,8 @@ export const API_CONFIG = {
     retention: (workspaceId: string) => `/workspaces/${workspaceId}/retention`,
     settings: (workspaceId: string) => `/workspaces/${workspaceId}/settings`,
     prompts: (workspaceId: string) => `/workspaces/${workspaceId}/prompts`,
+    documentPrompts: (workspaceId: string, documentId: string) =>
+      `/workspaces/${workspaceId}/documents/${documentId}/prompts`,
     documentParsers: (workspaceId: string) => `/workspaces/${workspaceId}/document-parsers`,
   },
 };

@@ -200,6 +200,10 @@
     "uploadBatchSuccess": "{{count}} arquivo(s) enviado(s) com sucesso",
     "uploadPartialError": "{{success}} de {{total}} arquivos enviados. {{failed}} falharam."
   },
+  "documentSettings": {
+    "title": "Configurações do documento",
+    "tabPrompts": "Prompts de IA"
+  },
   "chat": {
     "voiceInput": "Entrada de voz",
     "voiceInputUnsupported": "Entrada de voz não é suportada neste navegador",
@@ -440,6 +444,7 @@
     "avatarError": "Erro ao enviar avatar",
     "avatarSizeError": "A imagem deve ter 2MB ou menos. Use PNG ou JPEG.",
     "profileTab": "Perfil",
+    "globalPromptsTab": "Prompts de IA",
     "storageTab": "Armazenamento",
     "storageProvider": "Provedor",
     "bucketEndpoint": "URL do endpoint",
@@ -672,6 +677,12 @@
   "prompts": {
     "tabTitle": "Prompts de IA",
     "description": "Personalize os prompts do sistema para chat e geração de redlines. Sobrescreva os padrões globais por workspace.",
+    "globalDescription": "Edite os prompts de IA globais que se aplicam a todos os workspaces e documentos. Esses padrões são usados quando não há sobrescritas de workspace ou documento.",
+    "includeGlobal": "Incluir prompts globais",
+    "includeWorkspace": "Incluir prompts do workspace",
+    "includeDocument": "Incluir prompts do documento",
+    "documentDescription": "Personalize os prompts de IA para este documento. Os prompts de documento são combinados com os de workspace e global. Aplica-se apenas ao chat e redline deste documento.",
+    "sourceDocument": "Sobrescritura do documento",
     "chatSystem": "Prompt do sistema para chat",
     "chatUser": "Prompt de usuário para chat",
     "redlineSystem": "Prompt do sistema para redline",

@@ -1,7 +1,10 @@
+/** Prompt source scope: document override, workspace override, or global default */
+export type PromptSource = 'document' | 'workspace' | 'global';
+
 export interface PromptListItem {
   key: string;
   content: string;
-  source: 'workspace' | 'global';
+  source: PromptSource;
   description?: string;
   updatedAt?: string;
 }

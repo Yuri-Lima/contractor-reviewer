@@ -12,6 +12,8 @@ export interface Document {
   jurisdictionStatus?: JurisdictionStatus;
   createdAt: string;
   updatedAt: string;
+  /** Include document prompts when building combined prompt (additive model) */
+  promptScopeIncludeDocument?: boolean;
   files?: DocumentFile[];
   jobs?: DocumentJob[];
 }
@@ -54,6 +56,8 @@ export interface CreateDocumentRequest {
 export interface UpdateDocumentRequest {
   title?: string;
   description?: string;
+  /** Include document prompts when building combined prompt */
+  promptScopeIncludeDocument?: boolean;
 }
 
 export interface FileContentResponse {

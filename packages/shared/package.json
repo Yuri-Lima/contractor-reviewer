@@ -6,7 +6,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc -p tsconfig.esm.json",
     "clean": "rm -rf dist",
     "lint": "eslint .",
     "test": "jest --config jest.config.ts"
@@ -14,22 +14,32 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./types": {
       "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/types/index.js",
+      "require": "./dist/types/index.js",
       "default": "./dist/types/index.js"
     },
     "./enums": {
       "types": "./dist/enums/index.d.ts",
+      "import": "./dist/esm/enums/index.js",
+      "require": "./dist/enums/index.js",
       "default": "./dist/enums/index.js"
     },
     "./utils": {
       "types": "./dist/utils/index.d.ts",
+      "import": "./dist/esm/utils/index.js",
+      "require": "./dist/utils/index.js",
       "default": "./dist/utils/index.js"
     },
     "./constants": {
       "types": "./dist/constants/index.d.ts",
+      "import": "./dist/esm/constants/index.js",
+      "require": "./dist/constants/index.js",
       "default": "./dist/constants/index.js"
     }
   },

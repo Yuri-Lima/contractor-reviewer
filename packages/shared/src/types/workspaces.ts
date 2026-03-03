@@ -25,6 +25,10 @@ export interface WorkspaceSettingsConfig {
   chatResponseMode?: ChatResponseMode;
   /** Auto-send message after voice recording completes */
   voiceAutoSend?: boolean;
+  /** Include global prompts when building combined prompt (additive model) */
+  promptScopeIncludeGlobal?: boolean;
+  /** Include workspace prompts when building combined prompt (additive model) */
+  promptScopeIncludeWorkspace?: boolean;
 }
 
 /**
@@ -63,6 +67,10 @@ export interface UpdateWorkspaceSettingsRequest {
   chatResponseMode?: ChatResponseMode;
   /** Voice recording auto-send */
   voiceAutoSend?: boolean;
+  /** Include global prompts when building combined prompt */
+  promptScopeIncludeGlobal?: boolean;
+  /** Include workspace prompts when building combined prompt */
+  promptScopeIncludeWorkspace?: boolean;
 }
 
 export interface Workspace {

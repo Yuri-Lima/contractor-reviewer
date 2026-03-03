@@ -45,6 +45,10 @@ export class Document {
   @Column({ nullable: true })
   detectedLanguage: string; // ISO 639-1 code (en, es, pt)
 
+  /** Include document prompts when building combined prompt (additive model) */
+  @Column({ type: 'boolean', default: true })
+  promptScopeIncludeDocument: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -4,7 +4,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Document } from './document.entity';
 
 @Entity('prompts')
 export class Prompt {
@@ -19,6 +22,13 @@ export class Prompt {
 
   @Column('uuid', { nullable: true })
   workspaceId: string | null; // null = global; non-null = workspace-specific override
+
+  @Column('uuid', { nullable: true })
+  documentId: string | null; // null = workspace/global; non-null = document-specific override
+
+  @ManyToOne(() => Document, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'documentId' })
+  document: Document | null;
 
   @Column('text')
   content: string; // Prompt or template with {{variable}} placeholders

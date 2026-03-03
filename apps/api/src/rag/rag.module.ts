@@ -11,6 +11,7 @@ import { StorageModule } from '../storage/storage.module';
 import { ConfigModule } from '@nestjs/config';
 import { PromptsModule } from '../prompts/prompts.module';
 import { VectorStoreModule } from '../vector-store/vector-store.module';
+import { WorkspaceModule } from '../workspace/workspace.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { VectorStoreModule } from '../vector-store/vector-store.module';
     StorageModule,
     ConfigModule,
     PromptsModule,
+    WorkspaceModule,
   ],
   providers: [
     PdfParserService,

@@ -22,6 +22,7 @@ export const AUDIO_ALLOWED_MIME_TYPES = [
   'audio/m4a',
   'audio/x-m4a',
   'audio/mp3',
+  'video/mp4',
 ] as const;
 
 export const AUDIO_MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25MB
@@ -36,6 +37,7 @@ export const MIME_TO_EXTENSION: Record<string, string> = {
   'audio/m4a': 'm4a',
   'audio/x-m4a': 'm4a',
   'audio/mp3': 'mp3',
+  'video/mp4': 'm4a',
 };
 
 /**

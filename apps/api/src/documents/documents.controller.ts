@@ -70,7 +70,7 @@ export class DocumentsController {
   async updateDocument(
     @WorkspaceId() workspaceId: string,
     @Param('documentId') documentId: string,
-    @Body() updateDto: { title?: string; description?: string },
+    @Body() updateDto: { title?: string; description?: string; promptScopeIncludeDocument?: boolean },
   ): Promise<Document> {
     return this.documentsService.update(documentId, workspaceId, updateDto);
   }

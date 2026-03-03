@@ -113,12 +113,12 @@ export class DocumentsService {
   }
 
   /**
-   * Update document (title, description). Only provided fields are updated.
+   * Update document (title, description, promptScopeIncludeDocument). Only provided fields are updated.
    */
   async update(
     documentId: string,
     workspaceId: string,
-    data: { title?: string; description?: string },
+    data: { title?: string; description?: string; promptScopeIncludeDocument?: boolean },
   ): Promise<Document> {
     const document = await this.findById(documentId, workspaceId);
     if (data.title !== undefined) {
@@ -130,6 +130,9 @@ export class DocumentsService {
     }
     if (data.description !== undefined) {
       document.description = data.description?.trim() ?? '';
+    }
+    if (data.promptScopeIncludeDocument !== undefined) {
+      document.promptScopeIncludeDocument = !!data.promptScopeIncludeDocument;
     }
     return this.documentRepository.save(document);
   }

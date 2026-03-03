@@ -4,6 +4,7 @@ import { DocumentsService } from './documents.service';
 import { DocumentsController } from './documents.controller';
 import { ChatController } from './chat.controller';
 import { RedlineController } from './redline.controller';
+import { DocumentPromptsController } from './document-prompts.controller';
 import { Document } from '../entities/document.entity';
 import { DocumentFile } from '../entities/document-file.entity';
 import { DocumentJob } from '../entities/document-job.entity';
@@ -51,7 +52,12 @@ import { ChunksModule } from '../chunks/chunks.module';
     TranscriptionModule,
     TtsModule,
   ],
-  controllers: [DocumentsController, ChatController, RedlineController],
+  controllers: [
+    DocumentsController,
+    ChatController,
+    RedlineController,
+    DocumentPromptsController,
+  ],
   providers: [
     DocumentsService,
     ChatMessageService,

@@ -9,3 +9,4 @@ export * from './language';
 export * from './transcription';
 export * from './user-storage';
 export * from './tts';
+export * from './prompts';

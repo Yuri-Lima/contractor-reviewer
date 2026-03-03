@@ -5,6 +5,29 @@
     class="mb-6"
   ></p-message>
 
+  <div class="mb-6 space-y-4">
+    <div class="flex items-center justify-between gap-4">
+      <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        {{ 'prompts.includeGlobal' | translate }}
+      </label>
+      <p-toggleswitch
+        [ngModel]="includeGlobal()"
+        (ngModelChange)="onScopeToggle('includeGlobal', $event)"
+        [disabled]="savingScope()"
+      ></p-toggleswitch>
+    </div>
+    <div class="flex items-center justify-between gap-4">
+      <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        {{ 'prompts.includeWorkspace' | translate }}
+      </label>
+      <p-toggleswitch
+        [ngModel]="includeWorkspace()"
+        (ngModelChange)="onScopeToggle('includeWorkspace', $event)"
+        [disabled]="savingScope()"
+      ></p-toggleswitch>
+    </div>
+  </div>
+
   @if (loading()) {
     <p class="text-gray-600 dark:text-gray-400">{{ 'common.loading' | translate }}</p>
   } @else {

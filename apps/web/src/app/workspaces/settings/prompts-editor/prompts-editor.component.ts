@@ -6,21 +6,12 @@ import { Message } from 'primeng/message';
 import { TooltipModule } from 'primeng/tooltip';
 import { AccordionModule } from 'primeng/accordion';
 import { TextareaModule } from 'primeng/textarea';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { MessageService } from 'primeng/api';
 import { ApiService } from '../../../core/services/api.service';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
-import { PromptListItem } from '@contractai-review/shared';
-
-/** Maps prompt key to i18n label key */
-const PROMPT_LABEL_KEYS: Record<string, string> = {
-  'chat.system': 'prompts.chatSystem',
-  'chat.user': 'prompts.chatUser',
-  'redline.system': 'prompts.redlineSystem',
-  'redline.user': 'prompts.redlineUser',
-  'redline.playbook.balanced': 'prompts.playbookBalanced',
-  'redline.playbook.conservative': 'prompts.playbookConservative',
-  'redline.playbook.client-friendly': 'prompts.playbookClientFriendly',
-};
+import type { PromptListItem } from '@contractai-review/shared';
+import { PROMPT_LABEL_KEYS } from '@contractai-review/shared/constants';
 
 @Component({
   selector: 'app-prompts-editor',
@@ -33,6 +24,7 @@ const PROMPT_LABEL_KEYS: Record<string, string> = {
     TooltipModule,
     AccordionModule,
     TextareaModule,
+    ToggleSwitchModule,
     TranslatePipe,
   ],
   templateUrl: './prompts-editor.html',
@@ -47,7 +39,11 @@ export class PromptsEditorComponent implements OnInit {
   prompts = signal<PromptListItem[]>([]);
   loading = signal(false);
   savingKey = signal<string | null>(null);
+  savingScope = signal(false);
   editedContent = signal<Record<string, string>>({});
+  /** Scope toggles from workspace settings (default true when not loaded) */
+  includeGlobal = signal(true);
+  includeWorkspace = signal(true);
 
   getLabelKey(key: string): string {
     return PROMPT_LABEL_KEYS[key] ?? key;
@@ -55,6 +51,54 @@ export class PromptsEditorComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadPrompts();
+    this.loadScopeSettings();
+  }
+
+  loadScopeSettings(): void {
+    if (!this.workspaceId) return;
+    this.apiService.getWorkspaceSettings(this.workspaceId).subscribe({
+      next: (config) => {
+        this.includeGlobal.set(config.promptScopeIncludeGlobal ?? true);
+        this.includeWorkspace.set(config.promptScopeIncludeWorkspace ?? true);
+      },
+      error: () => {
+        // Keep defaults on error
+      },
+    });
+  }
+
+  onScopeToggle(field: 'includeGlobal' | 'includeWorkspace', value: boolean): void {
+    if (!this.workspaceId) return;
+    const prevGlobal = this.includeGlobal();
+    const prevWorkspace = this.includeWorkspace();
+    if (field === 'includeGlobal') this.includeGlobal.set(value);
+    else this.includeWorkspace.set(value);
+    this.savingScope.set(true);
+    const payload = field === 'includeGlobal'
+      ? { promptScopeIncludeGlobal: value }
+      : { promptScopeIncludeWorkspace: value };
+    this.apiService.updateWorkspaceSettings(this.workspaceId, payload).subscribe({
+      next: (config) => {
+        this.includeGlobal.set(config.promptScopeIncludeGlobal ?? true);
+        this.includeWorkspace.set(config.promptScopeIncludeWorkspace ?? true);
+        this.messageService.add({
+          severity: 'success',
+          summary: this.translateService.instant('common.success'),
+          detail: this.translateService.instant('prompts.saveSuccess'),
+        });
+        this.savingScope.set(false);
+      },
+      error: (err) => {
+        this.includeGlobal.set(prevGlobal);
+        this.includeWorkspace.set(prevWorkspace);
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translateService.instant('common.error'),
+          detail: err?.error?.message || this.translateService.instant('prompts.saveError'),
+        });
+        this.savingScope.set(false);
+      },
+    });
   }
 
   loadPrompts(): void {

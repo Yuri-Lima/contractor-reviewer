@@ -2,18 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Prompt } from '../entities/prompt.entity';
-import { RedlinePlaybook, getLanguageDisplayName } from '@contractai-review/shared';
+import {
+  RedlinePlaybook,
+  getLanguageDisplayName,
+  PROMPT_KEYS,
+} from '@contractai-review/shared';
 
-/** Known prompt keys for admin UI */
-export const PROMPT_KEYS = [
-  'chat.system',
-  'chat.user',
-  'redline.system',
-  'redline.user',
-  'redline.playbook.balanced',
-  'redline.playbook.conservative',
-  'redline.playbook.client-friendly',
-] as const;
+export { PROMPT_KEYS };
 
 /** Built-in defaults when DB prompt is missing */
 const DEFAULT_PROMPTS: Record<string, string> = {
@@ -115,6 +110,13 @@ export interface RedlinePromptParams {
   instructions: string;
 }
 
+/** Scope flags for additive prompt combination (user can enable/disable each layer) */
+export interface PromptScopeFlags {
+  includeGlobal?: boolean;
+  includeWorkspace?: boolean;
+  includeDocument?: boolean;
+}
+
 @Injectable()
 export class PromptService {
   constructor(
@@ -123,34 +125,98 @@ export class PromptService {
   ) {}
 
   /**
-   * Get prompt content from DB (workspace override first, then global), fallback to built-in default.
+   * Get combined prompt content (additive: global + workspace + document).
+   * Each layer is included only if it exists and its scope flag is true.
+   * If no enabled layer has content, returns built-in default.
    */
-  async getPrompt(
+  async getCombinedPrompt(
     key: string,
-    options?: { workspaceId?: string; variant?: string },
+    options?: {
+      workspaceId?: string;
+      documentId?: string;
+      variant?: string;
+      scopeFlags?: PromptScopeFlags;
+    },
   ): Promise<string> {
     const variant = options?.variant ?? 'default';
     const workspaceId = options?.workspaceId ?? null;
+    const documentId = options?.documentId ?? null;
+    const flags = options?.scopeFlags ?? {};
+    const includeGlobal = flags.includeGlobal !== false;
+    const includeWorkspace = flags.includeWorkspace !== false;
+    const includeDocument = flags.includeDocument !== false;
 
-    // Try workspace-specific first (if workspaceId provided)
+    const [globalPrompt, workspacePrompt, documentPrompt] = await Promise.all([
+      this.promptRepository.findOne({
+        where: { key, variant, workspaceId: IsNull(), documentId: IsNull() },
+      }),
+      workspaceId
+        ? this.promptRepository.findOne({
+            where: { key, variant, workspaceId, documentId: IsNull() },
+          })
+        : Promise.resolve(null),
+      documentId
+        ? this.promptRepository.findOne({
+            where: { key, variant, documentId },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    const parts: string[] = [];
+    if (includeGlobal && globalPrompt?.content) parts.push(globalPrompt.content);
+    if (includeWorkspace && workspacePrompt?.content) parts.push(workspacePrompt.content);
+    if (includeDocument && documentPrompt?.content) parts.push(documentPrompt.content);
+
+    if (parts.length > 0) {
+      return parts.join('\n\n');
+    }
+
+    const defaultContent = DEFAULT_PROMPTS[key];
+    if (defaultContent) return defaultContent;
+    throw new Error(`Prompt not found: ${key} (no default available)`);
+  }
+
+  /**
+   * Get prompt content from DB (document → workspace → global), fallback to built-in default.
+   * @deprecated Use getCombinedPrompt for additive behavior.
+   */
+  async getPrompt(
+    key: string,
+    options?: { workspaceId?: string; documentId?: string; variant?: string },
+  ): Promise<string> {
+    const variant = options?.variant ?? 'default';
+    const workspaceId = options?.workspaceId ?? null;
+    const documentId = options?.documentId ?? null;
+
+    // 1. Try document-specific first
+    if (documentId) {
+      const documentPrompt = await this.promptRepository.findOne({
+        where: { key, variant, documentId },
+      });
+      if (documentPrompt) {
+        return documentPrompt.content;
+      }
+    }
+
+    // 2. Try workspace-specific
     if (workspaceId) {
       const workspacePrompt = await this.promptRepository.findOne({
-        where: { key, variant, workspaceId },
+        where: { key, variant, workspaceId, documentId: IsNull() },
       });
       if (workspacePrompt) {
         return workspacePrompt.content;
       }
     }
 
-    // Try global prompt
+    // 3. Try global prompt
     const globalPrompt = await this.promptRepository.findOne({
-      where: { key, variant, workspaceId: IsNull() },
+      where: { key, variant, workspaceId: IsNull(), documentId: IsNull() },
     });
     if (globalPrompt) {
       return globalPrompt.content;
     }
 
-    // Fallback to built-in default
+    // 4. Fallback to built-in default
     const defaultContent = DEFAULT_PROMPTS[key];
     if (defaultContent) {
       return defaultContent;
@@ -177,15 +243,25 @@ export class PromptService {
   }
 
   /**
-   * Get chat prompts (system + user) for RAG.
+   * Get chat prompts (system + user) for RAG. Uses additive combination when scopeFlags provided.
    */
   async getChatPrompts(
     params: ChatPromptParams,
-    options?: { workspaceId?: string; variant?: string },
+    options?: {
+      workspaceId?: string;
+      documentId?: string;
+      variant?: string;
+      scopeFlags?: PromptScopeFlags;
+    },
   ): Promise<{ system: string; user: string }> {
+    const useCombined = options?.scopeFlags != null;
     const [system, userTemplate] = await Promise.all([
-      this.getPrompt('chat.system', options),
-      this.getPrompt('chat.user', options),
+      useCombined
+        ? this.getCombinedPrompt('chat.system', options)
+        : this.getPrompt('chat.system', options),
+      useCombined
+        ? this.getCombinedPrompt('chat.user', options)
+        : this.getPrompt('chat.user', options),
     ]);
 
     const user = this.interpolate(userTemplate, {
@@ -198,15 +274,25 @@ export class PromptService {
   }
 
   /**
-   * Get redline prompts (system + user) for redline generation.
+   * Get redline prompts (system + user) for redline generation. Uses additive combination when scopeFlags provided.
    */
   async getRedlinePrompts(
     params: RedlinePromptParams,
-    options?: { workspaceId?: string; variant?: string },
+    options?: {
+      workspaceId?: string;
+      documentId?: string;
+      variant?: string;
+      scopeFlags?: PromptScopeFlags;
+    },
   ): Promise<{ system: string; user: string }> {
+    const useCombined = options?.scopeFlags != null;
     const [system, userTemplate] = await Promise.all([
-      this.getPrompt('redline.system', options),
-      this.getPrompt('redline.user', options),
+      useCombined
+        ? this.getCombinedPrompt('redline.system', options)
+        : this.getPrompt('redline.system', options),
+      useCombined
+        ? this.getCombinedPrompt('redline.user', options)
+        : this.getPrompt('redline.user', options),
     ]);
 
     const user = this.interpolate(userTemplate, {
@@ -222,11 +308,16 @@ export class PromptService {
   }
 
   /**
-   * Get playbook-specific prompt content.
+   * Get playbook-specific prompt content. Uses additive combination when scopeFlags provided.
    */
   async getPlaybookPrompt(
     playbook: RedlinePlaybook,
-    options?: { workspaceId?: string; variant?: string },
+    options?: {
+      workspaceId?: string;
+      documentId?: string;
+      variant?: string;
+      scopeFlags?: PromptScopeFlags;
+    },
   ): Promise<string> {
     const keyMap: Record<RedlinePlaybook, string> = {
       [RedlinePlaybook.BALANCED]: 'redline.playbook.balanced',
@@ -234,13 +325,18 @@ export class PromptService {
       [RedlinePlaybook.CLIENT_FRIENDLY]: 'redline.playbook.client-friendly',
     };
     const key = keyMap[playbook] ?? 'redline.playbook.balanced';
-    return this.getPrompt(key, options);
+    return options?.scopeFlags != null
+      ? this.getCombinedPrompt(key, options)
+      : this.getPrompt(key, options);
   }
 
   /**
-   * List all prompts for a workspace (workspace overrides + global defaults).
+   * List all prompts for a workspace. Returns combined content when scopeFlags provided.
    */
-  async listPromptsForWorkspace(workspaceId: string): Promise<
+  async listPromptsForWorkspace(
+    workspaceId: string,
+    scopeFlags?: { includeGlobal?: boolean; includeWorkspace?: boolean },
+  ): Promise<
     Array<{
       key: string;
       content: string;
@@ -267,44 +363,110 @@ export class PromptService {
       'redline.playbook.client-friendly': 'Client-friendly redline playbook',
     };
 
+    const flags =
+      scopeFlags != null
+        ? { includeGlobal: scopeFlags.includeGlobal !== false, includeWorkspace: scopeFlags.includeWorkspace !== false }
+        : undefined;
+
     for (const key of PROMPT_KEYS) {
       const workspacePrompt = await this.promptRepository.findOne({
-        where: { key, variant: 'default', workspaceId },
+        where: { key, variant: 'default', workspaceId, documentId: IsNull() },
       });
       const globalPrompt = await this.promptRepository.findOne({
-        where: { key, variant: 'default', workspaceId: IsNull() },
+        where: { key, variant: 'default', workspaceId: IsNull(), documentId: IsNull() },
       });
 
-      if (workspacePrompt) {
-        results.push({
-          key,
-          content: workspacePrompt.content,
-          source: 'workspace',
-          description: descriptions[key] ?? (workspacePrompt.metadata as { description?: string })?.description,
-          updatedAt: workspacePrompt.updatedAt,
-        });
-      } else if (globalPrompt) {
-        results.push({
-          key,
-          content: globalPrompt.content,
-          source: 'global',
-          description: descriptions[key] ?? (globalPrompt.metadata as { description?: string })?.description,
-          updatedAt: globalPrompt.updatedAt,
-        });
-      } else {
-        const defaultContent = DEFAULT_PROMPTS[key];
-        if (defaultContent) {
-          results.push({
-            key,
-            content: defaultContent,
-            source: 'global',
-            description: descriptions[key],
-          });
-        }
-      }
+      const content =
+        flags != null
+          ? await this.getCombinedPrompt(key, { workspaceId, variant: 'default', scopeFlags: { ...flags, includeDocument: false } })
+          : workspacePrompt?.content ?? globalPrompt?.content ?? DEFAULT_PROMPTS[key] ?? '';
+      if (!content) continue;
+
+      const source = workspacePrompt ? 'workspace' : 'global';
+      const meta = (workspacePrompt ?? globalPrompt)?.metadata as { description?: string } | undefined;
+      results.push({
+        key,
+        content,
+        source,
+        description: descriptions[key] ?? meta?.description,
+        updatedAt: (workspacePrompt ?? globalPrompt)?.updatedAt,
+      });
     }
 
     return results;
+  }
+
+  /**
+   * List all global prompts (workspaceId and documentId are null).
+   */
+  async listGlobalPrompts(): Promise<
+    Array<{
+      key: string;
+      content: string;
+      source: 'global';
+      /** True when a DB override exists (can be reset to built-in) */
+      hasOverride: boolean;
+      description?: string;
+      updatedAt?: Date;
+    }>
+  > {
+    const results: Array<{
+      key: string;
+      content: string;
+      source: 'global';
+      hasOverride: boolean;
+      description?: string;
+      updatedAt?: Date;
+    }> = [];
+
+    const descriptions: Record<string, string> = {
+      'chat.system': 'System prompt for RAG chat',
+      'chat.user': 'User prompt template for RAG chat',
+      'redline.system': 'System prompt for redline generation',
+      'redline.user': 'User prompt template for redline',
+      'redline.playbook.balanced': 'Balanced redline playbook',
+      'redline.playbook.conservative': 'Conservative redline playbook',
+      'redline.playbook.client-friendly': 'Client-friendly redline playbook',
+    };
+
+    for (const key of PROMPT_KEYS) {
+      const globalPrompt = await this.promptRepository.findOne({
+        where: { key, variant: 'default', workspaceId: IsNull(), documentId: IsNull() },
+      });
+      const content = globalPrompt?.content ?? DEFAULT_PROMPTS[key] ?? '';
+      if (!content) continue;
+
+      const meta = globalPrompt?.metadata as { description?: string } | undefined;
+      results.push({
+        key,
+        content,
+        source: 'global',
+        hasOverride: !!globalPrompt,
+        description: descriptions[key] ?? meta?.description,
+        updatedAt: globalPrompt?.updatedAt,
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * Upsert global prompt (workspaceId and documentId are null).
+   */
+  async upsertGlobalPrompt(key: string, content: string): Promise<Prompt> {
+    return this.upsertPrompt(key, content, { variant: 'default' });
+  }
+
+  /**
+   * Reset global prompt to built-in default (delete global override).
+   */
+  async resetGlobalPrompt(key: string): Promise<void> {
+    const prompt = await this.promptRepository.findOne({
+      where: { key, variant: 'default', workspaceId: IsNull(), documentId: IsNull() },
+    });
+    if (prompt) {
+      await this.promptRepository.remove(prompt);
+    }
   }
 
   /**
@@ -312,7 +474,89 @@ export class PromptService {
    */
   async resetPrompt(workspaceId: string, key: string): Promise<void> {
     const prompt = await this.promptRepository.findOne({
-      where: { key, variant: 'default', workspaceId },
+      where: { key, variant: 'default', workspaceId, documentId: IsNull() },
+    });
+    if (prompt) {
+      await this.promptRepository.remove(prompt);
+    }
+  }
+
+  /**
+   * List all prompts for a document. Returns combined content when scopeFlags provided.
+   */
+  async listPromptsForDocument(
+    workspaceId: string,
+    documentId: string,
+    scopeFlags?: PromptScopeFlags,
+  ): Promise<
+    Array<{
+      key: string;
+      content: string;
+      source: 'document' | 'workspace' | 'global';
+      description?: string;
+      updatedAt?: Date;
+    }>
+  > {
+    const results: Array<{
+      key: string;
+      content: string;
+      source: 'document' | 'workspace' | 'global';
+      description?: string;
+      updatedAt?: Date;
+    }> = [];
+
+    const descriptions: Record<string, string> = {
+      'chat.system': 'System prompt for RAG chat',
+      'chat.user': 'User prompt template for RAG chat',
+      'redline.system': 'System prompt for redline generation',
+      'redline.user': 'User prompt template for redline',
+      'redline.playbook.balanced': 'Balanced redline playbook',
+      'redline.playbook.conservative': 'Conservative redline playbook',
+      'redline.playbook.client-friendly': 'Client-friendly redline playbook',
+    };
+
+    for (const key of PROMPT_KEYS) {
+      const documentPrompt = await this.promptRepository.findOne({
+        where: { key, variant: 'default', documentId },
+      });
+      const workspacePrompt = await this.promptRepository.findOne({
+        where: { key, variant: 'default', workspaceId, documentId: IsNull() },
+      });
+      const globalPrompt = await this.promptRepository.findOne({
+        where: { key, variant: 'default', workspaceId: IsNull(), documentId: IsNull() },
+      });
+
+      const content =
+        scopeFlags != null
+          ? await this.getCombinedPrompt(key, {
+              workspaceId,
+              documentId,
+              variant: 'default',
+              scopeFlags,
+            })
+          : documentPrompt?.content ?? workspacePrompt?.content ?? globalPrompt?.content ?? DEFAULT_PROMPTS[key];
+      if (!content) continue;
+
+      const source = documentPrompt ? 'document' : workspacePrompt ? 'workspace' : 'global';
+      const meta = (documentPrompt ?? workspacePrompt ?? globalPrompt)?.metadata as { description?: string } | undefined;
+      results.push({
+        key,
+        content,
+        source,
+        description: descriptions[key] ?? meta?.description,
+        updatedAt: (documentPrompt ?? workspacePrompt ?? globalPrompt)?.updatedAt,
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * Reset document prompt to workspace/global (delete document override).
+   */
+  async resetDocumentPrompt(workspaceId: string, documentId: string, key: string): Promise<void> {
+    const prompt = await this.promptRepository.findOne({
+      where: { key, variant: 'default', documentId },
     });
     if (prompt) {
       await this.promptRepository.remove(prompt);
@@ -325,15 +569,44 @@ export class PromptService {
   async upsertPrompt(
     key: string,
     content: string,
-    options?: { workspaceId?: string; variant?: string; metadata?: Record<string, unknown> },
+    options?: {
+      workspaceId?: string;
+      documentId?: string;
+      variant?: string;
+      metadata?: Record<string, unknown>;
+    },
   ): Promise<Prompt> {
     const variant = options?.variant ?? 'default';
     const workspaceId = options?.workspaceId ?? undefined;
+    const documentId = options?.documentId ?? undefined;
+
+    if (documentId && workspaceId) {
+      let prompt = await this.promptRepository.findOne({
+        where: { key, variant, documentId },
+      });
+      if (prompt) {
+        prompt.content = content;
+        if (options?.metadata !== undefined) {
+          prompt.metadata = options.metadata;
+        }
+      } else {
+        prompt = this.promptRepository.create({
+          key,
+          variant,
+          workspaceId,
+          documentId,
+          content,
+          metadata: options?.metadata ?? null,
+        });
+      }
+      return this.promptRepository.save(prompt);
+    }
 
     let prompt = await this.promptRepository.findOne({
-      where: workspaceId
-        ? { key, variant, workspaceId }
-        : { key, variant, workspaceId: IsNull() },
+      where:
+        workspaceId !== undefined
+          ? { key, variant, workspaceId, documentId: IsNull() }
+          : { key, variant, workspaceId: IsNull(), documentId: IsNull() },
     });
 
     if (prompt) {
@@ -346,6 +619,7 @@ export class PromptService {
         key,
         variant,
         workspaceId: workspaceId ?? null,
+        documentId: null,
         content,
         metadata: options?.metadata ?? null,
       });

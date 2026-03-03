@@ -5,7 +5,7 @@
     "docker:build": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "docker build -f apps/web/Dockerfile --tag apps-web .",
+        "command": "docker build -f apps/web/Dockerfile -t apps-web:${IMAGE_TAG:-latest} .",
         "cwd": "{workspaceRoot}",
         "env": {}
       },

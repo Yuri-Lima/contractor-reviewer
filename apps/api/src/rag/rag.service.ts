@@ -9,6 +9,7 @@ import { Document } from '../entities/document.entity';
 import { Citation, ChatResponse } from '@contractai-review/shared';
 import { EmbeddingsService } from './embeddings.service';
 import { PromptService } from '../prompts/prompt.service';
+import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
 import {
   IVectorStore,
   LegalChunkSearchResult,
@@ -32,6 +33,7 @@ export class RagService {
     private documentRepository: Repository<Document>,
     private embeddingsService: EmbeddingsService,
     private promptService: PromptService,
+    private workspaceSettingsService: WorkspaceSettingsService,
     private configService: ConfigService,
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
@@ -171,6 +173,7 @@ export class RagService {
       legalChunks,
       language,
       workspaceId,
+      documentId,
       options,
     );
 
@@ -216,6 +219,7 @@ export class RagService {
     legalChunks: LegalChunkSearchResult[],
     language: string = 'en',
     workspaceId?: string,
+    documentId?: string,
     options?: { signal?: AbortSignal },
   ): Promise<string> {
     // Build context from chunks
@@ -229,6 +233,20 @@ export class RagService {
 
     const context = [contractContext, legalContext].filter(Boolean).join('\n\n');
 
+    const [workspaceSettings, document] = await Promise.all([
+      workspaceId ? this.workspaceSettingsService.getSettings(workspaceId) : Promise.resolve(null),
+      documentId ? this.documentRepository.findOne({ where: { id: documentId } }) : Promise.resolve(null),
+    ]);
+
+    const scopeFlags =
+      workspaceId && documentId && (workspaceSettings || document)
+        ? {
+            includeGlobal: workspaceSettings?.promptScopeIncludeGlobal ?? true,
+            includeWorkspace: workspaceSettings?.promptScopeIncludeWorkspace ?? true,
+            includeDocument: (document as { promptScopeIncludeDocument?: boolean })?.promptScopeIncludeDocument ?? true,
+          }
+        : undefined;
+
     const languageName = this.promptService.getLanguageName(language);
     const { system, user } = await this.promptService.getChatPrompts(
       {
@@ -236,7 +254,7 @@ export class RagService {
         context: context || 'No relevant context found.',
         question,
       },
-      { workspaceId },
+      { workspaceId, documentId, scopeFlags },
     );
 
     try {

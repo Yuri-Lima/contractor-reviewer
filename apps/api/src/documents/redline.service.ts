@@ -8,6 +8,7 @@ import { EmbeddingsService } from '../rag/embeddings.service';
 import { RedlineChange, RedlinePlaybook } from '@contractai-review/shared';
 import { DiffService } from './diff.service';
 import { PromptService } from '../prompts/prompt.service';
+import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
 import { IVectorStore, VECTOR_STORE } from '../vector-store/vector-store.interface';
 
 @Injectable()
@@ -23,6 +24,7 @@ export class RedlineService {
     private embeddingsService: EmbeddingsService,
     private diffService: DiffService,
     private promptService: PromptService,
+    private workspaceSettingsService: WorkspaceSettingsService,
     private configService: ConfigService,
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
@@ -95,8 +97,23 @@ export class RedlineService {
 
     const context = [contractContext, legalContext].filter(Boolean).join('\n\n');
 
+    const [workspaceSettings, doc] = await Promise.all([
+      this.workspaceSettingsService.getSettings(workspaceId),
+      this.documentRepository.findOne({ where: { id: documentId } }),
+    ]);
+
+    const scopeFlags = {
+      includeGlobal: workspaceSettings?.promptScopeIncludeGlobal ?? true,
+      includeWorkspace: workspaceSettings?.promptScopeIncludeWorkspace ?? true,
+      includeDocument: doc?.promptScopeIncludeDocument ?? true,
+    };
+
     const languageName = this.promptService.getLanguageName(language);
-    const playbookPrompt = await this.promptService.getPlaybookPrompt(playbook, { workspaceId });
+    const playbookPrompt = await this.promptService.getPlaybookPrompt(playbook, {
+      workspaceId,
+      documentId,
+      scopeFlags,
+    });
     const { system, user } = await this.promptService.getRedlinePrompts(
       {
         languageName,
@@ -106,7 +123,7 @@ export class RedlineService {
         objective: objective ? `\n\nObjective: ${objective}` : '',
         instructions: instructions ? `\n\nAdditional Instructions: ${instructions}` : '',
       },
-      { workspaceId },
+      { workspaceId, documentId, scopeFlags },
     );
 
     try {

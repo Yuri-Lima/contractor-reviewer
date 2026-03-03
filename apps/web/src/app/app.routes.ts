@@ -43,6 +43,10 @@ export const routes: Routes = [
         loadComponent: () => import('./documents/documents-list/documents-list.component').then(m => m.DocumentsListComponent),
       },
       {
+        path: `${ROUTE_PATHS.DOCUMENTS}/${ROUTE_PATHS.DOCUMENT_ID}/${ROUTE_PATHS.SETTINGS}`,
+        loadComponent: () => import('./documents/document-settings/document-settings.component').then(m => m.DocumentSettingsComponent),
+      },
+      {
         path: `${ROUTE_PATHS.DOCUMENTS}/${ROUTE_PATHS.DOCUMENT_ID}`,
         loadComponent: () => import('./documents/document-view/document-view.component').then(m => m.DocumentViewComponent),
       },

@@ -8,4 +8,5 @@ export {
   workspaceAudit,
   workspaceMembers,
   workspaceSettings,
+  documentSettings,
 } from './route-paths';

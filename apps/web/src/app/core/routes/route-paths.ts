@@ -53,3 +53,8 @@ export function workspaceMembers(workspaceId: string): readonly [string, string,
 export function workspaceSettings(workspaceId: string): readonly [string, string, string] {
   return workspaceRoute(workspaceId, ROUTE_PATHS.SETTINGS);
 }
+
+/** Helper to build document settings route (workspaces/:workspaceId/documents/:documentId/settings) */
+export function documentSettings(workspaceId: string, documentId: string): readonly [string, string, string, string, string] {
+  return [ROUTES.WORKSPACES, workspaceId, ROUTE_PATHS.DOCUMENTS, documentId, ROUTE_PATHS.SETTINGS] as const;
+}

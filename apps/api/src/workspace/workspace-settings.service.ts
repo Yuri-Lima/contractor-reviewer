@@ -118,6 +118,8 @@ export class WorkspaceSettingsService {
       >,
       chatResponseMode: (settings.chatResponseMode as ChatResponseMode) || undefined,
       voiceAutoSend: settings.voiceAutoSend ?? false,
+      promptScopeIncludeGlobal: settings.promptScopeIncludeGlobal ?? true,
+      promptScopeIncludeWorkspace: settings.promptScopeIncludeWorkspace ?? true,
     };
   }
 
@@ -536,6 +538,13 @@ export class WorkspaceSettingsService {
 
     if (config.voiceAutoSend !== undefined) {
       settings.voiceAutoSend = !!config.voiceAutoSend;
+    }
+
+    if (config.promptScopeIncludeGlobal !== undefined) {
+      settings.promptScopeIncludeGlobal = !!config.promptScopeIncludeGlobal;
+    }
+    if (config.promptScopeIncludeWorkspace !== undefined) {
+      settings.promptScopeIncludeWorkspace = !!config.promptScopeIncludeWorkspace;
     }
 
     settings = await this.workspaceSettingsRepository.save(settings);

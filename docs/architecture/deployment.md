@@ -261,3 +261,11 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml down
   docker compose up -d redis
   docker compose restart api worker
   ```
+
+### Platform mismatch ("does not provide the specified platform linux/amd64")
+
+The images must be built for `linux/amd64` for typical VPS deployments. If you built on Apple Silicon without specifying platform, rebuild and push:
+
+```bash
+BUILD_PLATFORM=linux/amd64 pnpm docker:push
+```

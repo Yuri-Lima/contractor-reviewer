@@ -12,6 +12,7 @@ cd "$REPO_ROOT"
 
 DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:-yurimatoslima}"
 BUILD_PLATFORM="${BUILD_PLATFORM:-linux/amd64}"
+export BUILD_PLATFORM
 
 # Auto-bump tag if not provided: <version>-<YYYYMMDD-HHMMSS>
 if [ -z "${IMAGE_TAG}" ]; then

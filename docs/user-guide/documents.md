@@ -23,9 +23,12 @@ A document is a container for one or more uploaded files (e.g., a contract and i
 2. Click **Create Document** or the create button.
 3. Enter a **title** (required).
 4. Optionally enter a **description** (helps the AI understand context).
-5. Optionally click **Generate AI prompt** to create document-specific instructions from the title and description.
-6. Review and edit the generated prompt if needed, then click **Approve and Create** or **Create without prompt**.
-7. The document is created and opens in the document view.
+5. Choose how to set document prompts:
+   - **Prompt category** (optional): Select a category from the searchable dropdown (e.g., General, Real Estate, NDA, Legal/Law) to apply pre-built prompts for all 7 document keys. When a category is selected, a **prompt preview** tab appears showing the prompts that will be applied. Good for common contract types.
+   - **Generate AI prompt** (optional): Click to create custom instructions from the title and description. Review, edit if needed, then click **Approve and Create** or **Create without prompt**.
+6. The document is created and opens in the document view.
+
+You can use a prompt category, generate a custom prompt, or neither. Document prompts can be edited later in Document Settings.
 
 ### Upload Files
 

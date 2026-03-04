@@ -111,6 +111,10 @@ Abre em http://localhost:4200.
 | `RAG_CACHE_SIMILARITY_THRESHOLD` | Não | Limiar de similaridade padrão (0.80–1.0, padrão: `0.95`) |
 | `RAG_CACHE_MAX_ENTRIES_PER_DOCUMENT` | Não | Máx. entradas por documento no índice (padrão: `50`) |
 | `CHAT_PREPARE_ENABLED` | Não | Habilita endpoints prepare/execute para inspeção do payload LLM (modo dev). Padrão: `true`. Use `false` em produção para desabilitar. |
+| `RATE_LIMIT_REQUESTS_PER_MINUTE` | Não | Requisições máximas por minuto por usuário/workspace (padrão: `60`) |
+| `RATE_LIMIT_REQUESTS_PER_HOUR` | Não | Requisições máximas por hora (padrão: `1000`) |
+| `RATE_LIMIT_REQUESTS_PER_DAY` | Não | Requisições máximas por dia (padrão: `10000`) |
+| `RATE_LIMIT_TOKENS_PER_DAY` | Não | Budget diário de tokens OpenAI por usuário/workspace (padrão: `100000`). Bloqueia abuso. |
 
 ## Estrutura do monorepo
 

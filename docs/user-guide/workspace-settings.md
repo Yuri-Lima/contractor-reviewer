@@ -58,8 +58,11 @@ Workspace Settings let you configure retention (how long files and indexed conte
 ### Configure Prompts
 
 1. Go to the **Prompts** tab.
-2. Edit workspace-level prompts that are added to the AI context for chat and redline.
-3. Save. Document-specific prompts can override or supplement these (see Document Settings).
+2. Toggles: **Include global prompts** and **Include workspace prompts** — control whether the global system prompt (Account Settings) and this workspace system prompt are merged into the AI context.
+3. Edit the **Workspace system prompt** (`workspace.system`). This single prompt applies to all documents in this workspace and is merged below the global prompt.
+4. Save.
+
+**Prompt hierarchy:** Global system prompt (`global.system`) → Workspace system prompt (`workspace.system`) → Document prompts (7 keys: chat, redline, playbooks). Document prompts live only in Document Settings.
 
 ## Options / Variations
 

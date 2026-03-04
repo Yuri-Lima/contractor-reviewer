@@ -1,6 +1,7 @@
 import { Component, OnInit, signal, computed, inject, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
 import { TooltipModule } from 'primeng/tooltip';
@@ -8,10 +9,11 @@ import { Toolbar } from 'primeng/toolbar';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ContextMenu } from 'primeng/contextmenu';
 import { Toast } from 'primeng/toast';
+import { Dialog } from 'primeng/dialog';
+import { TextareaModule } from 'primeng/textarea';
 import { ConfirmationService, MessageService, SharedModule } from 'primeng/api';
 import type { MenuItem } from 'primeng/api';
 import { workspaceDocument } from '../../core/routes';
-import { ApiService } from '../../core/services/api.service';
 import { DocumentViewTabService } from '../../onboarding/tour/document-view-tab.service';
 import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { TranslateService } from '@ngx-translate/core';
@@ -19,12 +21,35 @@ import { Document } from '@contractai-review/shared';
 import { EditableTitleComponent } from '../../core/components/editable-title/editable-title.component';
 import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
 import { TranslatePipe } from '@ngx-translate/core';
+import { DOCUMENTS_LIST_SERVICE } from './documents-list.service.interface';
+import { DocumentsListServiceImpl } from './documents-list.service';
 
 @Component({
   selector: 'app-documents-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, Button, Card, Toolbar, TooltipModule, SharedModule, ConfirmDialog, Toast, ContextMenu, LocaleDatePipe, TranslatePipe, EditableTitleComponent],
-  providers: [ConfirmationService, MessageService],
+  providers: [
+    ConfirmationService,
+    MessageService,
+    { provide: DOCUMENTS_LIST_SERVICE, useClass: DocumentsListServiceImpl },
+  ],
+  imports: [
+    CommonModule,
+    RouterModule,
+    FormsModule,
+    Button,
+    Card,
+    Toolbar,
+    TooltipModule,
+    SharedModule,
+    ConfirmDialog,
+    Toast,
+    ContextMenu,
+    Dialog,
+    TextareaModule,
+    LocaleDatePipe,
+    TranslatePipe,
+    EditableTitleComponent,
+  ],
   template: `
     <p-contextMenu #documentContextMenu [model]="documentContextMenuItems()"></p-contextMenu>
     <div class="documents-container p-6 max-w-6xl mx-auto">
@@ -67,12 +92,64 @@ import { TranslatePipe } from '@ngx-translate/core';
               [placeholder]="'documents.descriptionPlaceholder' | translate" 
               rows="3"
             ></textarea>
+            <div class="mb-4">
+              <details class="group">
+                <summary class="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
+                  {{ 'documents.addContextTemporary' | translate }}
+                </summary>
+                <div class="mt-2 space-y-2">
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ 'documents.contextMarkdownHelp' | translate }}</p>
+                  <input
+                    #contextFileInput
+                    type="file"
+                    accept=".md"
+                    class="hidden"
+                    (change)="onContextFileSelected($event)"
+                  />
+                  <div class="flex gap-2">
+                    <p-button
+                      [label]="'documents.uploadContext' | translate"
+                      icon="pi pi-upload"
+                      [outlined]="true"
+                      severity="secondary"
+                      (onClick)="contextFileInput.click()"
+                    ></p-button>
+                    @if (contextMarkdown()) {
+                      <p-button
+                        [label]="'documents.removeContext' | translate"
+                        icon="pi pi-times"
+                        [outlined]="true"
+                        severity="secondary"
+                        (onClick)="clearContextMarkdown()"
+                      ></p-button>
+                    }
+                  </div>
+                  <textarea
+                    pTextarea
+                    [ngModel]="contextMarkdown()"
+                    (ngModelChange)="onContextMarkdownInput($event)"
+                    [placeholder]="'documents.contextMarkdownPlaceholder' | translate"
+                    rows="4"
+                    class="w-full text-sm"
+                  ></textarea>
+                </div>
+              </details>
+            </div>
             @if (error()) {
               <div class="error-message mb-4">
                 <p class="text-red-600 dark:text-red-400 text-sm">{{ error() }}</p>
               </div>
             }
-            <div class="form-actions flex gap-2">
+            <div class="form-actions flex flex-wrap gap-2">
+              <p-button
+                [label]="'documents.generateAIPrompt' | translate"
+                icon="pi pi-sparkles"
+                [outlined]="true"
+                [loading]="generatingPrompt()"
+                [disabled]="!newDocumentDescription().trim() || contextMarkdownExceeded() || generatingPrompt() || loading()"
+                (onClick)="onGeneratePrompt()"
+                [pTooltip]="'documents.generateAIPromptDescription' | translate"
+              ></p-button>
               <button 
                 data-testid="document-create-submit"
                 class="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -88,7 +165,7 @@ import { TranslatePipe } from '@ngx-translate/core';
               </button>
               <button 
                 class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors font-medium"
-                (click)="showCreateForm.set(false); error.set(null);"
+                (click)="showCreateForm.set(false); error.set(null); contextMarkdown.set(''); clearPromptDialogState();"
                 [disabled]="loading()"
               >
                 {{ 'common.cancel' | translate }}
@@ -157,6 +234,48 @@ import { TranslatePipe } from '@ngx-translate/core';
         </p-card>
       }
 
+      <p-dialog
+        [visible]="promptDialogVisible()"
+        [header]="'documents.promptDialogTitle' | translate"
+        [modal]="true"
+        [style]="{ width: 'min(95vw, 600px)' }"
+        [contentStyle]="{ overflow: 'auto', maxHeight: '70vh' }"
+        [baseZIndex]="10000"
+        (onHide)="clearPromptDialogState()"
+      >
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{{ 'documents.promptDialogDescription' | translate }}</p>
+        <textarea
+          pTextarea
+          [ngModel]="editedGeneratedPrompt()"
+          (ngModelChange)="editedGeneratedPrompt.set($event)"
+          rows="12"
+          class="w-full font-mono text-sm mb-4"
+        ></textarea>
+        <div class="flex flex-wrap gap-2 justify-end">
+          <p-button
+            [label]="'documents.approveAndCreate' | translate"
+            icon="pi pi-check"
+            (onClick)="onApproveAndCreate()"
+          ></p-button>
+          <p-button
+            [label]="'documents.rejectAndCreate' | translate"
+            icon="pi pi-times"
+            severity="secondary"
+            [outlined]="true"
+            (onClick)="onRejectAndCreate()"
+          ></p-button>
+          <p-button
+            [label]="'documents.recreatePrompt' | translate"
+            icon="pi pi-refresh"
+            severity="secondary"
+            [outlined]="true"
+            [loading]="generatingPrompt()"
+            [disabled]="generatingPrompt()"
+            (onClick)="onRecreatePrompt()"
+          ></p-button>
+        </div>
+      </p-dialog>
+
       <p-confirmDialog></p-confirmDialog>
       <p-toast></p-toast>
     </div>
@@ -179,7 +298,7 @@ export class DocumentsListComponent implements OnInit {
 
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private apiService = inject(ApiService);
+  private documentsService = inject(DOCUMENTS_LIST_SERVICE);
   private confirmationService = inject(ConfirmationService);
   private messageService = inject(MessageService);
   private translateService = inject(TranslateService);
@@ -192,10 +311,20 @@ export class DocumentsListComponent implements OnInit {
   showCreateForm = signal(false);
   newDocumentTitle = signal('');
   newDocumentDescription = signal('');
+  contextMarkdown = signal('');
   loading = signal(false);
   error = signal<string | null>(null);
   deletingDocId = signal<string | null>(null);
   selectedDocument = signal<Document | null>(null);
+
+  generatingPrompt = signal(false);
+  promptDialogVisible = signal(false);
+  generatedPrompt = signal('');
+  editedGeneratedPrompt = signal('');
+
+  contextMarkdownExceeded = computed(() =>
+    this.documentsService.isContextMarkdownExceeded(this.contextMarkdown()),
+  );
 
   selectedDocForContext = signal<Document | null>(null);
   documentContextMenuItems = computed<MenuItem[]>(() =>
@@ -213,7 +342,7 @@ export class DocumentsListComponent implements OnInit {
   }
 
   loadDocuments(): void {
-    this.apiService.getDocuments(this.workspaceId()).subscribe({
+    this.documentsService.loadDocuments(this.workspaceId()).subscribe({
       next: (docs) => this.documents.set(docs),
       error: (err) => console.error('Error loading documents:', err),
     });
@@ -222,7 +351,7 @@ export class DocumentsListComponent implements OnInit {
   onDocumentTitleChange(doc: Document, newTitle: string): void {
     const wsId = this.workspaceId();
     if (!wsId) return;
-    this.apiService.updateDocument(wsId, doc.id, { title: newTitle }).subscribe({
+    this.documentsService.updateDocumentTitle(wsId, doc.id, newTitle).subscribe({
       next: (updated) => {
         this.documents.update((docs) =>
           docs.map((d) => (d.id === doc.id ? { ...d, title: updated.title } : d)),
@@ -257,6 +386,185 @@ export class DocumentsListComponent implements OnInit {
     }
   }
 
+  onContextMarkdownInput(value: string): void {
+    this.contextMarkdown.set(value);
+    if (this.documentsService.isContextMarkdownExceeded(value)) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: this.translateService.instant(_('common.warning')),
+        detail: this.translateService.instant(_('documents.contextMarkdownSizeExceeded')),
+      });
+    }
+  }
+
+  async onContextFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input?.files?.[0];
+    if (!file) return;
+    try {
+      const content = await this.documentsService.readFileAsText(file);
+      this.contextMarkdown.set(content);
+      if (this.documentsService.isContextMarkdownExceeded(content)) {
+        this.messageService.add({
+          severity: 'warn',
+          summary: this.translateService.instant(_('common.warning')),
+          detail: this.translateService.instant(_('documents.contextMarkdownSizeExceeded')),
+        });
+      }
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: this.translateService.instant(_('common.error')),
+        detail: this.translateService.instant(_('documents.contextMarkdownReadError')),
+      });
+    }
+    input.value = '';
+  }
+
+  clearContextMarkdown(): void {
+    this.contextMarkdown.set('');
+  }
+
+  clearPromptDialogState(): void {
+    this.promptDialogVisible.set(false);
+    this.generatedPrompt.set('');
+    this.editedGeneratedPrompt.set('');
+  }
+
+  onGeneratePrompt(): void {
+    const description = this.newDocumentDescription().trim();
+    if (!description) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: this.translateService.instant(_('common.warning')),
+        detail: this.translateService.instant(_('documents.descriptionRequiredForGenerate')),
+      });
+      return;
+    }
+    if (this.contextMarkdownExceeded()) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: this.translateService.instant(_('common.warning')),
+        detail: this.translateService.instant(_('documents.contextMarkdownSizeExceeded')),
+      });
+      return;
+    }
+    const workspaceId = this.workspaceId();
+    if (!workspaceId) return;
+    this.generatingPrompt.set(true);
+    const ctx = this.contextMarkdown().trim() || undefined;
+    this.documentsService
+      .generatePrompt(
+        workspaceId,
+        this.newDocumentTitle().trim(),
+        description,
+        ctx,
+      )
+      .subscribe({
+        next: (res) => {
+          this.generatedPrompt.set(res.generatedPrompt);
+          this.editedGeneratedPrompt.set(res.generatedPrompt);
+          this.promptDialogVisible.set(true);
+          this.generatingPrompt.set(false);
+        },
+        error: (err) => {
+          this.generatingPrompt.set(false);
+          this.messageService.add({
+            severity: 'error',
+            summary: this.translateService.instant(_('common.error')),
+            detail:
+              err?.error?.message ??
+              this.translateService.instant(_('documents.generatePromptError')),
+          });
+        },
+      });
+  }
+
+  onApproveAndCreate(): void {
+    const content = this.editedGeneratedPrompt().trim();
+    if (!content) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: this.translateService.instant(_('common.warning')),
+        detail: this.translateService.instant(_('validation.required')),
+      });
+      return;
+    }
+    this.confirmationService.confirm({
+      message: this.translateService.instant(_('documents.confirmApprove')),
+      header: this.translateService.instant(_('documents.approveAndCreate')),
+      icon: 'pi pi-check-circle',
+      acceptLabel: this.translateService.instant(_('common.yes')),
+      rejectLabel: this.translateService.instant(_('common.no')),
+      accept: () => this.doCreateDocument(content),
+    });
+  }
+
+  onRejectAndCreate(): void {
+    this.confirmationService.confirm({
+      message: this.translateService.instant(_('documents.confirmReject')),
+      header: this.translateService.instant(_('documents.rejectAndCreate')),
+      icon: 'pi pi-question-circle',
+      acceptLabel: this.translateService.instant(_('common.yes')),
+      rejectLabel: this.translateService.instant(_('common.no')),
+      accept: () => this.doCreateDocument(),
+    });
+  }
+
+  onRecreatePrompt(): void {
+    this.confirmationService.confirm({
+      message: this.translateService.instant(_('documents.confirmRecreate')),
+      header: this.translateService.instant(_('documents.recreatePrompt')),
+      icon: 'pi pi-refresh',
+      acceptLabel: this.translateService.instant(_('common.yes')),
+      rejectLabel: this.translateService.instant(_('common.no')),
+      accept: () => {
+        this.promptDialogVisible.set(false);
+        this.onGeneratePrompt();
+      },
+    });
+  }
+
+  private doCreateDocument(documentChatSystemPrompt?: string): void {
+    const title = this.newDocumentTitle().trim();
+    const description = this.newDocumentDescription().trim();
+    const workspaceId = this.workspaceId();
+    if (!title || !workspaceId) return;
+    this.promptDialogVisible.set(false);
+    this.loading.set(true);
+    this.error.set(null);
+    this.documentsService
+      .createDocument(workspaceId, {
+        title,
+        description: description || undefined,
+        documentChatSystemPrompt: documentChatSystemPrompt || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.loading.set(false);
+          this.showCreateForm.set(false);
+          this.newDocumentTitle.set('');
+          this.newDocumentDescription.set('');
+          this.contextMarkdown.set('');
+          this.clearPromptDialogState();
+          this.error.set(null);
+          this.loadDocuments();
+          this.messageService.add({
+            severity: 'success',
+            summary: this.translateService.instant(_('common.success')),
+            detail: this.translateService.instant(_('documents.updateSuccess')),
+          });
+        },
+        error: (err) => {
+          this.loading.set(false);
+          this.error.set(
+            err?.error?.message ??
+              this.translateService.instant(_('documents.createError')),
+          );
+        },
+      });
+  }
+
   createDocument(): void {
     const title = this.newDocumentTitle().trim();
     if (!title) {
@@ -274,14 +582,13 @@ export class DocumentsListComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
-    console.log('Creating document:', { workspaceId, title, description: this.newDocumentDescription() });
-
-    this.apiService.createDocument(workspaceId, {
-      title: title,
-      description: this.newDocumentDescription() || undefined,
-    }).subscribe({
-      next: (document) => {
-        console.log('Document created successfully:', document);
+    this.documentsService
+      .createDocument(workspaceId, {
+        title,
+        description: this.newDocumentDescription() || undefined,
+      })
+      .subscribe({
+      next: () => {
         this.loading.set(false);
         this.showCreateForm.set(false);
         this.newDocumentTitle.set('');
@@ -291,14 +598,6 @@ export class DocumentsListComponent implements OnInit {
         this.loadDocuments();
       },
       error: (err) => {
-        console.error('Error creating document:', err);
-        console.error('Error details:', {
-          status: err.status,
-          statusText: err.statusText,
-          message: err.message,
-          error: err.error,
-          url: err.url,
-        });
         this.loading.set(false);
         const errorMessage = err.error?.message || err.message || this.translateService.instant(_('documents.createError'));
         this.error.set(errorMessage);
@@ -322,7 +621,7 @@ export class DocumentsListComponent implements OnInit {
 
   deleteDocument(docId: string): void {
     this.deletingDocId.set(docId);
-    this.apiService.deleteDocument(this.workspaceId(), docId).subscribe({
+    this.documentsService.deleteDocument(this.workspaceId(), docId).subscribe({
       next: () => {
         this.messageService.add({
           severity: 'success',
@@ -334,7 +633,6 @@ export class DocumentsListComponent implements OnInit {
         this.loadDocuments();
       },
       error: (err) => {
-        console.error('Error deleting document:', err);
         this.messageService.add({
           severity: 'error',
           summary: this.translateService.instant(_('common.error')),

@@ -41,6 +41,7 @@ import {
   MAX_BATCH_FILE_COUNT,
   getViewerFormat,
   WorkspaceRole,
+  type ChatPreparePayload,
   type ChatResponseMode,
   type FileSearchScope,
 } from '@contractai-review/shared';
@@ -55,6 +56,9 @@ import { DocumentViewerComponent } from '../document-viewer/document-viewer.comp
 import { RedlineComponent } from '../redline/redline.component';
 import { VersionsComponent } from '../versions/versions.component';
 import { FileContentDialogComponent } from '../file-content-dialog/file-content-dialog.component';
+import { LlmPayloadDialogComponent } from '../llm-payload-dialog/llm-payload-dialog.component';
+import { DevVisualizationsService } from '../../core/services/dev-visualizations.service';
+import { I18nService } from '../../core/services/i18n.service';
 import { BaseListComponent } from '../../core/components/base-list/base-list.component';
 import { FileUploadComponent } from '../../core/components/file-upload';
 import {
@@ -141,6 +145,7 @@ interface ChatMessageWithAudio {
     FileUploadComponent,
     SearchInputComponent,
     EditableTitleComponent,
+    LlmPayloadDialogComponent,
   ],
   providers: [ConfirmationService, MessageService],
   template: `
@@ -590,6 +595,15 @@ interface ChatMessageWithAudio {
         (closedWithSelections)="onFileContentClosedWithSelections($event)"
       ></app-file-content-dialog>
 
+      @if (llmPayloadToShow() && llmPayloadRequestId()) {
+        <app-llm-payload-dialog
+          [payload]="llmPayloadToShow()"
+          [requestId]="llmPayloadRequestId()"
+          (approved)="onLlmPayloadApproved($event)"
+          (cancelled)="onLlmPayloadCancelled()"
+        ></app-llm-payload-dialog>
+      }
+
       <p-confirmDialog></p-confirmDialog>
       <p-toast></p-toast>
     </div>
@@ -615,8 +629,14 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   private onboardingService = inject(OnboardingService);
   private documentViewTabService = inject(DocumentViewTabService);
   private voiceRecordingService = inject(VoiceRecordingService);
+  devVisualizationsService = inject(DevVisualizationsService);
+  private i18nService = inject(I18nService);
 
   redlineComponent = viewChild<RedlineComponent>('redlineComponent');
+
+  /** Dev mode: payload + requestId for LLM preview dialog */
+  llmPayloadToShow = signal<ChatPreparePayload | null>(null);
+  llmPayloadRequestId = signal<string>('');
 
   readonly documentSettings = documentSettings;
 
@@ -1710,21 +1730,109 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
 
     const currentLang = this.translateService.currentLang || 'en';
     const mode = this.chatResponseMode();
+    const workspaceId = this.workspaceId();
+    const documentId = this.documentId();
+    const chatRequest = { question: questionText, language: currentLang, forceFresh };
+
+    const handleChatResponse = (response: ChatResponse) => {
+      const wasFirstMessage = this.chatMessages().length === 0 && replaceAtIndex == null;
+      const needsAudio =
+        mode === (ChatResponseModeValues ?? CHAT_MODE).AudioOnly || mode === (ChatResponseModeValues ?? CHAT_MODE).AudioAndText;
+      const newMessage: ChatMessageWithAudio = {
+        question: questionText,
+        answerText: response.answerText,
+        confidence: response.confidence,
+        citations: response.citations,
+        audioState: needsAudio ? 'synthesizing' : 'none',
+        fromCache: response.fromCache,
+      };
+      if (replaceAtIndex != null) {
+        this.chatMessages.update((messages) => {
+          const next = [...messages];
+          if (next[replaceAtIndex]) {
+            next[replaceAtIndex] = { ...newMessage };
+          }
+          return next;
+        });
+      } else {
+        this.chatMessages.update((messages) => [...messages, newMessage]);
+      }
+      if (wasFirstMessage) {
+        this.onboardingService.markChecklistItem('run_first_review');
+      }
+      this.loading.set(false);
+
+      if (needsAudio && response.answerText?.trim()) {
+        const targetIndex = replaceAtIndex ?? this.chatMessages().length - 1;
+        this.synthesizeAndPlayForMessage(
+          targetIndex,
+          response.answerText,
+          currentLang,
+        );
+      }
+    };
+
+    const showError = (detailKey: string) => {
+      this.messageService.add({
+        severity: 'error',
+        summary: this.i18nService.translate('common.error'),
+        detail: this.i18nService.translate(detailKey),
+      });
+    };
+
+    const handleChatError = (err: { status?: number; name?: string }, detailKey = 'chat.sendError') => {
+      this.loading.set(false);
+      if (err?.name === 'AbortError') return;
+      showError(detailKey);
+    };
+
+    if (this.devVisualizationsService.enabled()) {
+      this.apiService
+        .chatPrepare(workspaceId, documentId, chatRequest, { signal: this.chatAbortController!.signal })
+        .subscribe({
+          next: (prepareRes) => {
+            this.llmPayloadToShow.set(prepareRes.payload);
+            this.llmPayloadRequestId.set(prepareRes.requestId);
+            this.loading.set(false);
+          },
+          error: (err: { status?: number; name?: string }) => {
+            if (err?.status === 404) {
+              this.apiService
+                .chat(workspaceId, documentId, chatRequest, { signal: this.chatAbortController!.signal })
+                .subscribe({
+                  next: handleChatResponse,
+                  error: (e: { name?: string }) => handleChatError(e, 'chat.sendError'),
+                });
+            } else {
+              handleChatError(err, 'chat.prepareError');
+            }
+          },
+        });
+    } else {
+      this.apiService
+        .chat(workspaceId, documentId, chatRequest, { signal: this.chatAbortController.signal })
+        .subscribe({
+          next: handleChatResponse,
+          error: handleChatError,
+        });
+    }
+  }
+
+  onLlmPayloadApproved(requestId: string): void {
+    const payload = this.llmPayloadToShow();
+    const questionText = payload?.question ?? '';
+    const currentLang = this.translateService.currentLang || 'en';
+    const mode = this.chatResponseMode();
+
+    this.chatAbortController?.abort();
+    this.chatAbortController = new AbortController();
+    this.loading.set(true);
 
     this.apiService
-      .chat(
-        this.workspaceId(),
-        this.documentId(),
-        {
-          question: questionText,
-          language: currentLang,
-          forceFresh,
-        },
-        { signal: this.chatAbortController.signal },
-      )
+      .chatExecute(this.workspaceId(), this.documentId(), requestId, { signal: this.chatAbortController.signal })
       .subscribe({
         next: (response: ChatResponse) => {
-          const wasFirstMessage = this.chatMessages().length === 0 && replaceAtIndex == null;
+          const wasFirstMessage = this.chatMessages().length === 0;
           const needsAudio =
             mode === (ChatResponseModeValues ?? CHAT_MODE).AudioOnly || mode === (ChatResponseModeValues ?? CHAT_MODE).AudioAndText;
           const newMessage: ChatMessageWithAudio = {
@@ -1735,37 +1843,44 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
             audioState: needsAudio ? 'synthesizing' : 'none',
             fromCache: response.fromCache,
           };
-          if (replaceAtIndex != null) {
-            this.chatMessages.update((messages) => {
-              const next = [...messages];
-              if (next[replaceAtIndex]) {
-                next[replaceAtIndex] = { ...newMessage };
-              }
-              return next;
-            });
-          } else {
-            this.chatMessages.update((messages) => [...messages, newMessage]);
-          }
+          this.chatMessages.update((messages) => [...messages, newMessage]);
           if (wasFirstMessage) {
             this.onboardingService.markChecklistItem('run_first_review');
           }
+          this.llmPayloadToShow.set(null);
+          this.llmPayloadRequestId.set('');
           this.loading.set(false);
 
           if (needsAudio && response.answerText?.trim()) {
-            const targetIndex = replaceAtIndex ?? this.chatMessages().length - 1;
             this.synthesizeAndPlayForMessage(
-              targetIndex,
+              this.chatMessages().length - 1,
               response.answerText,
               currentLang,
             );
           }
         },
-        error: (err) => {
+        error: (err: { status?: number; name?: string }) => {
           this.loading.set(false);
+          this.llmPayloadToShow.set(null);
+          this.llmPayloadRequestId.set('');
           if (err?.name === 'AbortError') return;
-          console.error('Error sending question:', err);
+          const detail =
+            err?.status === 400 || err?.status === 404
+              ? this.i18nService.translate('chat.prepareExpired')
+              : this.i18nService.translate('chat.executeError');
+          this.messageService.add({
+            severity: 'error',
+            summary: this.i18nService.translate('common.error'),
+            detail,
+          });
         },
       });
+  }
+
+  onLlmPayloadCancelled(): void {
+    this.llmPayloadToShow.set(null);
+    this.llmPayloadRequestId.set('');
+    this.loading.set(false);
   }
 
   private synthesizeAndPlayForMessage(

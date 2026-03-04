@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ParsingProcessor } from './parsing.processor';
 import { ChunkingProcessor } from './chunking.processor';
 import { EmbeddingsProcessor } from './embeddings.processor';
+import { OcrProcessor } from './ocr.processor';
+import { JobProgressPublisher } from './job-progress.publisher';
 import { DocumentJob } from '../entities/document-job.entity';
 import { DocumentFile } from '../entities/document-file.entity';
 import { Document } from '../entities/document.entity';
@@ -63,7 +65,13 @@ function writeLog(location: string, message: string, data: any, hypothesisId: st
     ParsersModule,
     WorkspaceModule,
   ],
-  providers: [ParsingProcessor, ChunkingProcessor, EmbeddingsProcessor],
+  providers: [
+    ParsingProcessor,
+    ChunkingProcessor,
+    EmbeddingsProcessor,
+    OcrProcessor,
+    JobProgressPublisher,
+  ],
 })
 export class WorkersModule implements OnModuleInit {
   onModuleInit() {

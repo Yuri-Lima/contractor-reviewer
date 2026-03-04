@@ -7,6 +7,7 @@ import { DocumentJob, JobStatus } from '../entities/document-job.entity';
 import { CHUNK_REPOSITORY, IChunkRepository } from '../chunks/chunk-repository.interface';
 import { EmbeddingsService } from '../rag/embeddings.service';
 import { RagCacheService } from '../cache/rag-cache.service';
+import { JobProgressPublisher } from './job-progress.publisher';
 import { abortAsPromise } from '../common/utils/abort-promise';
 
 interface EmbeddingsJobData {
@@ -30,6 +31,7 @@ export class EmbeddingsProcessor extends WorkerHost {
     private chunkRepository: IChunkRepository,
     private embeddingsService: EmbeddingsService,
     private ragCacheService: RagCacheService,
+    private jobProgressPublisher: JobProgressPublisher,
   ) {
     super();
   }
@@ -61,6 +63,7 @@ export class EmbeddingsProcessor extends WorkerHost {
     
     const finalProgress = progress !== undefined ? progress : job.progress;
     this.logger.log(`[PROGRESS] Job ${jobId} (${job.type}): status=${status}, progress=${finalProgress}%`);
+    this.jobProgressPublisher.publish(job.documentId, job).catch(() => {});
   }
 
   async process(

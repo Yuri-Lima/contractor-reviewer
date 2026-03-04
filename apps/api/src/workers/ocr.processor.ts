@@ -10,6 +10,7 @@ import { Inject } from '@nestjs/common';
 import { StorageServiceToken, IStorageService } from '../storage/storage.module';
 import { OcrService } from '../rag/ocr.service';
 import { JurisdictionResolverService } from '../rag/jurisdiction-resolver.service';
+import { JobProgressPublisher } from './job-progress.publisher';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { abortAsPromise } from '../common/utils/abort-promise';
@@ -43,6 +44,7 @@ export class OcrProcessor extends WorkerHost {
     private jurisdictionResolver: JurisdictionResolverService,
     @InjectQueue('chunking')
     private chunkingQueue: Queue,
+    private jobProgressPublisher: JobProgressPublisher,
   ) {
     super();
   }
@@ -93,6 +95,7 @@ export class OcrProcessor extends WorkerHost {
     
     const finalProgress = progress !== undefined ? progress : job.progress;
     this.logger.log(`[PROGRESS] Job ${jobId} (${job.type}): status=${status}, progress=${finalProgress}%`);
+    this.jobProgressPublisher.publish(job.documentId, job).catch(() => {});
   }
 
   private async markFileAvailable(fileId: string): Promise<void> {

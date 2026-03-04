@@ -466,6 +466,8 @@
     "avatarRemoved": "Avatar entfernt. Gravatar wird verwendet.",
     "avatarError": "Fehler beim Hochladen des Avatars",
     "avatarSizeError": "Das Bild muss 2MB oder weniger sein. Verwenden Sie PNG oder JPEG.",
+    "devVisualizations": "Entwicklermodus",
+    "devVisualizationsDescription": "Entwickler-spezifische Elemente (IDs, Debug-Infos usw.) in der gesamten App anzeigen, wenn aktiviert. Nur für Workspace-Besitzer sichtbar.",
     "profileTab": "Profil",
     "globalPromptsTab": "KI-Prompts",
     "chatTab": "Chat",

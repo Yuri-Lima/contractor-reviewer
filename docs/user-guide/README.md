@@ -17,8 +17,8 @@ This user guide is structured by topic so an LLM or help system can quickly find
 | Chat | [chat.md](chat.md) | Ask questions about contracts, AI answers with citations, voice, response modes |
 | Redline | [redline.md](redline.md) | Select text, generate suggestions, playbooks, accept/reject changes |
 | Versions | [versions.md](versions.md) | View version history, side-by-side diff, apply changes |
-| Workspace Settings | [workspace-settings.md](workspace-settings.md) | Retention, parsers, API keys, AI prompts per workspace |
-| Account Settings | [account-settings.md](account-settings.md) | Profile, chat preferences, Developer Mode, delete account |
+| Workspace Settings | [workspace-settings.md](workspace-settings.md) | Retention, parsers, API keys, workspace AI prompts |
+| Account Settings | [account-settings.md](account-settings.md) | Profile, global AI prompts, chat preferences, Developer Mode, delete account |
 | Privacy | [privacy.md](privacy.md) | DSAR export, no-logs option, data retention |
 | Audit | [audit.md](audit.md) | Audit log, filter by action and user |
 | Developer Mode | [developer-mode.md](developer-mode.md) | LLM payload preview before sending to AI |

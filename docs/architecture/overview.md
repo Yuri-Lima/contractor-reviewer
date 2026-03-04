@@ -87,6 +87,12 @@ BullMQ: parsing → chunking → embeddings
 Document available for RAG
 ```
 
+### Rate Limiting
+
+- **Per user/workspace**: Requests per minute/hour/day, token budget per day (OpenAI)
+- **Configuration**: `RATE_LIMIT_*` env vars (see [setup.md](../guides/setup.md))
+- **Implementation**: `RateLimitGuard` (in-memory for MVP; Redis recommended for production)
+
 ### Chat / RAG Flow
 
 ```

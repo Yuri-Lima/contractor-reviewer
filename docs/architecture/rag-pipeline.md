@@ -153,13 +153,18 @@ interface LegalChunkSearchResult extends VectorSearchResult<Embedding> {
 | `chunkingStrategy` | `paragraph`, `sentence`, `fixed_size` | How text is split for RAG |
 | `defaultDocumentParser` | `docling`, `pdfplumber`, `dpt2`, `llamaparse`, `unstructured` | Parser used when none selected at upload |
 | `parserApiKeys` | Per-parser encrypted keys | For DPT-2, LlamaParse, Unstructured |
-| Prompt overrides | `chat.system`, `chat.user`, `redline.*` | Override prompts per workspace |
+| Global prompt | `global.system` | Account-level system prompt (Account Settings → AI Prompts) |
+| Workspace prompt | `workspace.system` | Workspace-level system prompt (Workspace Settings → AI Prompts) |
+| Document prompts | 7 keys (chat/redline) | Document-level prompts (Document Settings) |
 
 ### Prompt Keys (from `packages/shared/src/constants/prompts.ts`)
 
-- `chat.system`, `chat.user` — Chat RAG
-- `redline.system`, `redline.user` — Redline
-- `redline.playbook.balanced`, `redline.playbook.conservative`, `redline.playbook.client-friendly` — Playbook variations
+**Scoped by level:**
+- **Account (1 prompt):** `global.system` — Global system prompt, merged at top of context (Account Settings → AI Prompts)
+- **Workspace (1 prompt):** `workspace.system` — Workspace system prompt, merged below global (Workspace Settings → AI Prompts)
+- **Document (7 prompts):** `chat.system`, `chat.user`, `redline.system`, `redline.user`, `redline.playbook.balanced`, `redline.playbook.conservative`, `redline.playbook.client-friendly` — Chat RAG and redline playbooks (Document Settings only)
+
+**Prompt hierarchy:** For system keys (`chat.system`, `redline.system`): `global.system` + `workspace.system` + document override (per scope toggles). See [prompt-generator.md](prompt-generator.md) for prompt categories and create-document API.
 
 ## Current State Summary
 

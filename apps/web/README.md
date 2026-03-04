@@ -185,12 +185,22 @@ Crie um arquivo `.env` na raiz do projeto ou configure:
   - **Retention** — política de retenção (arquivos, textos/embeddings)
   - **Document Processing** — chunking strategy (paragraph, sentence, fixed_size)
   - **Document Parsers** — parser padrão + API keys (DPT-2, LlamaParse, Unstructured)
-  - **AI Prompts** — override de prompts de chat e redline por workspace
+  - **AI Prompts** — Workspace system prompt único; inclui toggles para global/workspace
 - ✅ Viewer de PDF
 - ✅ Redline e versões (diff side-by-side)
 - ✅ Progresso de jobs (parsing, chunking, embeddings)
 - ✅ Suporte multilíngue (EN, ES, PT-BR, DE)
 - ✅ **Onboarding** — tour guiado (Shepherd.js), checklist flutuante, ícones de ajuda (confidence, citações), reset em Account Settings
+
+## Shared Package (Developer Note)
+
+When importing **constants** from `@contractai-review/shared` (e.g., `PROMPT_CATEGORIES`, `PROMPT_KEYS`, `PROMPT_LABEL_KEYS`, `getPromptCategoryById`), use the `/constants` subpath to avoid Vite pre-bundling issues:
+
+```typescript
+import { PROMPT_CATEGORIES, PROMPT_LABEL_KEYS } from '@contractai-review/shared/constants';
+```
+
+See [packages/shared/README.md](../../packages/shared/README.md) for details.
 
 ## Integração com API
 

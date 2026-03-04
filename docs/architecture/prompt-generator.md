@@ -4,9 +4,9 @@ Canonical reference for the LLM-assisted prompt generation feature in ContractAI
 
 ## Overview
 
-During document creation, users can generate document-specific AI instructions from the document's title and description. An optional temporary .md context can be provided (paste or file upload) to give the LLM additional context. The generated content targets the `chat.system` document-level prompt and is combined with workspace/global prompts when the AI analyzes the document.
+During document creation, users can either (1) select a **prompt category** (e.g., General, Real Estate, NDA) to apply pre-built prompts for all 7 document keys, or (2) **generate** document-specific AI instructions from the document's title and description via the LLM. An optional temporary .md context can be provided (paste or file upload) to give the LLM additional context. Generated content targets the `chat.system` document-level prompt. Document prompts are combined with workspace prompts and the global system prompt (`global.system`) when the AI analyzes the document.
 
-**Flow:** Create form → Generate AI prompt → Review/Edit → Approve (create + save) | Reject (create without) | Re-create (regenerate).
+**Flow:** Create form → **Prompt category** (optional, searchable dropdown) → When a category is selected, a collapsible preview tab shows the 7 prompts that will be applied → Generate AI prompt (optional) → Review/Edit → Approve (create + save) | Reject (create without) | Re-create (regenerate).
 
 ## API
 
@@ -88,16 +88,26 @@ Each `target` maps to a base meta-prompt:
 - **Never persisted:** Context is sent only to the generate-prompt API; never stored in DB or logs
 - **Discarded:** When the form is closed or dialog dismissed, context is cleared
 
-## Create Document with Prompt
+## Create Document with Prompts
 
-When the user approves the generated prompt:
+When creating a document:
 
 ```
 POST /workspaces/:workspaceId/documents
-Body: { title, description?, documentChatSystemPrompt? }
+Body: { title, description?, documentChatSystemPrompt?, promptCategoryId? }
 ```
 
-If `documentChatSystemPrompt` is provided and non-empty, the API creates the document and upserts the `chat.system` prompt for that document. On upsert failure, the document is still returned; the prompt can be added later in Settings.
+| Field | Description |
+|-------|-------------|
+| `title` | Required. Document title (1–500 chars). |
+| `description` | Optional. Document description (max 2000 chars). |
+| `documentChatSystemPrompt` | Optional (legacy). If provided, upserts only the `chat.system` document prompt. Use when the user approves an LLM-generated prompt. |
+| `promptCategoryId` | Optional. One of `PROMPT_CATEGORY_IDS` (e.g., `general`, `legal-law`, `real-estate`, `nda`). If provided, upserts all 7 document prompts from the selected category. Ignored if `documentChatSystemPrompt` is provided. |
+
+**Behavior:**
+
+- If `documentChatSystemPrompt` is provided and non-empty: create document and upsert `chat.system` only. On upsert failure, the document is still returned; the prompt can be added later in Settings.
+- If `promptCategoryId` is provided (and no `documentChatSystemPrompt`): create document and upsert all 7 document prompts from the category. Mutually exclusive with `documentChatSystemPrompt`.
 
 ## Security
 
@@ -106,12 +116,33 @@ If `documentChatSystemPrompt` is provided and non-empty, the API creates the doc
 - No sensitive content in logs (contextMarkdown, generated prompt)
 - Input validation and size limits via class-validator DTO
 
+## Prompt Categories
+
+Pre-built prompt sets by contract domain. Defined in `packages/shared/src/constants/prompt-categories.ts`. Examples:
+
+| Category ID | Description |
+|-------------|-------------|
+| `general` | Base legal assistant defaults |
+| `legal-law` | General legal practice, contract law |
+| `real-estate` | Real estate, leases, property rights |
+| `employment` | Employment contracts, non-compete |
+| `nda` | NDAs, confidentiality agreements |
+| `commercial` | Commercial contracts, vendor agreements |
+| `it-software` | Software licenses, SaaS, SLAs |
+| `insurance`, `banking`, `construction`, `healthcare`, `ma-corporate`, etc. | Domain-specific variants |
+
+Each category provides prompts for all 7 document keys: `chat.system`, `chat.user`, `redline.system`, `redline.user`, and the three playbooks. Use `promptCategoryId` in the create-document request to apply a full set.
+
+**UI: Prompt preview tab** — When the user selects a prompt category from the dropdown, a collapsible accordion appears below showing a read-only preview of all 7 prompts. This lets users see what will be applied before creating the document. When "None" is selected, the preview is hidden.
+
 ## File Map
 
 | Component | File |
 |-----------|------|
 | PromptGeneratorService | `apps/api/src/prompts/prompt-generator.service.ts` |
 | Generate-prompt route | `apps/api/src/documents/documents.controller.ts` |
-| DTO | `apps/api/src/documents/dto/generate-prompt-request.dto.ts` |
-| Shared types | `packages/shared/src/types/prompts.ts` |
+| Create-document DTO | `apps/api/src/documents/dto/create-document.dto.ts` |
+| DTO (generate-prompt) | `apps/api/src/documents/dto/generate-prompt-request.dto.ts` |
+| Prompt categories | `packages/shared/src/constants/prompt-categories.ts` |
+| Shared types | `packages/shared/src/types/prompts.ts`, `packages/shared/src/types/documents.ts` |
 | Frontend UI | `apps/web/src/app/documents/documents-list/documents-list.component.ts` |

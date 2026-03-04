@@ -84,6 +84,7 @@ Edit `.env` and set:
 - `IMAGE_TAG` — Tag to pull (default: `latest`, or e.g. `v1.0.0`)
 - `POSTGRES_PASSWORD`, `JWT_SECRET`, `OPENAI_API_KEY`, `SUPERADMIN_PASSWORD` — Required secrets
 - `SITE_DOMAIN` — Domain pointing to your VPS (e.g. `app.example.com`)
+- `SITE_DOMAIN_ROOT` — (Optional) Root domain (e.g. `example.com`) to also serve via HTTPS
 - `ACME_EMAIL` — Email for Let's Encrypt certificate notifications
 
 ### 3. Run
@@ -179,6 +180,7 @@ Set in `.env`:
 | Variable | Description |
 |----------|-------------|
 | `SITE_DOMAIN` | Domain pointing to your VPS (e.g. `app.example.com`) |
+| `SITE_DOMAIN_ROOT` | Optional: root domain (e.g. `example.com`) for `https://example.com` |
 | `ACME_EMAIL` | Email for Let's Encrypt notifications |
 | `ACME_STAGING` | Set to `true` for testing; uses staging certificates to avoid rate limits |
 | `ACME_CASERVER` | When `ACME_STAGING=true`, set to `https://acme-staging-v02.api.letsencrypt.org/directory` |

@@ -20,6 +20,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { Document } from '@contractai-review/shared';
 import { EditableTitleComponent } from '../../core/components/editable-title/editable-title.component';
 import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
+import { TruncatePipe } from '../../core/pipes/truncate.pipe';
 import { TranslatePipe } from '@ngx-translate/core';
 import { DOCUMENTS_LIST_SERVICE } from './documents-list.service.interface';
 import { DocumentsListServiceImpl } from './documents-list.service';
@@ -47,6 +48,7 @@ import { DocumentsListServiceImpl } from './documents-list.service';
     Dialog,
     TextareaModule,
     LocaleDatePipe,
+    TruncatePipe,
     TranslatePipe,
     EditableTitleComponent,
   ],
@@ -200,7 +202,7 @@ import { DocumentsListServiceImpl } from './documents-list.service';
                   class="mb-2 block"
                 />
                 @if (doc.description) {
-                  <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{{ doc.description }}</p>
+                  <p class="text-sm text-gray-600 dark:text-gray-400 mb-4" [title]="doc.description">{{ doc.description | truncate:150 }}</p>
                 }
                 <div class="document-meta flex justify-between items-center">
                   <span 

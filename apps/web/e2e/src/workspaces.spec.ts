@@ -3,7 +3,7 @@ import { test, expect } from './fixtures/auth.fixture';
 test.describe('Workspaces', () => {
   test('should show workspaces page when authenticated', async ({ authenticatedPage: page }) => {
     await expect(page).toHaveURL(/\/workspaces/);
-    await expect(page.getByRole('heading', { name: /workspaces/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /workspaces/i }).first()).toBeVisible();
   });
 
   test('should show create button', async ({ authenticatedPage: page }) => {

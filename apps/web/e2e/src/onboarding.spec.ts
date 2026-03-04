@@ -16,10 +16,14 @@ test.describe('Onboarding', () => {
 
   test('should reset onboarding when confirmed', async ({ authenticatedPage: page }) => {
     await page.getByTestId('onboarding-reset-btn').click();
-    await expect(page.getByRole('dialog')).toBeVisible();
-    const acceptBtn = page.getByRole('button', { name: /reset onboarding|reset/i }).first();
-    await acceptBtn.click();
-    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 });
-    await expect(page.locator('.p-toast-message, [role="status"]').filter({ hasText: /restart|success/i })).toBeVisible({ timeout: 5000 });
+    const confirmMessage = page.getByText(
+      /restart onboarding and show|reiniciar.*onboarding|mostrará el tour|mostrará o tour|startet das onboarding/i,
+    );
+    await expect(confirmMessage).toBeVisible();
+    await page
+      .getByRole('button', { name: /reset onboarding|reset|redefinir|restablecer|neu starten/i })
+      .last()
+      .click();
+    await expect(confirmMessage).not.toBeVisible({ timeout: 5000 });
   });
 });

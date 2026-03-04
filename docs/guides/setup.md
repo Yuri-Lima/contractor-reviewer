@@ -79,7 +79,7 @@ pnpm start:api
 pnpm start:worker
 ```
 
-A API escuta em http://localhost:3000/api.
+A API escuta em http://localhost:3000/api. O WebSocket (progresso de jobs) escuta em http://localhost:3200.
 
 ### 6. Iniciar frontend
 
@@ -115,6 +115,8 @@ Abre em http://localhost:4200.
 | `RATE_LIMIT_REQUESTS_PER_HOUR` | Não | Requisições máximas por hora (padrão: `1000`) |
 | `RATE_LIMIT_REQUESTS_PER_DAY` | Não | Requisições máximas por dia (padrão: `10000`) |
 | `RATE_LIMIT_TOKENS_PER_DAY` | Não | Budget diário de tokens OpenAI por usuário/workspace (padrão: `100000`). Bloqueia abuso. |
+| `WS_PORT` | Não | Porta do servidor WebSocket (padrão: `3200`) |
+| `WS_ENABLED` | Não | `false` para desabilitar WebSocket e consumer de stream |
 
 ## Estrutura do monorepo
 

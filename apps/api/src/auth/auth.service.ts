@@ -184,7 +184,11 @@ export class AuthService {
     });
     if (!user || !user.isActive) return null;
     const { passwordHash: _, ...userWithoutPassword } = user;
-    return this.serializeUserWithAvatar(userWithoutPassword);
+    const serialized = await this.serializeUserWithAvatar(userWithoutPassword);
+    const hasOwnerRole = await this.workspaceMemberRepository.exists({
+      where: { userId, role: WorkspaceRole.OWNER },
+    });
+    return { ...serialized, isOwnerInAnyWorkspace: hasOwnerRole };
   }
 
   async getRagCacheSimilarityThreshold(userId: string): Promise<number> {

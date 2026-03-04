@@ -297,6 +297,10 @@ Para **Nx Cloud** (cache remoto e distribuição de tarefas em CI), execute `npx
 
 Documentação organizada em `docs/`:
 
+### Guia do Usuário (end-user help)
+
+- **[docs/user-guide/README.md](docs/user-guide/README.md)** — Guia por tópicos para usuários finais. Instruções passo a passo para workspaces, documentos, chat, redline, versões, configurações, privacidade, auditoria e modo desenvolvedor. Útil para LLMs ou sistemas de ajuda que respondem a perguntas "Como faço para…?".
+
 ### Arquitetura (`docs/architecture/`)
 - **[overview.md](docs/architecture/overview.md)** — Visão geral do sistema, stack, diagrama de serviços
 - **[deployment.md](docs/architecture/deployment.md)** — Deploy em produção com Docker Compose

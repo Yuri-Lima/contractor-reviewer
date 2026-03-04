@@ -11,6 +11,8 @@ import { ContextMenu } from 'primeng/contextmenu';
 import { Toast } from 'primeng/toast';
 import { Dialog } from 'primeng/dialog';
 import { TextareaModule } from 'primeng/textarea';
+import { SelectModule } from 'primeng/select';
+import { AccordionModule } from 'primeng/accordion';
 import { ConfirmationService, MessageService, SharedModule } from 'primeng/api';
 import type { MenuItem } from 'primeng/api';
 import { workspaceDocument } from '../../core/routes';
@@ -18,6 +20,13 @@ import { DocumentViewTabService } from '../../onboarding/tour/document-view-tab.
 import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { TranslateService } from '@ngx-translate/core';
 import { Document } from '@contractai-review/shared';
+import {
+  PROMPT_CATEGORIES,
+  getPromptCategoryById,
+  PROMPT_KEYS,
+  PROMPT_LABEL_KEYS,
+  type PromptCategory,
+} from '@contractai-review/shared/constants';
 import { EditableTitleComponent } from '../../core/components/editable-title/editable-title.component';
 import { DevOnlyDirective } from '../../core/directives/dev-only.directive';
 import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
@@ -48,6 +57,8 @@ import { DocumentsListServiceImpl } from './documents-list.service';
     ContextMenu,
     Dialog,
     TextareaModule,
+    SelectModule,
+    AccordionModule,
     LocaleDatePipe,
     TruncatePipe,
     TranslatePipe,
@@ -96,6 +107,47 @@ import { DocumentsListServiceImpl } from './documents-list.service';
               [placeholder]="'documents.descriptionPlaceholder' | translate" 
               rows="3"
             ></textarea>
+            <div class="mb-4">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                {{ 'documents.promptCategory' | translate }}
+              </label>
+              <p-select
+                [options]="promptCategoryOptions()"
+                [ngModel]="selectedPromptCategoryId()"
+                (ngModelChange)="selectedPromptCategoryId.set($event)"
+                optionLabel="label"
+                optionValue="value"
+                [filter]="true"
+                [filterPlaceholder]="'documents.promptCategoryPlaceholder' | translate"
+                [showClear]="true"
+                [placeholder]="'documents.promptCategoryPlaceholder' | translate"
+                [style]="{ width: '100%' }"
+              ></p-select>
+              @if (selectedPromptCategoryId()) {
+                <div class="mt-3 border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
+                  <p class="text-sm font-medium text-gray-700 dark:text-gray-300 p-3 border-b border-gray-200 dark:border-gray-600">
+                    {{ 'documents.promptCategoryPreview' | translate }}
+                  </p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 px-3 pb-2">
+                    {{ 'documents.promptCategoryPreviewDescription' | translate }}
+                  </p>
+                  <p-accordion [value]="[]" [multiple]="true" [styleClass]="'border-0'">
+                    @for (key of promptPreviewKeys; track key) {
+                      <p-accordion-panel [value]="key">
+                        <p-accordion-header>
+                          {{ PROMPT_LABEL_KEYS[key] | translate }}
+                        </p-accordion-header>
+                        <p-accordion-content>
+                          <div class="p-3 text-sm font-mono whitespace-pre-wrap break-words bg-gray-50 dark:bg-gray-800 rounded">
+                            {{ getPromptPreviewContent(key) }}
+                          </div>
+                        </p-accordion-content>
+                      </p-accordion-panel>
+                    }
+                  </p-accordion>
+                </div>
+              }
+            </div>
             <div class="mb-4">
               <details class="group">
                 <summary class="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
@@ -169,7 +221,7 @@ import { DocumentsListServiceImpl } from './documents-list.service';
               </button>
               <button 
                 class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors font-medium"
-                (click)="showCreateForm.set(false); error.set(null); contextMarkdown.set(''); clearPromptDialogState();"
+                (click)="showCreateForm.set(false); error.set(null); contextMarkdown.set(''); selectedPromptCategoryId.set(null); clearPromptDialogState();"
                 [disabled]="loading()"
               >
                 {{ 'common.cancel' | translate }}
@@ -302,6 +354,8 @@ import { DocumentsListServiceImpl } from './documents-list.service';
 })
 export class DocumentsListComponent implements OnInit {
   readonly workspaceDocLink = workspaceDocument;
+  readonly PROMPT_LABEL_KEYS = PROMPT_LABEL_KEYS;
+  readonly promptPreviewKeys = PROMPT_KEYS;
 
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -313,6 +367,9 @@ export class DocumentsListComponent implements OnInit {
 
   documentContextMenuRef = viewChild<ContextMenu>('documentContextMenu');
 
+  /** Trigger recomputation of category options when language changes */
+  private langSignal = signal(this.translateService.currentLang ?? 'en');
+
   workspaceId = signal('');
   documents = signal<Document[]>([]);
   showCreateForm = signal(false);
@@ -323,6 +380,22 @@ export class DocumentsListComponent implements OnInit {
   error = signal<string | null>(null);
   deletingDocId = signal<string | null>(null);
   selectedDocument = signal<Document | null>(null);
+
+  selectedPromptCategoryId = signal<string | null>(null);
+
+  promptCategoryOptions = computed(() => {
+    this.langSignal(); // dependency on lang
+    const t = (key: string) => this.translateService.instant(key);
+    const noneOption = {
+      label: t('documents.promptCategoryNone'),
+      value: null as string | null,
+    };
+    const categoryOptions = PROMPT_CATEGORIES.map((c: PromptCategory) => ({
+      label: t(c.nameKey),
+      value: c.id,
+    }));
+    return [noneOption, ...categoryOptions];
+  });
 
   generatingPrompt = signal(false);
   promptDialogVisible = signal(false);
@@ -338,6 +411,13 @@ export class DocumentsListComponent implements OnInit {
     this.buildDocumentMenu(this.selectedDocForContext())
   );
 
+
+  getPromptPreviewContent(key: string): string {
+    const cat = getPromptCategoryById(this.selectedPromptCategoryId());
+    if (!cat) return '';
+    return cat.prompts[key as (typeof PROMPT_KEYS)[number]] ?? '';
+  }
+
   selectDocument(doc: Document): void {
     this.selectedDocument.set(this.selectedDocument()?.id === doc.id ? null : doc);
   }
@@ -346,6 +426,9 @@ export class DocumentsListComponent implements OnInit {
     const wsId = this.route.snapshot.paramMap.get('workspaceId') || '';
     this.workspaceId.set(wsId);
     this.loadDocuments();
+    this.translateService.onLangChange.subscribe(() => {
+      this.langSignal.set(this.translateService.currentLang ?? 'en');
+    });
   }
 
   loadDocuments(): void {
@@ -545,6 +628,7 @@ export class DocumentsListComponent implements OnInit {
         title,
         description: description || undefined,
         documentChatSystemPrompt: documentChatSystemPrompt || undefined,
+        promptCategoryId: documentChatSystemPrompt ? undefined : (this.selectedPromptCategoryId() ?? undefined),
       })
       .subscribe({
         next: () => {
@@ -553,6 +637,7 @@ export class DocumentsListComponent implements OnInit {
           this.newDocumentTitle.set('');
           this.newDocumentDescription.set('');
           this.contextMarkdown.set('');
+          this.selectedPromptCategoryId.set(null);
           this.clearPromptDialogState();
           this.error.set(null);
           this.loadDocuments();
@@ -593,6 +678,7 @@ export class DocumentsListComponent implements OnInit {
       .createDocument(workspaceId, {
         title,
         description: this.newDocumentDescription() || undefined,
+        promptCategoryId: this.selectedPromptCategoryId() ?? undefined,
       })
       .subscribe({
       next: () => {
@@ -600,8 +686,8 @@ export class DocumentsListComponent implements OnInit {
         this.showCreateForm.set(false);
         this.newDocumentTitle.set('');
         this.newDocumentDescription.set('');
+        this.selectedPromptCategoryId.set(null);
         this.error.set(null);
-        // Reload documents list
         this.loadDocuments();
       },
       error: (err) => {

@@ -248,7 +248,21 @@
     "fromCache": "Resposta em cache",
     "getFreshResponse": "Obter resposta nova",
     "preferencesSaved": "Preferências do chat salvas",
-    "preferencesError": "Erro ao salvar preferências do chat"
+    "preferencesError": "Erro ao salvar preferências do chat",
+    "llmPayloadDialogTitle": "Visualização do payload LLM (Modo dev)",
+    "approveAndSend": "Aprovar e enviar",
+    "questionTab": "Pergunta",
+    "systemPrompt": "Prompt do sistema",
+    "userPrompt": "Prompt do usuário",
+    "contractChunks": "Trechos do contrato",
+    "legalChunks": "Trechos legais",
+    "modelParams": "Parâmetros do modelo",
+    "similarity": "Similaridade",
+    "noChunks": "Nenhum trecho encontrado",
+    "prepareError": "Falha ao preparar o chat. Tente novamente.",
+    "executeError": "Falha ao executar. Tente novamente.",
+    "prepareExpired": "Preparação expirada. Envie sua pergunta novamente.",
+    "sendError": "Falha ao enviar mensagem. Tente novamente."
   },
   "parsers": {
     "title": "Analisadores de Documentos",

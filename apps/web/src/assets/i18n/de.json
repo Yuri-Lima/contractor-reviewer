@@ -246,7 +246,21 @@
     "fromCache": "Zwischengespeicherte Antwort",
     "getFreshResponse": "Frische Antwort abrufen",
     "preferencesSaved": "Chat-Einstellungen gespeichert",
-    "preferencesError": "Fehler beim Speichern der Chat-Einstellungen"
+    "preferencesError": "Fehler beim Speichern der Chat-Einstellungen",
+    "llmPayloadDialogTitle": "LLM-Payload-Vorschau (Entwicklermodus)",
+    "approveAndSend": "Genehmigen und senden",
+    "questionTab": "Frage",
+    "systemPrompt": "System-Prompt",
+    "userPrompt": "Benutzer-Prompt",
+    "contractChunks": "Vertragsfragmente",
+    "legalChunks": "Rechtliche Fragmente",
+    "modelParams": "Modellparameter",
+    "similarity": "Ähnlichkeit",
+    "noChunks": "Keine Fragmente gefunden",
+    "prepareError": "Chat-Vorbereitung fehlgeschlagen. Bitte erneut versuchen.",
+    "executeError": "Ausführung fehlgeschlagen. Bitte erneut versuchen.",
+    "prepareExpired": "Vorbereitung abgelaufen. Bitte fragen Sie erneut.",
+    "sendError": "Nachricht konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
   },
   "parsers": {
     "title": "Dokumenten-Parser",

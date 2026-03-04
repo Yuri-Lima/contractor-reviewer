@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -6,10 +6,16 @@ import { OpenAI } from 'openai';
 import { Chunk } from '../entities/chunk.entity';
 import { Embedding } from '../entities/embedding.entity';
 import { Document } from '../entities/document.entity';
-import { Citation, ChatResponse } from '@contractai-review/shared';
+import {
+  ChatPreparePayload,
+  ChatPrepareResponse,
+  Citation,
+  ChatResponse,
+} from '@contractai-review/shared';
 import { EmbeddingsService } from './embeddings.service';
 import { PromptService } from '../prompts/prompt.service';
 import { RagCacheService } from '../cache/rag-cache.service';
+import { ChatPrepareCacheService } from './chat-prepare-cache.service';
 import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
 import {
   IVectorStore,
@@ -37,6 +43,7 @@ export class RagService {
     private workspaceSettingsService: WorkspaceSettingsService,
     private configService: ConfigService,
     private ragCacheService: RagCacheService,
+    private chatPrepareCacheService: ChatPrepareCacheService,
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
     if (!apiKey) {
@@ -240,6 +247,208 @@ export class RagService {
   }
 
   /**
+   * Prepare RAG payload for dev mode inspection (no LLM call).
+   * Skips semantic cache; always does fresh retrieval.
+   */
+  async prepareForChat(
+    question: string,
+    documentId: string,
+    workspaceId: string,
+    jurisdiction?: string,
+    language: string = 'en',
+    options?: { signal?: AbortSignal },
+  ): Promise<ChatPrepareResponse> {
+    const questionEmbedding = await this.embeddingsService.generateEmbedding(
+      question,
+      options,
+    );
+
+    const contractChunks = await this.searchContractChunks(
+      questionEmbedding,
+      documentId,
+      5,
+    );
+
+    const legalChunks = jurisdiction
+      ? await this.searchLegalChunks(questionEmbedding, undefined, jurisdiction, 3)
+      : [];
+
+    const contractContext = contractChunks
+      .map((c, i) => `[Contract Excerpt ${i + 1}]: ${c.item.text}`)
+      .join('\n\n');
+    const legalContext = legalChunks
+      .map((c, i) => `[Legal Source ${i + 1}]: ${c.item.text}`)
+      .join('\n\n');
+    const context = [contractContext, legalContext].filter(Boolean).join('\n\n');
+
+    const [workspaceSettings, document] = await Promise.all([
+      this.workspaceSettingsService.getSettings(workspaceId),
+      this.documentRepository.findOne({ where: { id: documentId } }),
+    ]);
+
+    const scopeFlags =
+      workspaceSettings || document
+        ? {
+            includeGlobal: workspaceSettings?.promptScopeIncludeGlobal ?? true,
+            includeWorkspace: workspaceSettings?.promptScopeIncludeWorkspace ?? true,
+            includeDocument: (document as { promptScopeIncludeDocument?: boolean })?.promptScopeIncludeDocument ?? true,
+          }
+        : undefined;
+
+    const languageName = this.promptService.getLanguageName(language);
+    const { system, user } = await this.promptService.getChatPrompts(
+      {
+        languageName,
+        context: context || 'No relevant context found.',
+        question,
+      },
+      { workspaceId, documentId, scopeFlags },
+    );
+
+    const payload: ChatPreparePayload = {
+      systemPrompt: system,
+      userPrompt: user,
+      contractChunks: contractChunks.map((c) => ({
+        text: c.item.text,
+        pageNumber: c.item.pageNumber ?? undefined,
+        paragraphId: c.item.paragraphId ?? undefined,
+        similarity: c.distance,
+      })),
+      legalChunks: legalChunks.map((c) => ({
+        text: c.item.text,
+        sourceName: c.sourceName ?? undefined,
+        section: c.item.section ?? c.section ?? undefined,
+        url: c.url ?? undefined,
+        similarity: c.distance,
+      })),
+      question,
+      model: this.chatModel,
+      temperature: 0.3,
+      maxTokens: 500,
+    };
+
+    const requestId = await this.chatPrepareCacheService.set(
+      workspaceId,
+      documentId,
+      payload,
+    );
+
+    return { requestId, payload };
+  }
+
+  /**
+   * Execute prepared chat (call LLM with cached payload). One-time use.
+   */
+  async executePreparedChat(
+    workspaceId: string,
+    documentId: string,
+    requestId: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<{ response: RagResponse; question: string }> {
+    const payload = await this.chatPrepareCacheService.getAndDelete(
+      workspaceId,
+      documentId,
+      requestId,
+    );
+
+    if (!payload) {
+      throw new BadRequestException(
+        'Preparation expired or invalid. Please submit your question again.',
+      );
+    }
+
+    const answerText = await this.callOpenAI(
+      payload.systemPrompt,
+      payload.userPrompt,
+      options,
+    );
+
+    const contractChunks = payload.contractChunks;
+    const legalChunks = payload.legalChunks;
+    const hasGoodMatches =
+      contractChunks.length > 0 && contractChunks[0].similarity > 0.7;
+    const hasLegalMatches =
+      legalChunks.length > 0 && legalChunks[0].similarity > 0.7;
+    const hasAnyMatches = contractChunks.length > 0 || legalChunks.length > 0;
+    const hasMediumMatches =
+      (contractChunks.length > 0 && contractChunks[0].similarity > 0.5) ||
+      (legalChunks.length > 0 && legalChunks[0].similarity > 0.5);
+    const hasMultipleChunks = contractChunks.length >= 2;
+
+    let confidence: 'high' | 'medium' | 'low' = 'low';
+    if (hasGoodMatches && hasLegalMatches) {
+      confidence = 'high';
+    } else if (hasGoodMatches || hasLegalMatches) {
+      confidence = 'high';
+    } else if (hasMediumMatches || hasMultipleChunks) {
+      confidence = 'medium';
+    } else if (hasAnyMatches) {
+      confidence = 'low';
+    }
+
+    const document = await this.documentRepository.findOne({
+      where: { id: documentId },
+    });
+    const citations: Citation[] = [];
+
+    for (const result of contractChunks.slice(0, 3)) {
+      if (result.similarity > 0.4 || contractChunks.length <= 3) {
+        citations.push({
+          type: 'contract',
+          fileName: document?.title || 'Document',
+          pageNumber: result.pageNumber,
+          paragraphId: result.paragraphId,
+          quoteSnippet: result.text.substring(0, 200) + '...',
+        });
+      }
+    }
+
+    for (const result of legalChunks.slice(0, 2)) {
+      if (result.similarity > 0.4 || legalChunks.length <= 2) {
+        citations.push({
+          type: 'legal',
+          sourceName: result.sourceName || 'Legal Source',
+          section: result.section,
+          url: result.url,
+          quoteSnippet: result.text.substring(0, 200) + '...',
+        });
+      }
+    }
+
+    return {
+      response: {
+        answerText,
+        confidence,
+        citations,
+        notFound: contractChunks.length === 0 && legalChunks.length === 0,
+        fromCache: false,
+      },
+      question: payload.question,
+    };
+  }
+
+  /** Call OpenAI with system and user prompts (extracted for reuse). */
+  private async callOpenAI(
+    system: string,
+    user: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<string> {
+    const response = await this.openaiClient.chat.completions.create(
+      {
+        model: this.chatModel,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+        temperature: 0.3,
+        max_tokens: 500,
+      },
+      { signal: options?.signal },
+    );
+    return response.choices[0].message.content || 'NOT FOUND';
+  }
+
+  /**
    * Generate answer text using OpenAI with context
    */
   private async generateAnswerText(
@@ -287,20 +496,7 @@ export class RagService {
     );
 
     try {
-      const response = await this.openaiClient.chat.completions.create(
-        {
-          model: this.chatModel,
-          messages: [
-            { role: 'system', content: system },
-            { role: 'user', content: user },
-          ],
-          temperature: 0.3,
-          max_tokens: 500,
-        },
-        { signal: options?.signal },
-      );
-
-      return response.choices[0].message.content || 'NOT FOUND';
+      return await this.callOpenAI(system, user, options);
     } catch (error) {
       return `Error generating answer: ${error instanceof Error ? error.message : String(error)}`;
     }

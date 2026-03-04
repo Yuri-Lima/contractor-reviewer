@@ -39,6 +39,10 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   preferredTranscriptionProvider: string | null;
 
+  /** RAG cache similarity threshold (0.8-1.0). null = use server default 0.95 */
+  @Column({ type: 'decimal', precision: 3, scale: 2, nullable: true })
+  ragCacheSimilarityThreshold: number | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

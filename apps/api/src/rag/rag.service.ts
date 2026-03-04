@@ -9,6 +9,7 @@ import { Document } from '../entities/document.entity';
 import { Citation, ChatResponse } from '@contractai-review/shared';
 import { EmbeddingsService } from './embeddings.service';
 import { PromptService } from '../prompts/prompt.service';
+import { RagCacheService } from '../cache/rag-cache.service';
 import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
 import {
   IVectorStore,
@@ -35,6 +36,7 @@ export class RagService {
     private promptService: PromptService,
     private workspaceSettingsService: WorkspaceSettingsService,
     private configService: ConfigService,
+    private ragCacheService: RagCacheService,
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
     if (!apiKey) {
@@ -80,7 +82,7 @@ export class RagService {
     workspaceId: string,
     jurisdiction?: string,
     language: string = 'en',
-    options?: { signal?: AbortSignal },
+    options?: { signal?: AbortSignal; forceFresh?: boolean; similarityThreshold?: number },
   ): Promise<RagResponse> {
     try {
       // Generate embedding for the question
@@ -88,6 +90,20 @@ export class RagService {
         question,
         options,
       );
+
+      // Check semantic cache (unless forceFresh)
+      if (!options?.forceFresh) {
+        const cached = await this.ragCacheService.get(
+          documentId,
+          jurisdiction,
+          questionEmbedding,
+          language,
+          { similarityThreshold: options?.similarityThreshold },
+        );
+        if (cached) {
+          return { ...cached, fromCache: true };
+        }
+      }
 
       // Search contract chunks
       const contractChunks = await this.searchContractChunks(
@@ -179,12 +195,23 @@ export class RagService {
 
     const notFound = contractChunks.length === 0 && legalChunks.length === 0;
 
-    return {
+    const response: RagResponse = {
       answerText,
       confidence,
       citations,
       notFound,
     };
+
+    // Store in cache for future similar queries
+    await this.ragCacheService.set(
+      documentId,
+      jurisdiction,
+      questionEmbedding,
+      language,
+      response,
+    );
+
+    return { ...response, fromCache: false };
     } catch (error) {
       // Never log question content or answer text
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -197,6 +224,7 @@ export class RagService {
           confidence: 'low',
           citations: [],
           notFound: true,
+          fromCache: false,
         };
       }
       
@@ -206,6 +234,7 @@ export class RagService {
         confidence: 'low',
         citations: [],
         notFound: true,
+        fromCache: false,
       };
     }
   }

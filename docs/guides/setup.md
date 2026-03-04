@@ -106,6 +106,10 @@ Abre em http://localhost:4200.
 | `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, etc. | Se S3 | Configuração S3/R2 |
 | `VITE_API_URL` | Não | URL da API para o frontend (padrão: `http://localhost:3000`) |
 | `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | Não | Credenciais do superadmin criado na inicialização |
+| `RAG_CACHE_ENABLED` | Não | Habilita cache semântico de respostas RAG (padrão: `true`) |
+| `RAG_CACHE_TTL_SECONDS` | Não | TTL do cache em segundos (padrão: `86400` = 24h) |
+| `RAG_CACHE_SIMILARITY_THRESHOLD` | Não | Limiar de similaridade padrão (0.80–1.0, padrão: `0.95`) |
+| `RAG_CACHE_MAX_ENTRIES_PER_DOCUMENT` | Não | Máx. entradas por documento no índice (padrão: `50`) |
 
 ## Estrutura do monorepo
 

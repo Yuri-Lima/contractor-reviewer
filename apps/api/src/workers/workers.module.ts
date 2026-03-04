@@ -10,6 +10,7 @@ import { WorkspaceSettings } from '../entities/workspace-settings.entity';
 import { ChunksModule } from '../chunks/chunks.module';
 import { StorageModule } from '../storage/storage.module';
 import { RagModule } from '../rag/rag.module';
+import { CacheModule } from '../cache/cache.module';
 import { QueueModule } from '../queue/queue.module';
 import { ParsersModule } from '../parsers/parsers.module';
 import { WorkspaceModule } from '../workspace/workspace.module';
@@ -57,6 +58,7 @@ function writeLog(location: string, message: string, data: any, hypothesisId: st
     ChunksModule,
     StorageModule,
     RagModule,
+    CacheModule,
     QueueModule,
     ParsersModule,
     WorkspaceModule,

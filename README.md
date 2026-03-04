@@ -138,6 +138,8 @@ Documento Disponível para Consulta
 ```
 Pergunta do Usuário
   ↓
+Cache Semântico? (forceFresh=false) → Se similar ≥ threshold: retorna cached (fromCache: true)
+  ↓ (senão)
 Geração de Embedding da Pergunta
   ↓
 Busca Similaridade (top-k chunks do contrato + fontes legais)
@@ -146,8 +148,10 @@ Montagem de Contexto com Citações
   ↓
 Geração de Resposta (OpenAI) com Citações
   ↓
-Resposta com Confiança e Evidências
+Armazena em Cache (Redis) → Resposta com Confiança e Evidências (fromCache: false)
 ```
+
+**Cache semântico**: respostas similares são cacheadas em Redis (TTL 24h). Usuário vê indicador "cached" e pode forçar resposta nova com "Get fresh response". Ver [docs/architecture/rag-cache.md](docs/architecture/rag-cache.md).
 
 ### 3. Geração de Redlines
 ```

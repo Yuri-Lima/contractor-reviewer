@@ -42,6 +42,13 @@ export interface User {
   name: string;
   avatarUrl?: string | null;
   createdAt: string;
+  /** RAG cache similarity threshold (0.8-1.0). null = use server default 0.95 */
+  ragCacheSimilarityThreshold?: number | null;
+}
+
+/** Request body for PATCH /account/preferences */
+export interface UpdateAccountPreferencesRequest {
+  ragCacheSimilarityThreshold?: number | null;
 }
 
 export interface LoginRequest {

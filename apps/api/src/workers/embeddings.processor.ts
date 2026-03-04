@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { DocumentJob, JobStatus } from '../entities/document-job.entity';
 import { CHUNK_REPOSITORY, IChunkRepository } from '../chunks/chunk-repository.interface';
 import { EmbeddingsService } from '../rag/embeddings.service';
+import { RagCacheService } from '../cache/rag-cache.service';
 import { abortAsPromise } from '../common/utils/abort-promise';
 
 interface EmbeddingsJobData {
@@ -28,6 +29,7 @@ export class EmbeddingsProcessor extends WorkerHost {
     @Inject(CHUNK_REPOSITORY)
     private chunkRepository: IChunkRepository,
     private embeddingsService: EmbeddingsService,
+    private ragCacheService: RagCacheService,
   ) {
     super();
   }
@@ -66,7 +68,7 @@ export class EmbeddingsProcessor extends WorkerHost {
     _token?: string,
     signal?: AbortSignal,
   ): Promise<void> {
-    const { jobId, chunkIds } = job.data;
+    const { jobId, documentId, chunkIds } = job.data;
 
     try {
       await this.updateJobStatus(jobId, JobStatus.PROCESSING, 0);
@@ -83,6 +85,7 @@ export class EmbeddingsProcessor extends WorkerHost {
 
       if (chunksToEmbed.length === 0) {
         await this.updateJobStatus(jobId, JobStatus.COMPLETED, 100);
+        await this.ragCacheService.invalidateDocument(documentId);
         return;
       }
 
@@ -122,6 +125,7 @@ export class EmbeddingsProcessor extends WorkerHost {
       }
 
       await this.updateJobStatus(jobId, JobStatus.COMPLETED, 100);
+      await this.ragCacheService.invalidateDocument(documentId);
     } catch (error) {
       await this.updateJobStatus(
         jobId,

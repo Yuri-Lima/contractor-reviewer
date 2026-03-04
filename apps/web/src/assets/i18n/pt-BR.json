@@ -223,7 +223,11 @@
     "synthesizing": "Gerando fala...",
     "playAudio": "Reproduzir áudio",
     "pauseAudio": "Pausar áudio",
-    "audioError": "Falha ao gerar áudio. Verifique sua chave TTS em Configurações do workspace → Voz."
+    "audioError": "Falha ao gerar áudio. Verifique sua chave TTS em Configurações do workspace → Voz.",
+    "fromCache": "Resposta em cache",
+    "getFreshResponse": "Obter resposta nova",
+    "preferencesSaved": "Preferências do chat salvas",
+    "preferencesError": "Erro ao salvar preferências do chat"
   },
   "parsers": {
     "title": "Analisadores de Documentos",
@@ -445,6 +449,10 @@
     "avatarSizeError": "A imagem deve ter 2MB ou menos. Use PNG ou JPEG.",
     "profileTab": "Perfil",
     "globalPromptsTab": "Prompts de IA",
+    "chatTab": "Chat",
+    "cacheSimilarityLabel": "Limiar de similaridade do cache",
+    "cacheSimilarityHint": "Menor = mais acertos de cache (mais rápido, pode ser menos preciso). Maior = correspondência mais rigorosa (menos acertos). Padrão: 0.95",
+    "useDefault": "Usar padrão",
     "storageTab": "Armazenamento",
     "storageProvider": "Provedor",
     "bucketEndpoint": "URL do endpoint",

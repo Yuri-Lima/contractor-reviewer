@@ -221,7 +221,11 @@
     "synthesizing": "Sprache wird erzeugt...",
     "playAudio": "Audio abspielen",
     "pauseAudio": "Audio pausieren",
-    "audioError": "Audio-Erzeugung fehlgeschlagen. Überprüfen Sie Ihren TTS-API-Schlüssel in Arbeitsbereich-Einstellungen → Sprache."
+    "audioError": "Audio-Erzeugung fehlgeschlagen. Überprüfen Sie Ihren TTS-API-Schlüssel in Arbeitsbereich-Einstellungen → Sprache.",
+    "fromCache": "Zwischengespeicherte Antwort",
+    "getFreshResponse": "Frische Antwort abrufen",
+    "preferencesSaved": "Chat-Einstellungen gespeichert",
+    "preferencesError": "Fehler beim Speichern der Chat-Einstellungen"
   },
   "parsers": {
     "title": "Dokumenten-Parser",
@@ -443,6 +447,10 @@
     "avatarSizeError": "Das Bild muss 2MB oder weniger sein. Verwenden Sie PNG oder JPEG.",
     "profileTab": "Profil",
     "globalPromptsTab": "KI-Prompts",
+    "chatTab": "Chat",
+    "cacheSimilarityLabel": "Cache-Ähnlichkeitsschwelle",
+    "cacheSimilarityHint": "Niedriger = mehr Cache-Treffer (schneller, evtl. weniger präzise). Höher = strengere Übereinstimmung (weniger Treffer). Standard: 0.95",
+    "useDefault": "Standard verwenden",
     "storageTab": "Speicher",
     "storageProvider": "Anbieter",
     "bucketEndpoint": "Endpoint-URL",

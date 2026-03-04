@@ -17,6 +17,7 @@ export interface ChatMessage {
 export interface ChatRequest {
   question: string;
   language?: string; // ISO 639-1 code (en, es, pt-BR, de)
+  forceFresh?: boolean; // Bypass cache and get fresh RAG response
 }
 
 export interface ChatResponse {
@@ -24,4 +25,5 @@ export interface ChatResponse {
   confidence: 'high' | 'medium' | 'low';
   citations: Citation[];
   notFound: boolean;
+  fromCache?: boolean; // True when response was served from semantic cache
 }

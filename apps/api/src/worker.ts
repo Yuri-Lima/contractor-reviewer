@@ -57,7 +57,7 @@ async function bootstrap() {
   writeLog('worker.ts:15', 'WorkersModule initialized successfully', {}, 'A');
   // #endregion
 
-  console.log('Workers started. Processing jobs...');
+  console.log('Workers started. Waiting for jobs...');
   
   // Keep the process alive
   process.on('SIGTERM', async () => {

@@ -193,12 +193,12 @@ services:
         condition: service_started
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.contractai-web-https.rule=Host(`${SITE_DOMAIN}`)"
+      - "traefik.http.routers.contractai-web-https.rule=(Host(`${SITE_DOMAIN_ROOT:-_nomatch_.invalid}`) || Host(`${SITE_DOMAIN}`))"
       - "traefik.http.routers.contractai-web-https.entrypoints=websecure"
       - "traefik.http.routers.contractai-web-https.tls=true"
       - "traefik.http.routers.contractai-web-https.tls.certresolver=letsencrypt"
       - "traefik.http.routers.contractai-web-https.service=contractai-web-svc"
-      - "traefik.http.routers.contractai-web-http.rule=Host(`${SITE_DOMAIN}`) && PathRegexp(`^(?!/\\.well-known/acme-challenge/).*`)"
+      - "traefik.http.routers.contractai-web-http.rule=(Host(`${SITE_DOMAIN_ROOT:-_nomatch_.invalid}`) || Host(`${SITE_DOMAIN}`)) && !PathPrefix(`/.well-known/acme-challenge/`)"
       - "traefik.http.routers.contractai-web-http.entrypoints=web"
       - "traefik.http.routers.contractai-web-http.middlewares=redirect-to-https"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"

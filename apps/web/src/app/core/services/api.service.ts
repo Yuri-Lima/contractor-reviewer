@@ -19,6 +19,7 @@ import {
   UpdateDocumentRequest,
   GeneratePromptResponse,
   DocumentJob,
+  ChatPrepareResponse,
   ChatRequest,
   ChatResponse,
   RedlineRequest,
@@ -425,6 +426,100 @@ export class ApiService {
       fetch(url, {
         method: 'POST',
         body: JSON.stringify(request),
+        signal,
+        headers,
+      }).then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw {
+            status: res.status,
+            error: body,
+            message: body?.message ?? res.statusText,
+          };
+        }
+        return res.json() as Promise<ChatResponse>;
+      }),
+    );
+  }
+
+  chatPrepare(
+    workspaceId: string,
+    documentId: string,
+    request: ChatRequest,
+    options?: { signal?: AbortSignal },
+  ): Observable<ChatPrepareResponse> {
+    if (options?.signal !== undefined) {
+      return this.fetchChatPrepare(workspaceId, documentId, request, options.signal);
+    }
+    return this.http.post<ChatPrepareResponse>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}/prepare`,
+      request,
+    );
+  }
+
+  private fetchChatPrepare(
+    workspaceId: string,
+    documentId: string,
+    request: ChatRequest,
+    signal: AbortSignal,
+  ): Observable<ChatPrepareResponse> {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}/prepare`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    const token = this.authService.getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return from(
+      fetch(url, {
+        method: 'POST',
+        body: JSON.stringify(request),
+        signal,
+        headers,
+      }).then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw {
+            status: res.status,
+            error: body,
+            message: body?.message ?? res.statusText,
+          };
+        }
+        return res.json() as Promise<ChatPrepareResponse>;
+      }),
+    );
+  }
+
+  chatExecute(
+    workspaceId: string,
+    documentId: string,
+    requestId: string,
+    options?: { signal?: AbortSignal },
+  ): Observable<ChatResponse> {
+    if (options?.signal !== undefined) {
+      return this.fetchChatExecute(workspaceId, documentId, requestId, options.signal);
+    }
+    return this.http.post<ChatResponse>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}/execute`,
+      { requestId },
+    );
+  }
+
+  private fetchChatExecute(
+    workspaceId: string,
+    documentId: string,
+    requestId: string,
+    signal: AbortSignal,
+  ): Observable<ChatResponse> {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}/execute`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    const token = this.authService.getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return from(
+      fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ requestId }),
         signal,
         headers,
       }).then(async (res) => {

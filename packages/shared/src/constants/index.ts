@@ -11,3 +11,4 @@ export * from './transcription';
 export * from './user-storage';
 export * from './tts';
 export * from './prompts';
+export * from './prompt-categories';

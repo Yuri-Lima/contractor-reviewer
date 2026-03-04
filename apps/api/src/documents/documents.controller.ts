@@ -34,6 +34,11 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction, TargetType } from '../entities/audit-log.entity';
 import { RequestInfo } from '../common/decorators/request-info.decorator';
 import { ReqAbortSignal } from '../common/decorators/req-abort-signal.decorator';
+import { RateLimit } from '../rate-limit/rate-limit.decorator';
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
+import { PromptGeneratorService } from '../prompts/prompt-generator.service';
+import { PromptService } from '../prompts/prompt.service';
+import { GeneratePromptRequestDto } from './dto/generate-prompt-request.dto';
 
 @Controller('workspaces/:workspaceId/documents')
 @UseGuards(JwtAuthGuard, WorkspaceGuard)
@@ -44,7 +49,43 @@ export class DocumentsController {
     private documentUploadValidator: DocumentUploadValidator,
     private malwareScanner: NoopMalwareScanner,
     private auditService: AuditService,
+    private promptGeneratorService: PromptGeneratorService,
+    private promptService: PromptService,
   ) {}
+
+  @Post('generate-prompt')
+  @UseGuards(RolesGuard, RateLimitGuard)
+  @Roles(WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
+  @RateLimit({ requestsPerMinute: 15 })
+  @HttpCode(HttpStatus.OK)
+  async generatePrompt(
+    @WorkspaceId() workspaceId: string,
+    @CurrentUser() user: { id: string },
+    @RequestInfo() requestInfo: { ip: string; userAgent: string },
+    @ReqAbortSignal() signal: AbortSignal,
+    @Body() dto: GeneratePromptRequestDto,
+  ): Promise<{ generatedPrompt: string }> {
+    const generatedPrompt = await this.promptGeneratorService.generate(
+      {
+        target: 'document',
+        title: dto.title.trim(),
+        description: dto.description.trim(),
+        contextMarkdown: dto.contextMarkdown?.trim() || undefined,
+      },
+      { signal },
+    );
+    await this.auditService.createAuditLog(
+      workspaceId,
+      user.id,
+      AuditAction.PROMPT_GENERATE,
+      TargetType.WORKSPACE,
+      null,
+      requestInfo.ip,
+      requestInfo.userAgent,
+      { target: 'document' },
+    );
+    return { generatedPrompt };
+  }
 
   @Post()
   @UseGuards(RolesGuard)
@@ -52,9 +93,31 @@ export class DocumentsController {
   @HttpCode(HttpStatus.CREATED)
   async createDocument(
     @WorkspaceId() workspaceId: string,
-    @Body() createDto: { title: string; description?: string },
+    @Body() createDto: {
+      title: string;
+      description?: string;
+      documentChatSystemPrompt?: string;
+    },
   ): Promise<Document> {
-    return this.documentsService.create(workspaceId, createDto.title, createDto.description);
+    const document = await this.documentsService.create(
+      workspaceId,
+      createDto.title,
+      createDto.description,
+    );
+    const promptContent = createDto.documentChatSystemPrompt?.trim();
+    if (promptContent) {
+      try {
+        await this.promptService.upsertPrompt('chat.system', promptContent, {
+          workspaceId,
+          documentId: document.id,
+          variant: 'default',
+        });
+      } catch (err) {
+        console.error('[DocumentsController] Failed to upsert document prompt:', err);
+        // Document created; prompt can be added later in Settings
+      }
+    }
+    return document;
   }
 
   @Get()

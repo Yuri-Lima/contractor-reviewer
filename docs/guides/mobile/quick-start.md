@@ -86,17 +86,6 @@ Or if prerequisites are still missing but you want to proceed:
 ./scripts/setup-mobile.sh --all --force
 ```
 
-```bash
-cd apps/web
-./scripts/setup-mobile.sh --all
-```
-
-Or if you want to proceed anyway (platforms will be added but may need manual configuration):
-
-```bash
-./scripts/setup-mobile.sh --all --force
-```
-
 ## Next Steps After Setup
 
 ### For iOS Development
@@ -172,4 +161,4 @@ If Android Studio can't find the SDK:
 
 ### Still Having Issues?
 
-See the full guide: [MOBILE-DEV.md](./MOBILE-DEV.md)
+See the full guide: [development.md](development.md)

@@ -131,7 +131,7 @@ Abre em http://localhost:4200.
 - Defina o parser padrão em Workspace Settings > Document Parsers.
 - No upload, o usuário pode escolher outro parser via diálogo.
 
-Ver [DOCUMENT-PARSERS.md](DOCUMENT-PARSERS.md) para detalhes.
+Ver [document-parsers](../architecture/document-parsers.md) para detalhes.
 
 ## Fluxo de teste completo
 

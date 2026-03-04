@@ -46,9 +46,9 @@ pnpm build
 
 ### Quick Start
 
-For a quick setup guide, see **[QUICK-START-MOBILE.md](./QUICK-START-MOBILE.md)**
+For a quick setup guide, see **[docs/guides/mobile/quick-start.md](../../docs/guides/mobile/quick-start.md)**
 
-For comprehensive mobile development documentation, see **[MOBILE-DEV.md](./MOBILE-DEV.md)**
+For comprehensive mobile development documentation, see **[docs/guides/mobile/development.md](../../docs/guides/mobile/development.md)**
 
 ### Initial Setup
 

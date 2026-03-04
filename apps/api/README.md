@@ -41,7 +41,7 @@ Endpoints:
 - `GET /api/workspaces/:workspaceId/document-parsers` — lista parsers com `hasApiKey`
 - Upload aceita parâmetro `parser` opcional (docling | pdfplumber | dpt2 | llamaparse | unstructured)
 
-Ver [DOCUMENT-PARSERS.md](../../DOCUMENT-PARSERS.md) no root do monorepo.
+Ver [docs/architecture/document-parsers.md](../../docs/architecture/document-parsers.md) para referência completa.
 
 ## Onboarding
 

@@ -4,7 +4,7 @@ ContractAI Review supports multiple document parsers for extracting text from up
 
 ## Upload Validation
 
-Before parsing, files are validated by the storage module. Allowed formats: `.pdf`, `.doc`, `.docx`, `.txt`, `.md`, `.png`, `.jpg`, `.jpeg` (max 25MB). MIME type is verified via file signature (magic numbers). See [apps/api/src/storage/README.md](apps/api/src/storage/README.md) for details.
+Before parsing, files are validated by the storage module. Allowed formats: `.pdf`, `.doc`, `.docx`, `.txt`, `.md`, `.png`, `.jpg`, `.jpeg` (max 25MB). MIME type is verified via file signature (magic numbers). See [storage.md](storage.md) for details.
 
 ## Overview
 
@@ -43,8 +43,6 @@ Before parsing, files are validated by the storage module. Allowed formats: `.pd
 docker-compose up -d docling
 # Verify: curl http://localhost:8000/health
 ```
-
-**Quick verification:** Run `pnpm run verify:parsers` to check if Docling and PDFPlumber are reachable. If Docling fails, you'll see `ECONNREFUSED` in the upload error — start it with `docker-compose up docling`.
 
 ### PDFPlumber
 

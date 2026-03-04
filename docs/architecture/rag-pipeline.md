@@ -69,6 +69,16 @@ Before running the full RAG pipeline, the system checks a Redis-based semantic q
 
 See [rag-cache.md](./rag-cache.md) for full architecture.
 
+### Dev Mode: Prepare/Execute Flow
+
+When Developer Mode is enabled (Settings) and `CHAT_PREPARE_ENABLED=true`, the chat uses a two-phase flow:
+
+1. `POST /chat/prepare` – Embed question, search chunks, build prompts; return payload + `requestId` (no LLM call).
+2. User reviews payload in a dialog (tabs: Question, System Prompt, User Prompt, Contract Chunks, Legal Chunks, Model Params).
+3. `POST /chat/execute` – With `requestId`, call LLM and return response.
+
+See [chat-prepare-dev-mode.md](./chat-prepare-dev-mode.md) for full reference.
+
 ### Redline Flow
 
 Similar RAG flow in `redline.service.ts`: selected text + contract/legal context → `PromptService` (redline prompts + playbook) → OpenAI → structured JSON with suggestedText, explanation, citations.

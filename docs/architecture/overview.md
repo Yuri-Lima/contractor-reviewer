@@ -103,6 +103,12 @@ OpenAI chat (PromptService, workspace overrides)
 Response with confidence + citations
 ```
 
+## User Guide
+
+For end-user help and step-by-step instructions, see the topic-based user guide:
+
+- [User Guide (docs/user-guide/README.md)](../user-guide/README.md) — How to use ContractAI Review (workspaces, documents, chat, redline, settings, privacy, audit, developer mode)
+
 ## Architecture Docs
 
 - [deployment.md](deployment.md) — Production deployment with Traefik, TLS

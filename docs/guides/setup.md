@@ -110,6 +110,7 @@ Abre em http://localhost:4200.
 | `RAG_CACHE_TTL_SECONDS` | Não | TTL do cache em segundos (padrão: `86400` = 24h) |
 | `RAG_CACHE_SIMILARITY_THRESHOLD` | Não | Limiar de similaridade padrão (0.80–1.0, padrão: `0.95`) |
 | `RAG_CACHE_MAX_ENTRIES_PER_DOCUMENT` | Não | Máx. entradas por documento no índice (padrão: `50`) |
+| `CHAT_PREPARE_ENABLED` | Não | Habilita endpoints prepare/execute para inspeção do payload LLM (modo dev). Padrão: `true`. Use `false` em produção para desabilitar. |
 
 ## Estrutura do monorepo
 

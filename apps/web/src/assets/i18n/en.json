@@ -246,7 +246,21 @@
     "fromCache": "Cached response",
     "getFreshResponse": "Get fresh response",
     "preferencesSaved": "Chat preferences saved",
-    "preferencesError": "Error saving chat preferences"
+    "preferencesError": "Error saving chat preferences",
+    "llmPayloadDialogTitle": "LLM Payload Preview (Dev Mode)",
+    "approveAndSend": "Approve and Send",
+    "questionTab": "Question",
+    "systemPrompt": "System Prompt",
+    "userPrompt": "User Prompt",
+    "contractChunks": "Contract Chunks",
+    "legalChunks": "Legal Chunks",
+    "modelParams": "Model Params",
+    "similarity": "Similarity",
+    "noChunks": "No chunks found",
+    "prepareError": "Failed to prepare chat. Please try again.",
+    "executeError": "Failed to execute. Please try again.",
+    "prepareExpired": "Preparation expired. Please submit your question again.",
+    "sendError": "Failed to send message. Please try again."
   },
   "parsers": {
     "title": "Document Parsers",

@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Password } from 'primeng/password';
@@ -14,11 +14,13 @@ import { Message } from 'primeng/message';
 import { Avatar } from 'primeng/avatar';
 import { TabsModule } from 'primeng/tabs';
 import { SliderModule } from 'primeng/slider';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { FileUploadComponent } from '../core/components/file-upload';
 import { GlobalPromptsEditorComponent } from './global-prompts-editor/global-prompts-editor.component';
 import { ApiService } from '../core/services/api.service';
 import { AuthService } from '../core/services/auth.service';
+import { DevVisualizationsService } from '../core/services/dev-visualizations.service';
 import { AvatarService } from '../core/services/avatar.service';
 import { OnboardingService } from '../onboarding/onboarding.service';
 import { TourService } from '../onboarding/tour/tour.service';
@@ -38,6 +40,7 @@ import {
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    FormsModule,
     Button,
     InputText,
     Password,
@@ -50,6 +53,7 @@ import {
     Avatar,
     TabsModule,
     SliderModule,
+    ToggleSwitchModule,
     TranslatePipe,
     FileUploadComponent,
     GlobalPromptsEditorComponent,
@@ -73,6 +77,9 @@ export class AccountSettingsComponent implements OnInit, OnDestroy {
   private translateService = inject(TranslateService);
   private onboardingService = inject(OnboardingService);
   private tourService = inject(TourService);
+  devVisualizationsService = inject(DevVisualizationsService);
+
+  isOwnerInAnyWorkspace = signal(false);
 
   currentUser = signal(this.authService.currentUser());
   deleting = signal(false);
@@ -127,6 +134,16 @@ export class AccountSettingsComponent implements OnInit, OnDestroy {
     this.loadAvatarUrl();
     this.loadStorageConfig();
     this.loadChatPreferences();
+    this.loadOwnerEligibility();
+  }
+
+  private loadOwnerEligibility(): void {
+    this.apiService.getAccount().subscribe({
+      next: (user) => {
+        this.isOwnerInAnyWorkspace.set(user.isOwnerInAnyWorkspace ?? false);
+      },
+      error: () => {},
+    });
   }
 
   ngOnDestroy(): void {

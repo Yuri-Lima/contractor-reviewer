@@ -17,6 +17,7 @@ import {
   Document,
   CreateDocumentRequest,
   UpdateDocumentRequest,
+  GeneratePromptResponse,
   DocumentJob,
   ChatRequest,
   ChatResponse,
@@ -179,6 +180,58 @@ export class ApiService {
 
   createDocument(workspaceId: string, data: CreateDocumentRequest): Observable<Document> {
     return this.http.post<Document>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}`, data);
+  }
+
+  generateDocumentPrompt(
+    workspaceId: string,
+    title: string,
+    description: string,
+    contextMarkdown?: string,
+    options?: { signal?: AbortSignal },
+  ): Observable<GeneratePromptResponse> {
+    const body = { title, description, contextMarkdown };
+    if (options?.signal !== undefined) {
+      return this.fetchGenerateDocumentPrompt(
+        workspaceId,
+        body,
+        options.signal,
+      );
+    }
+    return this.http.post<GeneratePromptResponse>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documentsGeneratePrompt(workspaceId)}`,
+      body,
+    );
+  }
+
+  private fetchGenerateDocumentPrompt(
+    workspaceId: string,
+    body: { title: string; description: string; contextMarkdown?: string },
+    signal: AbortSignal,
+  ): Observable<GeneratePromptResponse> {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documentsGeneratePrompt(workspaceId)}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    const token = this.authService.getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return from(
+      fetch(url, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        signal,
+        headers,
+      }).then(async (res) => {
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw {
+            status: res.status,
+            error: errBody,
+            message: errBody?.message ?? res.statusText,
+          };
+        }
+        return res.json() as Promise<GeneratePromptResponse>;
+      }),
+    );
   }
 
   getDocument(workspaceId: string, documentId: string): Observable<Document> {

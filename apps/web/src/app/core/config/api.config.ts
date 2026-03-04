@@ -52,6 +52,8 @@ export const API_CONFIG = {
     onboarding: '/onboarding',
     workspaces: '/workspaces',
     documents: (workspaceId: string) => `/workspaces/${workspaceId}/documents`,
+    documentsGeneratePrompt: (workspaceId: string) =>
+      `/workspaces/${workspaceId}/documents/generate-prompt`,
     chat: (workspaceId: string, documentId: string) => `/workspaces/${workspaceId}/documents/${documentId}/chat`,
     redline: (workspaceId: string, documentId: string) => `/workspaces/${workspaceId}/documents/${documentId}/redline`,
     privacy: (workspaceId: string) => `/workspaces/${workspaceId}/privacy`,

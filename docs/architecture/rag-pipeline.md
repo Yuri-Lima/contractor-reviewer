@@ -12,6 +12,7 @@ Canonical reference for the ContractAI Review RAG pipeline. Use this document to
 | Embeddings | `apps/api/src/rag/embeddings.service.ts` | OpenAI `text-embedding-3-small` |
 | Chunking | `apps/api/src/rag/chunking.service.ts` | Paragraph/sentence/fixed-size strategies |
 | Prompts | `apps/api/src/prompts/prompt.service.ts` | DB-backed prompts, workspace overrides |
+| Prompt Generator | `apps/api/src/prompts/prompt-generator.service.ts` | LLM-assisted generation of document/workspace prompts from title+description; see [prompt-generator.md](./prompt-generator.md) |
 | Vector store | `apps/api/src/vector-store/` | `IVectorStore` interface, pgvector implementation |
 | Ingestion | `apps/api/src/workers/parsing.processor.ts`, `chunking.processor.ts`, `embeddings.processor.ts` | Parsing → Chunking → Embeddings |
 | Redline RAG | `apps/api/src/documents/redline.service.ts` | Similar flow for redline generation |

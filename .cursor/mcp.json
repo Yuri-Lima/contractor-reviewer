@@ -1,5 +1,9 @@
 {
     "mcpServers": {
+      "redis": {
+        "command": "bash",
+        "args": ["./scripts/redis-mcp.sh"]
+      },
       "angular-cli": {
         "command": "npx",
         "args": [

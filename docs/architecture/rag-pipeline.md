@@ -37,17 +37,36 @@ Parsing uses parser adapters (Docling default, PDFPlumber, DPT-2). Docling and P
 
 ```mermaid
 flowchart TD
-    Question[User Question] --> Embed[EmbeddingsService.generateEmbedding]
-    Embed --> SearchContract[vectorStore.searchContractChunks]
-    Embed --> SearchLegal[vectorStore.searchLegalChunks]
-    SearchContract --> BuildContext[Build context with citations]
-    SearchLegal --> BuildContext
+    Question[User Question] --> ForceFresh{forceFresh?}
+    ForceFresh -->|yes| FullRAG[Full RAG Pipeline]
+    ForceFresh -->|no| Embed[EmbeddingsService.generateEmbedding]
+    Embed --> CheckCache[Check Semantic Cache]
+    CheckCache --> Similarity{Similarity >= threshold?}
+    Similarity -->|yes| ReturnCached[Return Cached + fromCache: true]
+    Similarity -->|no| FullRAG
+    FullRAG --> SearchContract[vectorStore.searchContractChunks]
+    SearchContract --> SearchLegal[vectorStore.searchLegalChunks]
+    SearchLegal --> BuildContext[Build context with citations]
     BuildContext --> PromptService[PromptService.getPrompt]
     PromptService --> OpenAI[OpenAI chat]
-    OpenAI --> Response[ChatResponse with citations]
+    OpenAI --> StoreCache[Store in Cache]
+    StoreCache --> ReturnFresh[Return + fromCache: false]
 ```
 
-Flow: `ChatController` → `RagService.generateAnswer()` → `EmbeddingsService` + `IVectorStore` + `PromptService` → OpenAI.
+Flow: `ChatController` → `RagService.generateAnswer()` → semantic cache lookup (or bypass if `forceFresh`) → `EmbeddingsService` + `IVectorStore` + `PromptService` → OpenAI → optional cache store.
+
+### Semantic Query Cache
+
+Before running the full RAG pipeline, the system checks a Redis-based semantic query cache:
+
+- **Cache keys**: `rag:cache:data:{key}`, `rag:cache:index:{documentId}:{jurisdiction}:{language}`, `rag:doc:{documentId}:keys`
+- **Lookup**: Generate query embedding → compare cosine similarity with cached embeddings → if `max(similarity) >= threshold`, return cached response with `fromCache: true`
+- **Threshold**: Configurable per user (Account Settings > Chat) or server default (`RAG_CACHE_SIMILARITY_THRESHOLD`, default 0.95)
+- **Invalidation**: On document delete and when embeddings job completes (reprocessing)
+- **TTL**: 24h default (`RAG_CACHE_TTL_SECONDS`)
+- **Client**: `forceFresh: true` bypasses cache; responses include `fromCache` flag
+
+See [rag-cache.md](./rag-cache.md) for full architecture.
 
 ### Redline Flow
 
@@ -63,6 +82,7 @@ interface ChatResponse {
   confidence: 'high' | 'medium' | 'low';
   citations: Citation[];
   notFound: boolean;
+  fromCache?: boolean;  // true when response came from semantic cache
 }
 ```
 
@@ -146,7 +166,7 @@ interface LegalChunkSearchResult extends VectorSearchResult<Embedding> {
 Recommendations for improvements:
 
 1. **Policy answer** — Fallback chain: VectorDB error → keyword search; LLM error → formatted chunks; Embedding error → text search
-2. **Cache** — Semantic query cache in Redis; key `(documentId, jurisdiction, query)`; TTL 24h; invalidate on document reprocess
+2. **Cache** — ✅ Implemented: Semantic query cache in Redis; embedding similarity (threshold 0.95); TTL 24h; invalidate on document reprocess/delete; `fromCache` and `forceFresh` support
 3. **Hybrid recall** — Add keyword search (tsvector/pg_trgm); fuse with semantic via RRF or weighted score
 4. **Monitoring** — Metrics for embedding latency, retrieval similarity, chunk count
 5. **Local LLM** — Abstract `LLMProvider`; support vLLM, Llama.cpp via config

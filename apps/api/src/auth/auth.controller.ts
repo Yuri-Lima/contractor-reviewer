@@ -1,5 +1,6 @@
 import {
   Controller,
+  Patch,
   Post,
   Put,
   Delete,
@@ -21,7 +22,7 @@ import type { UpdateUserStorageRequest } from '@contractai-review/shared';
 import { AuthService } from './auth.service';
 import { AssetManagerService } from '../asset-manager/asset-manager.service';
 import { UserStorageService } from '../storage/user-storage.service';
-import { LoginDto, RegisterDto } from './dto';
+import { LoginDto, RegisterDto, UpdateAccountPreferencesDto } from './dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from '../workspace/decorators';
 import { ReqAbortSignal } from '../common/decorators/req-abort-signal.decorator';
@@ -76,6 +77,22 @@ export class AccountController {
 
   @Get()
   async getAccount(@CurrentUser() user: { id: string }) {
+    const account = await this.authService.getAccount(user.id);
+    if (!account) {
+      throw new NotFoundException('Account not found');
+    }
+    return account;
+  }
+
+  @Patch('preferences')
+  @HttpCode(HttpStatus.OK)
+  async updatePreferences(
+    @CurrentUser() user: { id: string },
+    @Body() body: UpdateAccountPreferencesDto,
+  ) {
+    await this.authService.updateUserPreferences(user.id, {
+      ragCacheSimilarityThreshold: body.ragCacheSimilarityThreshold,
+    });
     const account = await this.authService.getAccount(user.id);
     if (!account) {
       throw new NotFoundException('Account not found');

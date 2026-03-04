@@ -13,6 +13,7 @@ import { Toast } from 'primeng/toast';
 import { Message } from 'primeng/message';
 import { Avatar } from 'primeng/avatar';
 import { TabsModule } from 'primeng/tabs';
+import { SliderModule } from 'primeng/slider';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { FileUploadComponent } from '../core/components/file-upload';
 import { GlobalPromptsEditorComponent } from './global-prompts-editor/global-prompts-editor.component';
@@ -48,6 +49,7 @@ import {
     Message,
     Avatar,
     TabsModule,
+    SliderModule,
     TranslatePipe,
     FileUploadComponent,
     GlobalPromptsEditorComponent,
@@ -82,6 +84,8 @@ export class AccountSettingsComponent implements OnInit, OnDestroy {
   storageConfig = signal<UserStorageConfigResponse>({ configured: false });
   storageLoading = signal(false);
   storageSaving = signal(false);
+  chatPreferencesLoading = signal(false);
+  chatSaving = signal(false);
   private avatarBlobUrl: string | null = null;
 
   readonly IMAGE_ACCEPT = IMAGE_ASSET_INPUT_ACCEPT;
@@ -98,6 +102,7 @@ export class AccountSettingsComponent implements OnInit, OnDestroy {
 
   deleteForm: FormGroup;
   storageForm: FormGroup;
+  chatForm: FormGroup;
 
   constructor() {
     this.deleteForm = this.fb.group({
@@ -112,11 +117,16 @@ export class AccountSettingsComponent implements OnInit, OnDestroy {
       accessKeyId: ['', Validators.required],
       secretAccessKey: ['', Validators.required],
     });
+    this.chatForm = this.fb.group({
+      similarityThreshold: [0.95, [Validators.required, Validators.min(0.8), Validators.max(1)]],
+      useDefault: [true],
+    });
   }
 
   ngOnInit(): void {
     this.loadAvatarUrl();
     this.loadStorageConfig();
+    this.loadChatPreferences();
   }
 
   ngOnDestroy(): void {
@@ -331,7 +341,62 @@ export class AccountSettingsComponent implements OnInit, OnDestroy {
   setActiveTab(tab: string | number | undefined): void {
     if (tab != null) {
       this.activeTab.set(String(tab));
+      if (tab === 'chat') {
+        this.loadChatPreferences();
+      }
     }
+  }
+
+  loadChatPreferences(): void {
+    this.chatPreferencesLoading.set(true);
+    this.apiService.getAccount().subscribe({
+      next: (user) => {
+        const val = user.ragCacheSimilarityThreshold;
+        const useDefault = val == null;
+        this.chatForm.patchValue({
+          similarityThreshold: val ?? 0.95,
+          useDefault,
+        });
+        this.chatPreferencesLoading.set(false);
+      },
+      error: () => this.chatPreferencesLoading.set(false),
+    });
+  }
+
+  onUseDefaultSimilarityChange(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.chatForm.patchValue({
+      useDefault: checked,
+      similarityThreshold: checked ? 0.95 : this.chatForm.get('similarityThreshold')?.value ?? 0.95,
+    });
+  }
+
+  saveChatPreferences(): void {
+    const useDefault = this.chatForm.get('useDefault')?.value;
+    const request = {
+      ragCacheSimilarityThreshold: useDefault ? null : this.chatForm.get('similarityThreshold')?.value ?? null,
+    };
+    this.chatSaving.set(true);
+    this.apiService.updateAccountPreferences(request).subscribe({
+      next: (user) => {
+        this.authService.updateUser(user);
+        this.currentUser.set(user);
+        this.messageService.add({
+          severity: 'success',
+          summary: this.translateService.instant(_('common.success')),
+          detail: this.translateService.instant(_('chat.preferencesSaved')),
+        });
+        this.chatSaving.set(false);
+      },
+      error: (err) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translateService.instant(_('common.error')),
+          detail: err.error?.message ?? this.translateService.instant(_('chat.preferencesError')),
+        });
+        this.chatSaving.set(false);
+      },
+    });
   }
 
   removeStorageConfig(): void {

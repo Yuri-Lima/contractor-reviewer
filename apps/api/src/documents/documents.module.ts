@@ -16,6 +16,7 @@ import { StorageModule } from '../storage/storage.module';
 import { QueueModule } from '../queue/queue.module';
 import { WorkspaceModule } from '../workspace/workspace.module';
 import { RagModule } from '../rag/rag.module';
+import { CacheModule } from '../cache/cache.module';
 import { PromptsModule } from '../prompts/prompts.module';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
@@ -46,6 +47,7 @@ import { ChunksModule } from '../chunks/chunks.module';
     QueueModule,
     WorkspaceModule,
     RagModule,
+    CacheModule,
     PromptsModule,
     AuditModule,
     AuthModule,

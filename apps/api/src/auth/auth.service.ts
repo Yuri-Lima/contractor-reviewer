@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -25,6 +26,7 @@ export class AuthService {
     private workspaceMemberRepository: Repository<WorkspaceMember>,
     private jwtService: JwtService,
     private assetManagerService: AssetManagerService,
+    private configService: ConfigService,
   ) {}
 
   private static getGravatarUrl(email: string): string {
@@ -37,12 +39,15 @@ export class AuthService {
     const avatarUrl = asset
       ? 'account/avatar'
       : AuthService.getGravatarUrl(user.email);
+    const ragThreshold = user.ragCacheSimilarityThreshold;
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       avatarUrl,
       createdAt: user.createdAt.toISOString(),
+      ragCacheSimilarityThreshold:
+        ragThreshold != null ? Number(ragThreshold) : null,
     };
   }
 
@@ -180,6 +185,38 @@ export class AuthService {
     if (!user || !user.isActive) return null;
     const { passwordHash: _, ...userWithoutPassword } = user;
     return this.serializeUserWithAvatar(userWithoutPassword);
+  }
+
+  async getRagCacheSimilarityThreshold(userId: string): Promise<number> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['ragCacheSimilarityThreshold'],
+    });
+    const val = user?.ragCacheSimilarityThreshold;
+    if (val != null) {
+      const n = Number(val);
+      if (n >= 0.8 && n <= 1) return n;
+    }
+    return this.configService.get<number>('RAG_CACHE_SIMILARITY_THRESHOLD') ?? 0.95;
+  }
+
+  async updateUserPreferences(
+    userId: string,
+    data: { ragCacheSimilarityThreshold?: number | null },
+  ): Promise<void> {
+    if (data.ragCacheSimilarityThreshold !== undefined) {
+      const v = data.ragCacheSimilarityThreshold;
+      const sanitized =
+        v === null
+          ? null
+          : typeof v === 'number' && v >= 0.8 && v <= 1
+            ? v
+            : null;
+      await this.userRepository.update(
+        { id: userId },
+        { ragCacheSimilarityThreshold: sanitized },
+      );
+    }
   }
 
   async findById(id: string): Promise<User | null> {

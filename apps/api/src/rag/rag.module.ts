@@ -12,6 +12,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PromptsModule } from '../prompts/prompts.module';
 import { VectorStoreModule } from '../vector-store/vector-store.module';
 import { WorkspaceModule } from '../workspace/workspace.module';
+import { CacheModule } from '../cache/cache.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { WorkspaceModule } from '../workspace/workspace.module';
     ConfigModule,
     PromptsModule,
     WorkspaceModule,
+    CacheModule,
   ],
   providers: [
     PdfParserService,

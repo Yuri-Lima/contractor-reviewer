@@ -15,6 +15,7 @@ import { UserStorageModule } from '../storage/user-storage.module';
 
 @Module({
   imports: [
+    ConfigModule,
     TypeOrmModule.forFeature([User, WorkspaceMember, Workspace]),
     PassportModule,
     JwtModule.registerAsync({

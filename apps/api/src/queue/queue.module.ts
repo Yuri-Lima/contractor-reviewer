@@ -1,8 +1,10 @@
-import { Module, Logger } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import IORedis from 'ioredis';
 import * as fs from 'fs';
 import * as path from 'path';
+import { REDIS_CLIENT } from './redis.provider';
+import { RedisModule } from './redis.module';
 
 function writeLog(location: string, message: string, data: any, hypothesisId: string) {
   try {
@@ -41,44 +43,14 @@ function writeLog(location: string, message: string, data: any, hypothesisId: st
 
 @Module({
   imports: [
+    RedisModule,
     BullModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
-        const redisUrl = configService.get<string>('REDIS_URL');
-        
-        // #region agent log
-        writeLog('queue.module.ts:12', 'Configuring Redis connection', {hasRedisUrl:!!redisUrl,redisHost:configService.get<string>('REDIS_HOST','localhost'),redisPort:configService.get<number>('REDIS_PORT',6379)}, 'B');
-        // #endregion
-        
-        if (redisUrl) {
-          // Parse Redis URL
-          const url = new URL(redisUrl);
-          const config = {
-            connection: {
-              host: url.hostname,
-              port: parseInt(url.port || '6379'),
-              password: url.password,
-            },
-          };
-          // #region agent log
-          writeLog('queue.module.ts:20', 'Using Redis URL configuration', {host:url.hostname,port:parseInt(url.port || '6379'),hasPassword:!!url.password}, 'B');
-          // #endregion
-          return config;
-        }
-
-        // Fallback to individual config
-        const config = {
-          connection: {
-            host: configService.get<string>('REDIS_HOST', 'localhost'),
-            port: configService.get<number>('REDIS_PORT', 6379),
-          },
-        };
-        // #region agent log
-        writeLog('queue.module.ts:30', 'Using fallback Redis configuration', config.connection, 'B');
-        // #endregion
-        return config;
+      imports: [RedisModule],
+      useFactory: (redis: IORedis) => {
+        writeLog('queue.module.ts:12', 'Using shared Redis connection for BullMQ', {}, 'B');
+        return { connection: redis };
       },
-      inject: [ConfigService],
+      inject: [REDIS_CLIENT],
     }),
     // Register queues with timeout and retry configuration
     // Note: Worker settings (stalledInterval, maxStalledCount) are configured in @Processor decorators
@@ -121,7 +93,7 @@ function writeLog(location: string, message: string, data: any, hypothesisId: st
       },
     ),
   ],
-  exports: [BullModule],
+  exports: [BullModule, RedisModule],
 })
 export class QueueModule {}
 

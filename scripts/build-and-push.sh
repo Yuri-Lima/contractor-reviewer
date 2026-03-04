@@ -27,24 +27,32 @@ echo "--- Building contractai-api ---"
 DOCKER_BUILDKIT=1 pnpm nx run api:docker:build
 docker tag "apps-api:$IMAGE_TAG" "$DOCKERHUB_USERNAME/contractai-api:$IMAGE_TAG"
 docker push "$DOCKERHUB_USERNAME/contractai-api:$IMAGE_TAG"
+docker tag "apps-api:$IMAGE_TAG" "$DOCKERHUB_USERNAME/contractai-api:latest"
+docker push "$DOCKERHUB_USERNAME/contractai-api:latest"
 
 # Web — build via Nx
 echo "--- Building contractai-web ---"
 DOCKER_BUILDKIT=1 pnpm nx run web:docker:build
 docker tag "apps-web:$IMAGE_TAG" "$DOCKERHUB_USERNAME/contractai-web:$IMAGE_TAG"
 docker push "$DOCKERHUB_USERNAME/contractai-web:$IMAGE_TAG"
+docker tag "apps-web:$IMAGE_TAG" "$DOCKERHUB_USERNAME/contractai-web:latest"
+docker push "$DOCKERHUB_USERNAME/contractai-web:latest"
 
 # Docling — build from service dir
 echo "--- Building contractai-docling ---"
 docker build --platform "$BUILD_PLATFORM" -f services/docling/Dockerfile -t "$DOCKERHUB_USERNAME/contractai-docling:$IMAGE_TAG" ./services/docling
 docker push "$DOCKERHUB_USERNAME/contractai-docling:$IMAGE_TAG"
+docker tag "$DOCKERHUB_USERNAME/contractai-docling:$IMAGE_TAG" "$DOCKERHUB_USERNAME/contractai-docling:latest"
+docker push "$DOCKERHUB_USERNAME/contractai-docling:latest"
 
 # PDFPlumber — build from service dir
 echo "--- Building contractai-pdfplumber ---"
 docker build --platform "$BUILD_PLATFORM" -f services/pdfplumber/Dockerfile -t "$DOCKERHUB_USERNAME/contractai-pdfplumber:$IMAGE_TAG" ./services/pdfplumber
 docker push "$DOCKERHUB_USERNAME/contractai-pdfplumber:$IMAGE_TAG"
+docker tag "$DOCKERHUB_USERNAME/contractai-pdfplumber:$IMAGE_TAG" "$DOCKERHUB_USERNAME/contractai-pdfplumber:latest"
+docker push "$DOCKERHUB_USERNAME/contractai-pdfplumber:latest"
 
-echo "Done. All images pushed to $DOCKERHUB_USERNAME with tag $IMAGE_TAG"
+echo "Done. All images pushed to $DOCKERHUB_USERNAME with tags $IMAGE_TAG and latest"
 
 # Clean up build artifacts and cache to free disk space
 echo "--- Cleaning up ---"

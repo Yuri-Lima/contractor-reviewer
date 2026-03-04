@@ -107,6 +107,7 @@ interface ChatMessageWithAudio {
   citations?: Citation[];
   audioState?: ChatMessageAudioState;
   audioUrl?: string;
+  fromCache?: boolean;
 }
 
 @Component({
@@ -418,6 +419,21 @@ interface ChatMessageWithAudio {
                         }
                         @if (chatResponseMode() === ChatResponseMode.AudioOnly && msg.answerText) {
                           <p class="text-gray-800 dark:text-gray-200 mt-1 mb-2 sr-only">{{ msg.answerText }}</p>
+                        }
+                        @if (msg.fromCache) {
+                          <span class="inline-block px-2 py-1 rounded text-xs font-medium mb-2 mr-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                            {{ 'chat.fromCache' | translate }}
+                          </span>
+                          <p-button
+                            [icon]="'pi pi-refresh'"
+                            [outlined]="true"
+                            size="small"
+                            severity="secondary"
+                            (onClick)="sendQuestion(msg.question, true, $index)"
+                            [pTooltip]="'chat.getFreshResponse' | translate"
+                            [label]="'chat.getFreshResponse' | translate"
+                            class="mb-2"
+                          ></p-button>
                         }
                         <div class="confidence-badge inline-block px-2 py-1 rounded text-xs font-semibold mb-2"
                              [class.bg-green-100]="msg.confidence === 'high'"
@@ -1680,7 +1696,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     return !!p && this.isParserEnabled(p);
   }
 
-  sendQuestion(questionTextOverride?: string): void {
+  sendQuestion(questionTextOverride?: string, forceFresh?: boolean, replaceAtIndex?: number): void {
     const questionText = (questionTextOverride ?? this.question().trim()).trim();
     if (!questionText) return;
 
@@ -1702,12 +1718,13 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         {
           question: questionText,
           language: currentLang,
+          forceFresh,
         },
         { signal: this.chatAbortController.signal },
       )
       .subscribe({
         next: (response: ChatResponse) => {
-          const wasFirstMessage = this.chatMessages().length === 0;
+          const wasFirstMessage = this.chatMessages().length === 0 && replaceAtIndex == null;
           const needsAudio =
             mode === (ChatResponseModeValues ?? CHAT_MODE).AudioOnly || mode === (ChatResponseModeValues ?? CHAT_MODE).AudioAndText;
           const newMessage: ChatMessageWithAudio = {
@@ -1716,16 +1733,28 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
             confidence: response.confidence,
             citations: response.citations,
             audioState: needsAudio ? 'synthesizing' : 'none',
+            fromCache: response.fromCache,
           };
-          this.chatMessages.update((messages) => [...messages, newMessage]);
+          if (replaceAtIndex != null) {
+            this.chatMessages.update((messages) => {
+              const next = [...messages];
+              if (next[replaceAtIndex]) {
+                next[replaceAtIndex] = { ...newMessage };
+              }
+              return next;
+            });
+          } else {
+            this.chatMessages.update((messages) => [...messages, newMessage]);
+          }
           if (wasFirstMessage) {
             this.onboardingService.markChecklistItem('run_first_review');
           }
           this.loading.set(false);
 
           if (needsAudio && response.answerText?.trim()) {
+            const targetIndex = replaceAtIndex ?? this.chatMessages().length - 1;
             this.synthesizeAndPlayForMessage(
-              this.chatMessages().length - 1,
+              targetIndex,
               response.answerText,
               currentLang,
             );

@@ -221,7 +221,11 @@
     "synthesizing": "Generating speech...",
     "playAudio": "Play audio",
     "pauseAudio": "Pause audio",
-    "audioError": "Failed to generate audio. Check your TTS API key in Workspace Settings → Voice."
+    "audioError": "Failed to generate audio. Check your TTS API key in Workspace Settings → Voice.",
+    "fromCache": "Cached response",
+    "getFreshResponse": "Get fresh response",
+    "preferencesSaved": "Chat preferences saved",
+    "preferencesError": "Error saving chat preferences"
   },
   "parsers": {
     "title": "Document Parsers",
@@ -443,6 +447,10 @@
     "avatarSizeError": "Image must be 2MB or less. Use PNG or JPEG.",
     "profileTab": "Profile",
     "globalPromptsTab": "AI Prompts",
+    "chatTab": "Chat",
+    "cacheSimilarityLabel": "Cache similarity threshold",
+    "cacheSimilarityHint": "Lower = more cache hits (faster, may be less precise). Higher = stricter match (fewer cache hits). Default: 0.95",
+    "useDefault": "Use default",
     "storageTab": "Storage",
     "storageProvider": "Provider",
     "bucketEndpoint": "Endpoint URL",

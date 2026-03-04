@@ -39,6 +39,7 @@ import {
   UpdateVisitedRouteRequest,
   UserStorageConfigResponse,
   UpdateUserStorageRequest,
+  UpdateAccountPreferencesRequest,
 } from '@contractai-review/shared';
 
 @Injectable({
@@ -811,6 +812,13 @@ export class ApiService {
   // Account
   getAccount(): Observable<User> {
     return this.http.get<User>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}`);
+  }
+
+  updateAccountPreferences(request: UpdateAccountPreferencesRequest): Observable<User> {
+    return this.http.patch<User>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.account}/preferences`,
+      request,
+    );
   }
 
   uploadAvatar(

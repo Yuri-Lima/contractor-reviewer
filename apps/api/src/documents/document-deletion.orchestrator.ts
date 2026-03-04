@@ -1,14 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Document } from '../entities/document.entity';
 import { CHUNK_REPOSITORY, IChunkRepository } from '../chunks/chunk-repository.interface';
 import { IStorageService } from '../storage/storage.interface';
 import { StorageServiceToken } from '../storage/storage.module';
-import { Inject } from '@nestjs/common';
+import { RagCacheService } from '../cache/rag-cache.service';
 
 /**
  * Orchestrates document deletion with correct order for future DB separation.
+ * 0. Invalidate RAG cache for document
  * 1. Delete chunks (vector DB when separated)
  * 2. Delete files from storage
  * 3. Delete document (relational DB - cascade removes files, jobs, etc.)
@@ -22,6 +23,7 @@ export class DocumentDeletionOrchestrator {
     private documentRepository: Repository<Document>,
     @Inject(StorageServiceToken)
     private storageService: IStorageService,
+    private ragCacheService: RagCacheService,
   ) {}
 
   /**
@@ -37,6 +39,9 @@ export class DocumentDeletionOrchestrator {
     if (!document) {
       return false;
     }
+
+    // 0. Invalidate RAG cache for this document
+    await this.ragCacheService.invalidateDocument(documentId);
 
     // 1. Delete chunks (vector DB when separated)
     await this.chunkRepository.deleteByDocumentId(documentId);

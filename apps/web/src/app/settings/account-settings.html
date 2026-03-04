@@ -11,6 +11,10 @@
         <i class="pi pi-pencil"></i>
         <span>{{ 'settings.globalPromptsTab' | translate }}</span>
       </p-tab>
+      <p-tab value="chat" class="flex items-center gap-2">
+        <i class="pi pi-comments"></i>
+        <span>{{ 'settings.chatTab' | translate }}</span>
+      </p-tab>
       <p-tab value="storage" class="flex items-center gap-2">
         <i class="pi pi-database"></i>
         <span>{{ 'settings.storageTab' | translate }}</span>
@@ -183,6 +187,59 @@
         <div class="p-4" data-tour="account-global-prompts">
           <app-global-prompts-editor></app-global-prompts-editor>
         </div>
+      </p-tabpanel>
+
+      <p-tabpanel value="chat">
+        @if (chatPreferencesLoading()) {
+          <p class="text-gray-600 dark:text-gray-400 py-4">{{ 'common.loading' | translate }}</p>
+        } @else {
+          <div class="space-y-4 py-4" [formGroup]="chatForm">
+            <p-card>
+              <ng-template pTemplate="header">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">{{ 'settings.chatTab' | translate }}</h2>
+                </div>
+              </ng-template>
+              <div class="p-4 space-y-4">
+                <p class="text-sm text-gray-600 dark:text-gray-400">{{ 'settings.cacheSimilarityHint' | translate }}</p>
+                <div class="flex items-center gap-4">
+                  <input
+                    type="checkbox"
+                    id="useDefaultSimilarity"
+                    [checked]="chatForm.get('useDefault')?.value"
+                    (change)="onUseDefaultSimilarityChange($event)"
+                    class="mr-2"
+                  />
+                  <label for="useDefaultSimilarity" class="text-sm text-gray-700 dark:text-gray-300">
+                    {{ 'settings.useDefault' | translate }}
+                  </label>
+                </div>
+                @if (!chatForm.get('useDefault')?.value) {
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {{ 'settings.cacheSimilarityLabel' | translate }}: {{ chatForm.get('similarityThreshold')?.value ?? 0.95 }}
+                    </label>
+                    <p-slider
+                      formControlName="similarityThreshold"
+                      [min]="0.8"
+                      [max]="1"
+                      [step]="0.01"
+                      class="w-full my-2"
+                    />
+                  </div>
+                }
+                <p-button
+                  type="button"
+                  [label]="'common.save' | translate"
+                  icon="pi pi-check"
+                  [loading]="chatSaving()"
+                  [disabled]="chatSaving() || chatForm.invalid"
+                  (onClick)="saveChatPreferences()"
+                ></p-button>
+              </div>
+            </p-card>
+          </div>
+        }
       </p-tabpanel>
 
       <p-tabpanel value="storage">

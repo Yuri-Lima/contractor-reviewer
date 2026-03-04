@@ -101,7 +101,7 @@ export class ChatController {
     @CurrentUser() user: { id: string },
     @RequestInfo() requestInfo: { ip: string; userAgent: string },
     @ReqAbortSignal() signal: AbortSignal,
-    @Body() chatDto: { question: string; language?: string },
+    @Body() chatDto: { question: string; language?: string; forceFresh?: boolean },
   ): Promise<RagResponse> {
     try {
       // Verify document exists and belongs to workspace
@@ -114,6 +114,8 @@ export class ChatController {
       // Use resolved jurisdiction if available
       const jurisdiction = document.resolvedJurisdiction || undefined;
 
+      const similarityThreshold = await this.authService.getRagCacheSimilarityThreshold(user.id);
+
       // Generate answer with RAG
       const response = await this.ragService.generateAnswer(
         chatDto.question.trim(),
@@ -121,7 +123,11 @@ export class ChatController {
         workspaceId,
         jurisdiction,
         chatDto.language || 'en',
-        { signal },
+        {
+          signal,
+          forceFresh: chatDto.forceFresh,
+          similarityThreshold,
+        },
       );
       
       // Save chat message (respects no-logs configuration)
@@ -148,6 +154,7 @@ export class ChatController {
           hasAnswer: !!response.answerText,
           confidence: response.confidence,
           citationsCount: response.citations?.length || 0,
+          fromCache: response.fromCache,
         },
       );
       

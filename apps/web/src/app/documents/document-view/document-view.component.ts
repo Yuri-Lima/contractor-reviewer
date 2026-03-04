@@ -17,7 +17,7 @@ import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 import { Tag } from 'primeng/tag';
 import { Card } from 'primeng/card';
-import { interval, Subject } from 'rxjs';
+import { interval, Subject, Subscription } from 'rxjs';
 import { takeUntil, timeout } from 'rxjs';
 import { workspaceDocuments, documentSettings } from '../../core/routes';
 import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
@@ -70,6 +70,8 @@ import { EditableTitleComponent } from '../../core/components/editable-title/edi
 import { BaseListConfig } from '../../core/components/base-list/base-list.config';
 import { LazyLoadEvent } from 'primeng/api';
 import { PaginationService } from '../../core/services/pagination.service';
+import { WebSocketService } from '../../core/services/websocket.service';
+import { API_CONFIG } from '../../core/config/api.config';
 import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
 import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
 import { forkJoin, from, of, EMPTY } from 'rxjs';
@@ -631,6 +633,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   private voiceRecordingService = inject(VoiceRecordingService);
   devVisualizationsService = inject(DevVisualizationsService);
   private i18nService = inject(I18nService);
+  private webSocketService = inject(WebSocketService);
 
   redlineComponent = viewChild<RedlineComponent>('redlineComponent');
 
@@ -721,8 +724,9 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   jobs = signal<DocumentJob[]>([]);
   private destroyAggressive$ = new Subject<void>();
   private isLoadingJobs = false; // Prevent concurrent loadJobs() calls
-  private pollingSubscription: any = null; // Track polling subscription to prevent multiple instances
-  private aggressivePollingSubscription: any = null; // Track aggressive polling subscription
+  private pollingSubscription: Subscription | null = null; // Track polling subscription to prevent multiple instances
+  private aggressivePollingSubscription: Subscription | null = null; // Track aggressive polling subscription
+  private wsJobSubscription: Subscription | null = null; // WebSocket job progress subscription
 
   // Files: stable request drives rxResource (observable-based, no firstValueFrom wrapper)
   private filesParams = signal<FilesRequestParams>({ offset: 0, limit: 25 });
@@ -835,7 +839,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
               j.status === 'pending' || j.status === 'processing'
             );
             if (hasActiveJobs) {
-              this.startAggressivePolling();
+              this.startWsJobSubscription();
             }
           }
 
@@ -897,6 +901,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     this.synthesizeAbortController?.abort();
     this.downloadAbortController?.abort();
     this.stopAggressivePolling();
+    this.stopWsJobSubscription();
     this.stopCurrentAudio();
     // Release voice recording resources if user navigates away while recording
     if (this.voiceRecording()) {
@@ -1244,6 +1249,21 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Apply a single job update (from WebSocket) into current jobs.
+   * Replaces existing job with same id or appends if new.
+   */
+  private applySingleJobUpdate(documentId: string, job: DocumentJob): void {
+    const current = this.jobs();
+    const idx = current.findIndex((j) => j.id === job.id);
+    const next =
+      idx >= 0
+        ? current.map((j, i) => (i === idx ? job : j))
+        : [...current, job];
+    this.jobs.set(next);
+    this.saveJobs(documentId, next);
+  }
+
+  /**
    * Apply API jobs to state: merge with cache, update signal, save to localStorage.
    * Called from loadJobs and polling pipelines.
    */
@@ -1272,8 +1292,11 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       next: (apiJobs) => {
         this.applyJobsFromApi(documentId, apiJobs);
         const mergedJobs = this.jobs();
-        if (!mergedJobs.some(j => j.status === 'pending' || j.status === 'processing')) {
+        if (mergedJobs.some(j => j.status === 'pending' || j.status === 'processing')) {
+          this.startWsJobSubscription();
+        } else {
           this.stopAggressivePolling();
+          this.stopWsJobSubscription();
         }
         this.isLoadingJobs = false;
       },
@@ -1301,7 +1324,10 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
           );
           if (!hasPendingOrProcessing && jobs.length > 0) {
             consecutiveNoActiveJobs++;
-            if (consecutiveNoActiveJobs >= 3) this.stopJobsPolling();
+            if (consecutiveNoActiveJobs >= 3) {
+              this.stopJobsPolling();
+              this.stopWsJobSubscription();
+            }
           } else {
             consecutiveNoActiveJobs = 0;
           }
@@ -1348,6 +1374,45 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     } catch (e) {
       console.error('Failed to clear jobs from localStorage:', e);
     }
+  }
+
+  /**
+   * Start WebSocket subscription for job progress. Prefer over polling when wsUrl is available.
+   * Falls back to aggressive polling on error or when wsUrl is empty.
+   */
+  private startWsJobSubscription(): void {
+    this.stopWsJobSubscription();
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    if (!wsId || !docId) return;
+    if (!API_CONFIG.wsUrl) {
+      this.startAggressivePolling();
+      return;
+    }
+    this.webSocketService.connect();
+    this.wsJobSubscription = this.webSocketService
+      .subscribeDocument(wsId, docId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (ev) => {
+          this.applySingleJobUpdate(docId, ev.job);
+          const stillActive = this.jobs().filter(
+            j => j.status === 'pending' || j.status === 'processing',
+          );
+          if (stillActive.length === 0) {
+            this.stopWsJobSubscription();
+          }
+        },
+        error: () => this.startAggressivePolling(),
+      });
+  }
+
+  private stopWsJobSubscription(): void {
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    if (wsId && docId) this.webSocketService.unsubscribeDocument(wsId, docId);
+    this.wsJobSubscription?.unsubscribe();
+    this.wsJobSubscription = null;
   }
 
   startAggressivePolling(): void {
@@ -1639,7 +1704,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
           setTimeout(() => {
             const currentJobs = this.jobs();
             if (currentJobs.some(j => j.status === 'pending' || j.status === 'processing')) {
-              this.startAggressivePolling();
+              this.startWsJobSubscription();
             }
           }, 100);
           this.loadDocument();

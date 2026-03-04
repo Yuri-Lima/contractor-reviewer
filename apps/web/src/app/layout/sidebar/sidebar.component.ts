@@ -19,6 +19,7 @@ import {
   workspaceSettings,
 } from '../../core/routes';
 import { AuthService } from '../../core/services/auth.service';
+import { WebSocketService } from '../../core/services/websocket.service';
 import { AvatarService } from '../../core/services/avatar.service';
 import { ThemeSelectorComponent } from '../theme-selector/theme-selector.component';
 import { LanguageSelectorComponent } from '../language-selector/language-selector.component';
@@ -189,6 +190,7 @@ export class SidebarComponent {
 
   private translateService = inject(TranslateService);
   private authService = inject(AuthService);
+  private webSocketService = inject(WebSocketService);
   private avatarService = inject(AvatarService);
 
   sidebarAvatarUrl = signal<string | null>(null);
@@ -254,6 +256,7 @@ export class SidebarComponent {
 
   onLogoutClick(): void {
     this.hideCogPanel();
+    this.webSocketService.disconnect();
     this.authService.logout();
   }
 

@@ -19,6 +19,7 @@ import { AssetManagerModule } from './asset-manager/asset-manager.module';
 import { FileTypeModule } from './file-type/file-type.module';
 import { HealthModule } from './health/health.module';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
+import { WebSocketModule } from './websocket/websocket.module';
 import { typeOrmModuleOptions } from './typeorm.options';
 
 // Conditionally import AppController - only for API server, not worker
@@ -67,6 +68,7 @@ if (!isWorker) {
     FileTypeModule,
     HealthModule,
     RateLimitModule,
+    ...(isWorker ? [] : [WebSocketModule]),
   ],
   controllers: AppController ? [AppController] : [],
 })

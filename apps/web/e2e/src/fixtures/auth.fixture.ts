@@ -5,7 +5,7 @@ export const test = base.extend<{ authenticatedPage: Page }>({
   authenticatedPage: async ({ page }, use) => {
     await page.goto('/workspaces');
     await expect(page).toHaveURL(/\/workspaces/);
-    await expect(page.getByRole('heading', { name: /workspaces/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /workspaces/i }).first()).toBeVisible();
     await use(page);
   },
 });

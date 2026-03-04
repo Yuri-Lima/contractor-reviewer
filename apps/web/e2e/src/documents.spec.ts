@@ -3,7 +3,13 @@ import { test, expect } from './fixtures/auth.fixture';
 test.describe('Documents', () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
     if (!page.url().includes('/documents')) {
-      await expect(page.getByRole('heading', { name: /workspaces/i })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /workspaces/i }).first()).toBeVisible();
+      await page.waitForLoadState('networkidle');
+      await page
+        .getByTestId('workspace-view-documents')
+        .or(page.getByTestId('workspaces-create-first'))
+        .first()
+        .waitFor({ state: 'visible', timeout: 10000 });
       const viewDocs = page.getByTestId('workspace-view-documents');
       if ((await viewDocs.count()) > 0) {
         await viewDocs.first().click();
@@ -11,7 +17,7 @@ test.describe('Documents', () => {
         await page.getByTestId('workspaces-create-first').click({ timeout: 15000 });
         await page.getByTestId('workspace-name-input').fill(`E2E Workspace ${Date.now()}`);
         await page.getByTestId('workspace-create-submit').click();
-        await expect(page.getByTestId('workspace-view-documents')).toBeVisible();
+        await expect(page.getByTestId('workspace-view-documents').first()).toBeVisible();
         await page.getByTestId('workspace-view-documents').first().click();
       }
       await expect(page).toHaveURL(/\/workspaces\/[a-f0-9-]+\/documents/);

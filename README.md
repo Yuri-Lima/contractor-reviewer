@@ -76,6 +76,7 @@ A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que 
 - **Document Parsers**: parser padrão + API keys por workspace (DPT-2, LlamaParse, Unstructured)
   - API keys criptografadas com AES-256-GCM
 - **AI Prompts**: override de prompts de chat/redline por workspace (DB-backed, runtime tuning)
+- **Generate AI prompt from description**: Durante a criação de documento, gere instruções específicas a partir do título e descrição (contexto .md opcional). Aprove para salvar no documento, rejeite para criar sem, ou recrie para regenerar.
 
 ### 📊 Auditoria Completa
 - Trilha de auditoria para todas as ações importantes:
@@ -304,6 +305,7 @@ Documentação organizada em `docs/`:
 - **[storage.md](docs/architecture/storage.md)** — Armazenamento S3/local, validações
 - **[workspace-rbac.md](docs/architecture/workspace-rbac.md)** — Multi-tenant, RBAC
 - **[document-parsers.md](docs/architecture/document-parsers.md)** — Referência dos parsers (Docling, PDFPlumber, DPT-2, etc.)
+- **[prompt-generator.md](docs/architecture/prompt-generator.md)** — Geração de prompts via LLM (documento, workspace)
 
 ### Guias (`docs/guides/`)
 - **[setup.md](docs/guides/setup.md)** — Instalação e configuração local

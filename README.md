@@ -204,7 +204,7 @@ contractor-reviwer/
 
 ## Quick Start
 
-Para começar a usar o ContractAI Review localmente, consulte o guia completo de instalação em [SETUP.md](SETUP.md).
+Para começar a usar o ContractAI Review localmente, consulte o guia completo de instalação em [docs/guides/setup.md](docs/guides/setup.md).
 
 **Resumo rápido:**
 1. Instalar dependências: `pnpm install`
@@ -227,7 +227,7 @@ pnpm e2e
 E2E_WITH_API=1 ./scripts/e2e.sh
 ```
 
-Ver [TESTING.md](TESTING.md) para guia completo e [apps/web/e2e/](apps/web/e2e/) para estrutura dos testes (auth, workspaces, documents, settings, onboarding).
+Ver [docs/guides/testing.md](docs/guides/testing.md) para guia completo e [apps/web/e2e/](apps/web/e2e/) para estrutura dos testes (auth, workspaces, documents, settings, onboarding).
 
 ### Nx Commands
 
@@ -290,11 +290,25 @@ Para **Nx Cloud** (cache remoto e distribuição de tarefas em CI), execute `npx
 
 ## Documentação
 
-- **[SETUP.md](SETUP.md)** - Guia completo de instalação e configuração local
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Deploy em produção com Docker Compose
-- **[TESTING.md](TESTING.md)** - Testes manuais e E2E (Playwright, onboarding)
-- **[DOCUMENT-PARSERS.md](DOCUMENT-PARSERS.md)** - Referência dos parsers de documentos (Docling, PDFPlumber, DPT-2, etc.)
-- **[planejamento-execucao-contractai.md](planejamento-execucao-contractai.md)** - Planejamento detalhado das fases de implementação
+Documentação organizada em `docs/`:
+
+### Arquitetura (`docs/architecture/`)
+- **[overview.md](docs/architecture/overview.md)** — Visão geral do sistema, stack, diagrama de serviços
+- **[deployment.md](docs/architecture/deployment.md)** — Deploy em produção com Docker Compose
+- **[rag-pipeline.md](docs/architecture/rag-pipeline.md)** — Referência do pipeline RAG (arquivos, fluxo, tipos)
+- **[vector-db-separation.md](docs/architecture/vector-db-separation.md)** — Migração futura para vector DB separado
+- **[storage.md](docs/architecture/storage.md)** — Armazenamento S3/local, validações
+- **[workspace-rbac.md](docs/architecture/workspace-rbac.md)** — Multi-tenant, RBAC
+- **[document-parsers.md](docs/architecture/document-parsers.md)** — Referência dos parsers (Docling, PDFPlumber, DPT-2, etc.)
+
+### Guias (`docs/guides/`)
+- **[setup.md](docs/guides/setup.md)** — Instalação e configuração local
+- **[testing.md](docs/guides/testing.md)** — Testes manuais e E2E (Playwright, onboarding)
+- **[mobile/quick-start.md](docs/guides/mobile/quick-start.md)** — Quick start para desenvolvimento mobile
+- **[mobile/development.md](docs/guides/mobile/development.md)** — Guia completo de desenvolvimento mobile
+
+### Arquivo histórico
+- **[docs/archive/phases/](docs/archive/phases/)** — Fases de implementação e testes históricos
 
 ## Licença
 

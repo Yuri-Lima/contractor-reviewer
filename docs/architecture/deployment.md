@@ -147,7 +147,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
 
 ## Environment Variables
 
-See [.env.production.example](.env.production.example) for the full list. Summary:
+See `.env.production.example` in the repository root. Summary:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -213,7 +213,7 @@ pnpm verify:deploy
 ./scripts/verify-deployment.sh
 ```
 
-This checks: containers, ports, API health, DB/Redis, and Traefik→web connectivity. Full end-to-end: open https://app.legalaiassistance.com in a browser (ensure DNS A record for `app` points to your VPS).
+This checks: containers, ports, API health, DB/Redis, and Traefik→web connectivity.
 
 ## Commands
 

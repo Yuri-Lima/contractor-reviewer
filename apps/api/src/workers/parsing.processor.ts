@@ -14,6 +14,7 @@ import { Queue } from 'bullmq';
 import { ParserFactoryService } from '../parsers/parser-factory.service';
 import { DocumentParser } from '@contractai-review/shared';
 import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
+import { JobProgressPublisher } from './job-progress.publisher';
 import { abortAsPromise } from '../common/utils/abort-promise';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -81,6 +82,7 @@ export class ParsingProcessor extends WorkerHost {
     private workspaceSettingsService: WorkspaceSettingsService,
     @InjectQueue('chunking')
     private chunkingQueue: Queue,
+    private jobProgressPublisher: JobProgressPublisher,
   ) {
     super();
   }
@@ -119,6 +121,7 @@ export class ParsingProcessor extends WorkerHost {
     job.updatedAt = new Date();
     await this.jobRepository.save(job);
     this.logger.log(`[PROGRESS] Job ${jobId} (${job.type}): status=${status}, progress=${progress ?? job.progress}%`);
+    this.jobProgressPublisher.publish(job.documentId, job).catch(() => {});
   }
 
   private async markFileAvailable(fileId: string, parsedBy?: string): Promise<void> {

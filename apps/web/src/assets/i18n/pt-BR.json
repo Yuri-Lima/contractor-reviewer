@@ -468,6 +468,8 @@
     "avatarRemoved": "Avatar removido. Usando Gravatar.",
     "avatarError": "Erro ao enviar avatar",
     "avatarSizeError": "A imagem deve ter 2MB ou menos. Use PNG ou JPEG.",
+    "devVisualizations": "Modo desenvolvedor",
+    "devVisualizationsDescription": "Mostrar elementos exclusivos para desenvolvedores (IDs, informações de debug, etc.) em todo o app quando ativado. Visível apenas para proprietários de workspace.",
     "profileTab": "Perfil",
     "globalPromptsTab": "Prompts de IA",
     "chatTab": "Chat",

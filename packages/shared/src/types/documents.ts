@@ -53,6 +53,8 @@ export interface CreateDocumentRequest {
   description?: string;
   /** If provided, upserts chat.system document prompt after creation */
   documentChatSystemPrompt?: string;
+  /** If provided, upserts all 7 document prompts from the selected category */
+  promptCategoryId?: string;
 }
 
 export interface UpdateDocumentRequest {

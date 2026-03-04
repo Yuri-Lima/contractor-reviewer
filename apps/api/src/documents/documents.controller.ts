@@ -39,6 +39,9 @@ import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { PromptGeneratorService } from '../prompts/prompt-generator.service';
 import { PromptService } from '../prompts/prompt.service';
 import { GeneratePromptRequestDto } from './dto/generate-prompt-request.dto';
+import { CreateDocumentDto } from './dto/create-document.dto';
+import { getPromptCategoryById } from '@contractai-review/shared';
+import { PROMPT_KEYS } from '../prompts/prompt.service';
 
 @Controller('workspaces/:workspaceId/documents')
 @UseGuards(JwtAuthGuard, WorkspaceGuard)
@@ -93,28 +96,49 @@ export class DocumentsController {
   @HttpCode(HttpStatus.CREATED)
   async createDocument(
     @WorkspaceId() workspaceId: string,
-    @Body() createDto: {
-      title: string;
-      description?: string;
-      documentChatSystemPrompt?: string;
-    },
+    @Body() createDto: CreateDocumentDto,
   ): Promise<Document> {
     const document = await this.documentsService.create(
       workspaceId,
       createDto.title,
       createDto.description,
     );
-    const promptContent = createDto.documentChatSystemPrompt?.trim();
-    if (promptContent) {
-      try {
-        await this.promptService.upsertPrompt('chat.system', promptContent, {
-          workspaceId,
-          documentId: document.id,
-          variant: 'default',
-        });
-      } catch (err) {
-        console.error('[DocumentsController] Failed to upsert document prompt:', err);
-        // Document created; prompt can be added later in Settings
+
+    const category = getPromptCategoryById(createDto.promptCategoryId);
+    if (category) {
+      for (const key of PROMPT_KEYS) {
+        const content = category.prompts[key];
+        if (content) {
+          try {
+            await this.promptService.upsertPrompt(key, content, {
+              workspaceId,
+              documentId: document.id,
+              variant: 'default',
+            });
+          } catch (err) {
+            // Best-effort: log metadata only, do not block creation
+            console.error(
+              '[DocumentsController] Failed to upsert document prompt from category',
+              { promptCategoryId: createDto.promptCategoryId, documentId: document.id, key },
+            );
+          }
+        }
+      }
+    } else {
+      const promptContent = createDto.documentChatSystemPrompt?.trim();
+      if (promptContent) {
+        try {
+          await this.promptService.upsertPrompt('chat.system', promptContent, {
+            workspaceId,
+            documentId: document.id,
+            variant: 'default',
+          });
+        } catch (err) {
+          console.error(
+            '[DocumentsController] Failed to upsert document prompt:',
+            { documentId: document.id },
+          );
+        }
       }
     }
     return document;

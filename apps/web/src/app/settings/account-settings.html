@@ -104,6 +104,33 @@
     </div>
   </p-card>
 
+  <!-- Developer Visualizations (Owner only) -->
+  @if (isOwnerInAnyWorkspace()) {
+    <p-card class="mb-6" data-testid="dev-visualizations-card">
+      <ng-template pTemplate="header">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">{{ 'settings.devVisualizations' | translate }}</h2>
+        </div>
+      </ng-template>
+      <div class="p-4">
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ 'settings.devVisualizations' | translate }}
+            </label>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              {{ 'settings.devVisualizationsDescription' | translate }}
+            </p>
+          </div>
+          <p-toggleswitch
+            [ngModel]="devVisualizationsService.enabled()"
+            (ngModelChange)="devVisualizationsService.setEnabled($event)"
+          ></p-toggleswitch>
+        </div>
+      </div>
+    </p-card>
+  }
+
   <!-- Danger Zone -->
   <p-card data-tour="account-danger-zone">
     <ng-template pTemplate="header">

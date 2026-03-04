@@ -206,6 +206,11 @@ See [packages/shared/README.md](../../packages/shared/README.md) for details.
 
 O frontend consome a API REST em `http://localhost:3000/api` (configurável via `VITE_API_URL` ou `NG_APP_API_URL`).
 
+**WebSocket** (progresso de jobs em tempo real):
+
+- Conecta em `wsUrl` (dev: `http://localhost:3200`, prod: mesma origem)
+- `WebSocketService.subscribeDocument(workspaceId, documentId)` — recebe eventos `job:progress`
+
 Endpoints principais:
 - `/api/auth/login` — Login
 - `/api/auth/register` — Registro

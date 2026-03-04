@@ -51,6 +51,8 @@ export interface DocumentJob {
 export interface CreateDocumentRequest {
   title: string;
   description?: string;
+  /** If provided, upserts chat.system document prompt after creation */
+  documentChatSystemPrompt?: string;
 }
 
 export interface UpdateDocumentRequest {

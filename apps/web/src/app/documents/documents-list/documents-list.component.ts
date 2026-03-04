@@ -19,6 +19,7 @@ import { marker as _ } from '@biesbjerg/ngx-translate-extract-marker';
 import { TranslateService } from '@ngx-translate/core';
 import { Document } from '@contractai-review/shared';
 import { EditableTitleComponent } from '../../core/components/editable-title/editable-title.component';
+import { DevOnlyDirective } from '../../core/directives/dev-only.directive';
 import { LocaleDatePipe } from '../../core/pipes/locale-date.pipe';
 import { TruncatePipe } from '../../core/pipes/truncate.pipe';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -51,6 +52,7 @@ import { DocumentsListServiceImpl } from './documents-list.service';
     TruncatePipe,
     TranslatePipe,
     EditableTitleComponent,
+    DevOnlyDirective,
   ],
   template: `
     <p-contextMenu #documentContextMenu [model]="documentContextMenuItems()"></p-contextMenu>
@@ -204,6 +206,9 @@ import { DocumentsListServiceImpl } from './documents-list.service';
                 @if (doc.description) {
                   <p class="text-sm text-gray-600 dark:text-gray-400 mb-4" [title]="doc.description">{{ doc.description | truncate:150 }}</p>
                 }
+                <div *appDevOnly class="text-xs text-gray-500 dark:text-gray-400 mb-2 font-mono" [attr.data-testid]="'document-id-' + doc.id">
+                  ID: {{ doc.id }}
+                </div>
                 <div class="document-meta flex justify-between items-center">
                   <span 
                     class="px-2 py-1 text-xs rounded"

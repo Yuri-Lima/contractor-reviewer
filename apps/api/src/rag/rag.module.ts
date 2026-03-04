@@ -6,6 +6,7 @@ import { EmbeddingsService } from './embeddings.service';
 import { RagService } from './rag.service';
 import { JurisdictionResolverService } from './jurisdiction-resolver.service';
 import { OcrService } from './ocr.service';
+import { ChatPrepareCacheService } from './chat-prepare-cache.service';
 import { Document } from '../entities/document.entity';
 import { StorageModule } from '../storage/storage.module';
 import { ConfigModule } from '@nestjs/config';
@@ -31,6 +32,7 @@ import { CacheModule } from '../cache/cache.module';
     RagService,
     JurisdictionResolverService,
     OcrService,
+    ChatPrepareCacheService,
   ],
   exports: [
     VectorStoreModule,

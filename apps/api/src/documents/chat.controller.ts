@@ -9,9 +9,11 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  NotFoundException,
   Res,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -22,7 +24,7 @@ import { WorkspaceId, CurrentUser } from '../workspace/decorators';
 import { RagService, RagResponse } from '../rag/rag.service';
 import { DocumentsService } from './documents.service';
 import { AuditService } from '../audit/audit.service';
-import { AuditAction, TargetType, TtsProviderId } from '@contractai-review/shared';
+import { AuditAction, ChatPrepareResponse, TargetType, TtsProviderId } from '@contractai-review/shared';
 import { RequestInfo } from '../common/decorators/request-info.decorator';
 import { ReqAbortSignal } from '../common/decorators/req-abort-signal.decorator';
 import { ChatMessageService } from './chat-message.service';
@@ -34,6 +36,7 @@ import { WorkspaceSettingsService } from '../workspace/workspace-settings.servic
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { TranscribeBodyDto } from './dto/transcribe-body.dto';
+import { ChatExecuteBodyDto } from './dto/chat-execute-body.dto';
 
 @Controller('workspaces/:workspaceId/documents/:documentId/chat')
 @UseGuards(JwtAuthGuard, WorkspaceGuard, RolesGuard)
@@ -51,7 +54,12 @@ export class ChatController {
     private workspaceSettingsService: WorkspaceSettingsService,
     private authService: AuthService,
     private audioValidationService: AudioValidationService,
+    private configService: ConfigService,
   ) {}
+
+  private isPrepareEnabled(): boolean {
+    return this.configService.get<string>('CHAT_PREPARE_ENABLED') !== 'false';
+  }
 
   /** Log real error details (name, message, stack, cause, HTTP response when present). */
   private logError(
@@ -162,6 +170,101 @@ export class ChatController {
     } catch (error) {
       // Never log question content or answer text
       this.logError('Chat', { documentId, workspaceId }, error);
+      throw error;
+    }
+  }
+
+  @Post('prepare')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ requestsPerMinute: 15 })
+  @HttpCode(HttpStatus.OK)
+  async prepare(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+    @ReqAbortSignal() signal: AbortSignal,
+    @Body() chatDto: { question: string; language?: string; forceFresh?: boolean },
+  ): Promise<ChatPrepareResponse> {
+    if (!this.isPrepareEnabled()) {
+      throw new NotFoundException();
+    }
+    try {
+      const document = await this.documentsService.findById(documentId, workspaceId);
+
+      if (!chatDto.question || !chatDto.question.trim()) {
+        throw new Error('Question is required');
+      }
+
+      const jurisdiction = document.resolvedJurisdiction || undefined;
+
+      return await this.ragService.prepareForChat(
+        chatDto.question.trim(),
+        documentId,
+        workspaceId,
+        jurisdiction,
+        chatDto.language || 'en',
+        { signal },
+      );
+    } catch (error) {
+      this.logError('ChatPrepare', { documentId, workspaceId }, error);
+      throw error;
+    }
+  }
+
+  @Post('execute')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ requestsPerMinute: 15 })
+  @HttpCode(HttpStatus.OK)
+  async execute(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+    @CurrentUser() user: { id: string },
+    @RequestInfo() requestInfo: { ip: string; userAgent: string },
+    @ReqAbortSignal() signal: AbortSignal,
+    @Body() body: ChatExecuteBodyDto,
+  ): Promise<RagResponse> {
+    if (!this.isPrepareEnabled()) {
+      throw new NotFoundException();
+    }
+    try {
+      const document = await this.documentsService.findById(documentId, workspaceId);
+      const jurisdiction = document.resolvedJurisdiction || undefined;
+
+      const { response, question } = await this.ragService.executePreparedChat(
+        workspaceId,
+        documentId,
+        body.requestId,
+        { signal },
+      );
+
+      await this.chatMessageService.saveChatMessage(
+        documentId,
+        workspaceId,
+        user.id,
+        question,
+        response,
+        jurisdiction,
+      );
+
+      await this.auditService.createAuditLog(
+        workspaceId,
+        user.id,
+        AuditAction.CHAT_QUERY,
+        TargetType.DOCUMENT,
+        documentId,
+        requestInfo.ip,
+        requestInfo.userAgent,
+        {
+          questionLength: question.length,
+          hasAnswer: !!response.answerText,
+          confidence: response.confidence,
+          citationsCount: response.citations?.length || 0,
+          fromCache: false,
+        },
+      );
+
+      return response;
+    } catch (error) {
+      this.logError('ChatExecute', { documentId, workspaceId }, error);
       throw error;
     }
   }

@@ -18,6 +18,7 @@ import { OnboardingModule } from './onboarding/onboarding.module';
 import { AssetManagerModule } from './asset-manager/asset-manager.module';
 import { FileTypeModule } from './file-type/file-type.module';
 import { HealthModule } from './health/health.module';
+import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { typeOrmModuleOptions } from './typeorm.options';
 
 // Conditionally import AppController - only for API server, not worker
@@ -65,6 +66,7 @@ if (!isWorker) {
     AssetManagerModule,
     FileTypeModule,
     HealthModule,
+    RateLimitModule,
   ],
   controllers: AppController ? [AppController] : [],
 })

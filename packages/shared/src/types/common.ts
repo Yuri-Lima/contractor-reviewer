@@ -44,6 +44,8 @@ export interface User {
   createdAt: string;
   /** RAG cache similarity threshold (0.8-1.0). null = use server default 0.95 */
   ragCacheSimilarityThreshold?: number | null;
+  /** True if user is OWNER in at least one workspace. Only present in account response. */
+  isOwnerInAnyWorkspace?: boolean;
 }
 
 /** Request body for PATCH /account/preferences */

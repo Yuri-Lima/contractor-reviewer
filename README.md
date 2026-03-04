@@ -27,6 +27,7 @@ A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que 
   - **LlamaParse** (LlamaIndex) — Requer API key. PDF, DOCX.
   - **Unstructured.io** — Requer API key. Muitos formatos.
 - Processamento assíncrono com filas (parsing, chunking, embeddings)
+- **Progresso em tempo real** via WebSocket (porta 3200) — substitui polling agressivo
 - Visualização de documentos com suporte a PDF, imagens e texto
 - Mensagens amigáveis quando o parser está indisponível (ex.: "Docling service is unavailable. Start it with docker-compose up docling")
 

@@ -11,6 +11,7 @@ Backend da plataforma ContractAI Review: API REST, workers BullMQ e integraçõe
 - **Storage:** S3/R2 compatível (local em dev)
 - **AI:** OpenAI (embeddings, chat RAG)
 - **Parsers:** Docling, PDFPlumber (Python microservices), DPT-2, LlamaParse, Unstructured (cloud APIs)
+- **WebSocket:** Socket.IO (porta 3200) para progresso em tempo real de jobs via Redis Streams
 
 ## Estrutura Principal
 
@@ -28,6 +29,7 @@ src/
 ├── common/                 # EncryptionService, pipes, guards
 ├── entities/               # TypeORM entities
 ├── workers/                # BullMQ processors (parsing, chunking, embeddings)
+├── websocket/              # WebSocket gateway, stream consumer, job progress
 └── migrations/
 ```
 
@@ -90,6 +92,8 @@ Ver `.env.example` no root. Principais para a API:
 - `PARSER_KEYS_ENCRYPTION_KEY` — obrigatório se usar DPT-2, LlamaParse ou Unstructured
 - `DOCLING_URL`, `PDFPLUMBER_URL`
 - `STORAGE_TYPE`, `STORAGE_PATH` ou `S3_*`
+- `WS_PORT` — porta do WebSocket (padrão: 3200)
+- `WS_ENABLED` — `false` para desabilitar WebSocket
 
 ## Módulos Documentados
 

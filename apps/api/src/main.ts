@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { REDIS_CLIENT } from './queue/redis.provider';
 import { WsPortIoAdapter } from './websocket/ws-port.adapter';
+import { getLoggerConfig } from './common/utils/log-level';
 
 const isWorker =
   typeof require !== 'undefined' &&
@@ -12,7 +13,9 @@ const isWorker =
     process.argv[1]?.includes('dist/worker'));
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: getLoggerConfig(),
+  });
   app.enableShutdownHooks();
   app.setGlobalPrefix('api');
 
@@ -48,7 +51,7 @@ async function bootstrap() {
   );
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  // Never log contract content, chunks, or user messages in plaintext
+  // Never log document content, chunks, or user messages in plaintext
   console.log(`API listening on http://localhost:${port}/api`);
 }
 

@@ -19,6 +19,16 @@ import { DocumentVersion } from './document-version.entity';
 // Re-export for backward compatibility
 export { DocumentStatus, JurisdictionStatus };
 
+/** Stored in jurisdictionCandidates JSONB - candidate jurisdiction with evidence */
+export interface JurisdictionCandidateEntity {
+  jurisdiction: string;
+  status: 'explicit' | 'inferred';
+  confidence: number;
+  evidenceCount: number;
+  fileNames: string[];
+  snippets: string[];
+}
+
 @Entity('documents')
 export class Document {
   @PrimaryGeneratedColumn('uuid')
@@ -36,8 +46,8 @@ export class Document {
   @Column({ type: 'enum', enum: DocumentStatus, default: DocumentStatus.PROCESSING })
   status: DocumentStatus;
 
-  @Column({ nullable: true })
-  resolvedJurisdiction: string; // e.g., "US-CA", "BR-SP"
+  @Column({ type: 'varchar', nullable: true })
+  resolvedJurisdiction: string | null; // e.g., "US-CA", "BR-SP"; null to clear
 
   @Column({ type: 'enum', enum: JurisdictionStatus, nullable: true })
   jurisdictionStatus: JurisdictionStatus;
@@ -48,6 +58,18 @@ export class Document {
   /** Include document prompts when building combined prompt (additive model) */
   @Column({ type: 'boolean', default: true })
   promptScopeIncludeDocument: boolean;
+
+  /** Prompt category (e.g. legal-law). When LEGAL_RAG_CATEGORY_ID + resolvedJurisdiction, enables Legal RAG. */
+  @Column({ type: 'varchar', nullable: true })
+  promptCategoryId: string | null;
+
+  /** List of jurisdiction candidates with evidence for user override */
+  @Column({ type: 'jsonb', nullable: true })
+  jurisdictionCandidates: JurisdictionCandidateEntity[] | null;
+
+  /** AI reasoning for chosen jurisdiction */
+  @Column({ type: 'text', nullable: true })
+  jurisdictionReasoning: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

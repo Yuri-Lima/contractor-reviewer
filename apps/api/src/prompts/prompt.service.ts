@@ -23,6 +23,8 @@ const DEFAULT_PROMPTS: Record<string, string> = {
 
 IMPORTANT: You MUST provide your answer in {{languageName}}. All responses must be written in {{languageName}}.
 
+{{conversationHistory}}
+
 Context:
 {{context}}
 
@@ -104,6 +106,8 @@ export interface ChatPromptParams {
   languageName: string;
   context: string;
   question: string;
+  /** Optional conversation history for multi-turn (formatted as User: X\nAssistant: Y\n) */
+  conversationHistory?: string;
 }
 
 export interface RedlinePromptParams {
@@ -279,10 +283,15 @@ export class PromptService {
         : this.getPrompt('chat.user', options),
     ]);
 
+    const conversationHistory = params.conversationHistory
+      ? `Previous conversation:\n${params.conversationHistory}\n\n`
+      : '';
+
     const user = this.interpolate(userTemplate, {
       languageName: params.languageName,
       context: params.context || 'No relevant context found.',
       question: params.question,
+      conversationHistory,
     });
 
     return { system, user };

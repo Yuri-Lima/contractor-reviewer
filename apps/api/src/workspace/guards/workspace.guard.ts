@@ -4,11 +4,14 @@ import {
   ExecutionContext,
   NotFoundException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { WorkspaceService } from '../workspace.service';
 
 @Injectable()
 export class WorkspaceGuard implements CanActivate {
+  private readonly logger = new Logger(WorkspaceGuard.name);
+
   constructor(private workspaceService: WorkspaceService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -34,6 +37,11 @@ export class WorkspaceGuard implements CanActivate {
     request.workspaceId = workspaceId;
     request.workspaceMembership = membership;
 
+    this.logger.debug('[WorkspaceGuard] Access granted', {
+      workspaceId,
+      userId: user.id,
+      role: membership.role,
+    });
     return true;
   }
 }

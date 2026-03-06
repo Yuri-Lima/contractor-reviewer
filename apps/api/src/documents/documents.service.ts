@@ -1,4 +1,11 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { PROMPT_CATEGORY_IDS } from '@contractai-review/shared';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Document, DocumentStatus } from '../entities/document.entity';
@@ -8,48 +15,14 @@ import { CHUNK_REPOSITORY, IChunkRepository } from '../chunks/chunk-repository.i
 import { DocumentDeletionOrchestrator } from './document-deletion.orchestrator';
 import { StorageServiceToken, IStorageService } from '../storage/storage.module';
 import { FileTypeDetectionService } from '../file-type/file-type-detection.service';
+import { RagCacheService } from '../cache/rag-cache.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import * as fs from 'fs';
-import * as path from 'path';
-
-function writeLog(location: string, message: string, data: any, hypothesisId: string) {
-  try {
-    // Find workspace root by looking for package.json or node_modules
-    let workspaceRoot = process.cwd();
-    let currentDir = workspaceRoot;
-    let found = false;
-    for (let i = 0; i < 10; i++) {
-      if (fs.existsSync(path.join(currentDir, 'package.json')) && 
-          fs.existsSync(path.join(currentDir, 'apps'))) {
-        workspaceRoot = currentDir;
-        found = true;
-        break;
-      }
-      const parent = path.dirname(currentDir);
-      if (parent === currentDir) break; // Reached filesystem root
-      currentDir = parent;
-    }
-    if (!found) {
-      // Fallback: try relative to __dirname
-      workspaceRoot = path.resolve(__dirname, '../../../../..');
-    }
-    const logPath = path.join(workspaceRoot, '.cursor/debug.log');
-    // Ensure .cursor directory exists
-    const logDir = path.dirname(logPath);
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true });
-    }
-    const logEntry = JSON.stringify({location,message,data,timestamp:Date.now(),hypothesisId,runId:'run1'}) + '\n';
-    fs.appendFileSync(logPath, logEntry);
-  } catch (e) {
-    // Silently fail to avoid breaking the app
-    console.error('[writeLog error]', e);
-  }
-}
 
 @Injectable()
 export class DocumentsService {
+  private readonly logger = new Logger(DocumentsService.name);
+
   constructor(
     @InjectRepository(Document)
     private documentRepository: Repository<Document>,
@@ -63,8 +36,11 @@ export class DocumentsService {
     @Inject(StorageServiceToken)
     private storageService: IStorageService,
     private fileTypeService: FileTypeDetectionService,
+    private ragCacheService: RagCacheService,
     @InjectQueue('parsing')
     private parsingQueue: Queue,
+    @InjectQueue('jurisdiction-evaluation')
+    private jurisdictionEvaluationQueue: Queue,
   ) {}
 
   /**
@@ -74,11 +50,13 @@ export class DocumentsService {
     workspaceId: string,
     title: string,
     description?: string,
+    promptCategoryId?: string,
   ): Promise<Document> {
     const document = this.documentRepository.create({
       workspaceId,
       title,
       description,
+      promptCategoryId,
       status: DocumentStatus.PROCESSING,
     });
 
@@ -113,12 +91,19 @@ export class DocumentsService {
   }
 
   /**
-   * Update document (title, description, promptScopeIncludeDocument). Only provided fields are updated.
+   * Update document (title, description, promptScopeIncludeDocument, promptCategoryId, resolvedJurisdiction).
+   * Only provided fields are updated. When resolvedJurisdiction changes, RAG cache is invalidated.
    */
   async update(
     documentId: string,
     workspaceId: string,
-    data: { title?: string; description?: string; promptScopeIncludeDocument?: boolean },
+    data: {
+      title?: string;
+      description?: string;
+      promptScopeIncludeDocument?: boolean;
+      promptCategoryId?: string | null;
+      resolvedJurisdiction?: string | null;
+    },
   ): Promise<Document> {
     const document = await this.findById(documentId, workspaceId);
     if (data.title !== undefined) {
@@ -134,7 +119,36 @@ export class DocumentsService {
     if (data.promptScopeIncludeDocument !== undefined) {
       document.promptScopeIncludeDocument = !!data.promptScopeIncludeDocument;
     }
+    if (data.promptCategoryId !== undefined) {
+      if (data.promptCategoryId !== null && data.promptCategoryId !== '') {
+        if (!PROMPT_CATEGORY_IDS.includes(data.promptCategoryId)) {
+          throw new BadRequestException(
+            `promptCategoryId must be one of: ${PROMPT_CATEGORY_IDS.join(', ')}`,
+          );
+        }
+        document.promptCategoryId = data.promptCategoryId;
+      } else {
+        document.promptCategoryId = null;
+      }
+    }
+    if (data.resolvedJurisdiction !== undefined) {
+      const newValue = data.resolvedJurisdiction?.trim() ?? '';
+      if (document.resolvedJurisdiction !== newValue) {
+        document.resolvedJurisdiction = newValue;
+        await this.ragCacheService.invalidateDocument(documentId);
+      }
+    }
     return this.documentRepository.save(document);
+  }
+
+  /**
+   * Enqueue jurisdiction re-evaluation for a document. The worker will re-extract evidence
+   * from all files, call the LLM, and update resolvedJurisdiction.
+   */
+  async reEvaluateJurisdiction(documentId: string, workspaceId: string): Promise<void> {
+    await this.findById(documentId, workspaceId);
+    await this.jurisdictionEvaluationQueue.add('evaluate', { documentId, workspaceId });
+    this.logger.log('[ReEvaluateJurisdiction] Job enqueued', { documentId, workspaceId });
   }
 
   /**
@@ -148,7 +162,7 @@ export class DocumentsService {
     options?: { signal?: AbortSignal },
   ): Promise<DocumentFile> {
     // Verify document exists and belongs to workspace
-    const document = await this.findById(documentId, workspaceId);
+    await this.findById(documentId, workspaceId);
 
     const storageOptions = options?.signal ? { signal: options.signal } : undefined;
 
@@ -178,6 +192,12 @@ export class DocumentsService {
     });
 
     const savedFile = await this.documentFileRepository.save(documentFile);
+
+    this.logger.log('[UploadFile] File stored', {
+      fileId: savedFile.id,
+      storageKey,
+      documentId,
+    });
 
     // Create parsing job
     await this.createJob(documentId, JobType.PARSING, {
@@ -222,21 +242,24 @@ export class DocumentsService {
    * Add job to appropriate queue
    */
   private async addToQueue(type: JobType, data: any): Promise<void> {
-    // #region agent log
-    writeLog('documents.service.ts:149', 'Adding job to queue', {type,data:JSON.stringify(data)}, 'C');
-    // #endregion
-    
+    this.logger.log('[UploadFile] Adding job to queue', {
+      jobId: data.jobId,
+      type,
+      documentId: data.documentId,
+    });
+
     switch (type) {
       case JobType.PARSING:
         try {
           await this.parsingQueue.add('parse-document', data);
-          // #region agent log
-          writeLog('documents.service.ts:153', 'Parsing job added to queue successfully', {jobId:data.jobId}, 'C');
-          // #endregion
+          this.logger.log('[UploadFile] Parsing job added to queue', {
+            jobId: data.jobId,
+          });
         } catch (error) {
-          // #region agent log
-          writeLog('documents.service.ts:156', 'Failed to add parsing job to queue', {error:error instanceof Error ? error.message : String(error),jobId:data.jobId}, 'B');
-          // #endregion
+          this.logger.error('[UploadFile] Failed to add parsing job to queue', {
+            jobId: data.jobId,
+            error: error instanceof Error ? error.message : String(error),
+          });
           throw error;
         }
         break;
@@ -248,49 +271,46 @@ export class DocumentsService {
    * Get all jobs for a document
    */
   async getDocumentJobs(documentId: string): Promise<DocumentJob[]> {
-    // #region agent log
-    writeLog('documents.service.ts:197', 'getDocumentJobs called', {documentId}, 'F');
-    // #endregion
-    
     const jobs = await this.documentJobRepository.find({
       where: { documentId },
       order: { createdAt: 'DESC' },
     });
-    
+
     // Check for stuck jobs (pending/processing jobs older than 30 seconds with no progress updates)
     const now = new Date();
-    const stuckJobs = jobs.filter(j => 
-      (j.status === JobStatus.PENDING || j.status === JobStatus.PROCESSING) &&
-      j.updatedAt && 
-      (now.getTime() - j.updatedAt.getTime()) > 30000 // 30 seconds
+    const stuckJobs = jobs.filter(
+      (j) =>
+        (j.status === JobStatus.PENDING || j.status === JobStatus.PROCESSING) &&
+        j.updatedAt &&
+        now.getTime() - j.updatedAt.getTime() > 30000,
     );
-    
+
     if (stuckJobs.length > 0) {
-      // #region agent log
-      writeLog('documents.service.ts:220', 'Stuck jobs detected - worker may not be running', {
+      this.logger.warn('[GetDocumentJobs] Stuck jobs detected - worker may not be running', {
         documentId,
         stuckJobCount: stuckJobs.length,
-        stuckJobs: stuckJobs.map(j => ({id: j.id, type: j.type, status: j.status, progress: j.progress, updatedAt: j.updatedAt}))
-      }, 'F');
-      // #endregion
+        stuckJobs: stuckJobs.map((j) => ({
+          id: j.id,
+          type: j.type,
+          status: j.status,
+          progress: j.progress,
+          updatedAt: j.updatedAt,
+        })),
+      });
     }
-    
-    // #region agent log
-    writeLog('documents.service.ts:204', 'getDocumentJobs returning', {
-      documentId,
-      jobCount: jobs.length,
-      activeJobs: jobs.filter(j => j.status === JobStatus.PENDING || j.status === JobStatus.PROCESSING).length,
-      jobs: jobs.map(j => ({id: j.id, type: j.type, status: j.status, progress: j.progress, updatedAt: j.updatedAt}))
-    }, 'F');
-    // #endregion
-    
-    // Log progress values for active jobs
-    const activeJobs = jobs.filter(j => j.status === JobStatus.PENDING || j.status === JobStatus.PROCESSING);
+
+    const activeJobs = jobs.filter(
+      (j) => j.status === JobStatus.PENDING || j.status === JobStatus.PROCESSING,
+    );
     if (activeJobs.length > 0) {
-      console.log(`[API] Returning ${activeJobs.length} active jobs with progress:`, 
-        activeJobs.map(j => `${j.type}=${j.progress}%`).join(', '));
+      this.logger.log('[GetDocumentJobs] Returning active jobs', {
+        documentId,
+        jobCount: jobs.length,
+        activeCount: activeJobs.length,
+        progress: activeJobs.map((j) => `${j.type}=${j.progress}%`).join(', '),
+      });
     }
-    
+
     return jobs;
   }
 
@@ -338,6 +358,11 @@ export class DocumentsService {
 
     file.status = FileStatus.AVAILABLE;
     const savedFile = await this.documentFileRepository.save(file);
+
+    this.logger.log('[MarkFileAvailable] File marked available', {
+      fileId,
+      documentId: file.documentId,
+    });
 
     // Update document status if all files are available
     await this.updateDocumentStatusIfReady(file.documentId);
@@ -486,7 +511,9 @@ export class DocumentsService {
           );
         } catch (err) {
           // Fallback to ILIKE if pg_trgm fails
-          console.warn('pg_trgm fuzzy search failed, falling back to ILIKE', err);
+          this.logger.warn('[GetDocumentFiles] pg_trgm fuzzy search failed, falling back to ILIKE', {
+            error: err instanceof Error ? err.message : String(err),
+          });
           qb.andWhere(
             `(file."fileName" ILIKE :qPattern OR file."mimeType" ILIKE :qPattern OR file."status"::text ILIKE :qPattern)`,
             { qPattern: `%${q}%` },
@@ -511,7 +538,10 @@ export class DocumentsService {
             });
             qb.addOrderBy('similarity(file."fileName", :fileName)', 'DESC');
           } catch (err) {
-            console.warn('pg_trgm fileName fuzzy failed, falling back to ILIKE', err);
+            this.logger.warn(
+              '[GetDocumentFiles] pg_trgm fileName fuzzy failed, falling back to ILIKE',
+              { error: err instanceof Error ? err.message : String(err) },
+            );
             qb.andWhere('file."fileName" ILIKE :fileName', { fileName: `%${val}%` });
           }
         } else {
@@ -588,7 +618,10 @@ export class DocumentsService {
       await this.storageService.deleteFile(file.storageKey);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`Failed to delete file from storage (id: ${fileId}):`, errorMessage);
+      this.logger.error('[DeleteFile] Failed to delete file from storage', {
+        fileId,
+        error: errorMessage,
+      });
     }
 
     await this.documentJobRepository

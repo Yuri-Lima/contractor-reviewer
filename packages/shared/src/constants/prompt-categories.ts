@@ -105,6 +105,9 @@ export interface PromptCategory {
   prompts: Record<DocumentPromptKey, string>;
 }
 
+/** Category ID that enables Legal RAG when combined with resolvedJurisdiction */
+export const LEGAL_RAG_CATEGORY_ID = 'legal-law';
+
 /** All available prompt categories. Each provides prompts for all 7 document keys. */
 export const PROMPT_CATEGORIES: PromptCategory[] = [
   {
@@ -114,7 +117,7 @@ export const PROMPT_CATEGORIES: PromptCategory[] = [
     prompts: { ...GENERAL_PROMPTS },
   },
   {
-    id: 'legal-law',
+    id: LEGAL_RAG_CATEGORY_ID,
     nameKey: 'promptCategories.legalLaw',
     descriptionKey: 'promptCategories.legalLawDescription',
     prompts: withDomain(

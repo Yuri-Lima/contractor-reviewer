@@ -13,3 +13,4 @@ export * from './asset';
 export * from './user-storage';
 export * from './transcription';
 export * from './tts';
+export * from './llm';

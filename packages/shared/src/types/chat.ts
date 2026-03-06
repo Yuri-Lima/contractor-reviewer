@@ -1,10 +1,22 @@
 import { Citation } from './common';
 
-export interface ChatMessage {
+export interface ChatThread {
   id: string;
   documentId: string;
   workspaceId: string;
   userId: string;
+  title: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  threadId: string;
+  documentId: string;
+  workspaceId: string;
+  userId: string;
+  role: 'user' | 'assistant';
   question: string;
   answerText: string | null;
   confidence: 'high' | 'medium' | 'low' | null;
@@ -18,6 +30,7 @@ export interface ChatRequest {
   question: string;
   language?: string; // ISO 639-1 code (en, es, pt-BR, de)
   forceFresh?: boolean; // Bypass cache and get fresh RAG response
+  threadId?: string; // Optional; auto-create thread if omitted
 }
 
 export interface ChatResponse {
@@ -28,8 +41,8 @@ export interface ChatResponse {
   fromCache?: boolean; // True when response was served from semantic cache
 }
 
-/** Display-safe contract chunk for LLM payload preview (dev mode) */
-export interface ChatPrepareContractChunk {
+/** Display-safe document chunk for LLM payload preview (dev mode) */
+export interface ChatPrepareDocumentChunk {
   text: string;
   pageNumber?: number;
   paragraphId?: string;
@@ -49,7 +62,7 @@ export interface ChatPrepareLegalChunk {
 export interface ChatPreparePayload {
   systemPrompt: string;
   userPrompt: string;
-  contractChunks: ChatPrepareContractChunk[];
+  documentChunks: ChatPrepareDocumentChunk[];
   legalChunks: ChatPrepareLegalChunk[];
   question: string;
   model: string;
@@ -66,4 +79,5 @@ export interface ChatPrepareResponse {
 /** Request body for POST /chat/execute */
 export interface ChatExecuteRequest {
   requestId: string;
+  threadId?: string; // Optional; use when execute is part of a thread
 }

@@ -9,7 +9,6 @@ import { Document, DocumentStatus, JurisdictionStatus } from '../entities/docume
 import { Inject } from '@nestjs/common';
 import { StorageServiceToken, IStorageService } from '../storage/storage.module';
 import { OcrService } from '../rag/ocr.service';
-import { JurisdictionResolverService } from '../rag/jurisdiction-resolver.service';
 import { JobProgressPublisher } from './job-progress.publisher';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -41,9 +40,10 @@ export class OcrProcessor extends WorkerHost {
     @Inject(StorageServiceToken)
     private storageService: IStorageService,
     private ocrService: OcrService,
-    private jurisdictionResolver: JurisdictionResolverService,
     @InjectQueue('chunking')
     private chunkingQueue: Queue,
+    @InjectQueue('jurisdiction-evaluation')
+    private jurisdictionEvaluationQueue: Queue,
     private jobProgressPublisher: JobProgressPublisher,
   ) {
     super();
@@ -132,6 +132,10 @@ export class OcrProcessor extends WorkerHost {
     if (allFilesReady && document.files.some((f) => f.status === FileStatus.AVAILABLE)) {
       document.status = DocumentStatus.AVAILABLE;
       await this.documentRepository.save(document);
+      await this.jurisdictionEvaluationQueue.add('evaluate', {
+        documentId,
+        workspaceId: document.workspaceId,
+      });
     }
   }
 
@@ -191,31 +195,6 @@ export class OcrProcessor extends WorkerHost {
         file.pageCount = pageCount;
         file.ocrText = extractedText; // Store OCR extracted text
         await this.fileRepository.save(file);
-
-        // Resolve jurisdiction
-        await this.updateJobStatus(jobId, JobStatus.PROCESSING, 75);
-        this.logger.debug(`Job ${jobId}: Resolving jurisdiction, progress 75%`);
-
-        const document = await this.documentRepository.findOne({
-          where: { id: documentId },
-        });
-
-        if (document && extractedText) {
-          const jurisdictionResult = await this.withTimeout(
-            this.jurisdictionResolver.resolveJurisdiction(extractedText),
-            30000, // 30 second timeout for jurisdiction resolution
-            `Jurisdiction resolution failed for document ${documentId}`,
-          );
-
-          if (jurisdictionResult.jurisdiction) {
-            document.resolvedJurisdiction = jurisdictionResult.jurisdiction;
-            document.jurisdictionStatus = jurisdictionResult.status as JurisdictionStatus;
-            await this.documentRepository.save(document);
-            this.logger.debug(
-              `Job ${jobId}: Resolved jurisdiction: ${jurisdictionResult.jurisdiction}`,
-            );
-          }
-        }
       } else {
         const errorMsg = `OCR not supported for mime type: ${mimeType}. Only application/pdf is supported.`;
         this.logger.error(`Job ${jobId}: ${errorMsg}`);

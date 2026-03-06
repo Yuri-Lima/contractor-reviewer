@@ -37,7 +37,7 @@ import type { ChatPreparePayload } from '@contractai-review/shared';
             <p-tab value="0">{{ 'chat.questionTab' | translate }}</p-tab>
             <p-tab value="1">{{ 'chat.systemPrompt' | translate }}</p-tab>
             <p-tab value="2">{{ 'chat.userPrompt' | translate }}</p-tab>
-            <p-tab value="3">{{ 'chat.contractChunks' | translate }}</p-tab>
+            <p-tab value="3">{{ 'chat.documentChunks' | translate }}</p-tab>
             <p-tab value="4">{{ 'chat.legalChunks' | translate }}</p-tab>
             <p-tab value="5">{{ 'chat.modelParams' | translate }}</p-tab>
           </p-tablist>
@@ -59,10 +59,10 @@ import type { ChatPreparePayload } from '@contractai-review/shared';
             </p-tabpanel>
             <p-tabpanel value="3">
               <div class="payload-content overflow-auto max-h-[50vh] p-4 space-y-3">
-                @for (chunk of payload()!.contractChunks; track $index) {
+                @for (chunk of payload()!.documentChunks; track $index) {
                   <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
                     <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                      {{ 'chat.contractChunks' | translate }} #{{ $index + 1 }}
+                      {{ 'chat.documentChunks' | translate }} #{{ $index + 1 }}
                       · {{ 'chat.similarity' | translate }}: {{ chunk.similarity | number:'1.2-2' }}
                       @if (chunk.pageNumber) { · p.{{ chunk.pageNumber }} }
                       @if (chunk.paragraphId) { · {{ chunk.paragraphId }} }
@@ -70,7 +70,7 @@ import type { ChatPreparePayload } from '@contractai-review/shared';
                     <pre class="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200">{{ chunk.text }}</pre>
                   </div>
                 }
-                @if (payload()!.contractChunks.length === 0) {
+                @if (payload()!.documentChunks.length === 0) {
                   <p class="text-sm text-gray-500 dark:text-gray-400">{{ 'chat.noChunks' | translate }}</p>
                 }
               </div>

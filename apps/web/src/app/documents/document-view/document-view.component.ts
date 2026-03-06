@@ -12,7 +12,7 @@ import type { MenuItem } from 'primeng/api';
 import { ContextMenu } from 'primeng/contextmenu';
 import { TabsModule } from 'primeng/tabs';
 import { ProgressBar } from 'primeng/progressbar';
-import { Dialog } from 'primeng/dialog';
+import { BaseDialogComponent, type DialogFooterButton } from '../../core/components/base-dialog';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 import { Tag } from 'primeng/tag';
@@ -114,6 +114,19 @@ interface ChatMessageWithAudio {
   audioState?: ChatMessageAudioState;
   audioUrl?: string;
   fromCache?: boolean;
+  /** True while streaming response chunks */
+  streaming?: boolean;
+}
+
+/** Chat thread from API (for picker) */
+interface ChatThreadInfo {
+  id: string;
+  documentId: string;
+  workspaceId: string;
+  userId: string;
+  title: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 @Component({
@@ -134,8 +147,8 @@ interface ChatMessageWithAudio {
     TableModule,
     Tag,
     Card,
-    Dialog,
     SelectModule,
+    BaseDialogComponent,
     DocumentViewerComponent,
     RedlineComponent,
     VersionsComponent,
@@ -168,12 +181,40 @@ interface ChatMessageWithAudio {
                 {{ getStatusLabel(document()?.status || '') }}
               </span>
             </span>
-            @if (getDisplayJurisdiction(document())) {
-              <span>
-                {{ 'documents.jurisdiction' | translate }}: {{ getDisplayJurisdiction(document()) }}
-                <span class="text-xs">({{ getDisplayJurisdictionStatus(document()) }})</span>
-              </span>
-            }
+            <span class="flex items-center gap-2">
+              {{ 'documents.jurisdiction' | translate }}:
+              @if (jurisdictionCandidatesCount(document()) > 1) {
+                <p-select
+                  [options]="jurisdictionOptions()"
+                  [ngModel]="getDisplayJurisdiction(document()) || null"
+                  (ngModelChange)="onJurisdictionChange($event)"
+                  optionLabel="label"
+                  optionValue="value"
+                  [placeholder]="'documents.jurisdictionSelect' | translate"
+                  [appendTo]="'body'"
+                  styleClass="text-sm min-w-[140px]"
+                />
+              } @else if (getDisplayJurisdiction(document())) {
+                <span>
+                  {{ getDisplayJurisdiction(document()) }}
+                  <span class="text-xs">({{ getDisplayJurisdictionStatus(document()) }})</span>
+                </span>
+              } @else {
+                <span class="text-gray-500 dark:text-gray-400">—</span>
+              }
+              @if (canReEvaluateJurisdiction()) {
+                <p-button
+                  icon="pi pi-refresh"
+                  [outlined]="true"
+                  size="small"
+                  severity="secondary"
+                  [loading]="jurisdictionReEvaluating()"
+                  [disabled]="jurisdictionReEvaluating()"
+                  (onClick)="onReEvaluateJurisdiction()"
+                  [pTooltip]="'documents.jurisdictionReEvaluate' | translate"
+                ></p-button>
+              }
+            </span>
           </div>
         </div>
         <div class="document-actions flex gap-2">
@@ -385,8 +426,62 @@ interface ChatMessageWithAudio {
           </p-tabpanel>
 
           <p-tabpanel value="2">
-            <div class="chat-section mt-4">
-              <div class="chat-messages space-y-4 mb-4 max-h-96 overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+            <div class="chat-section flex h-[calc(100vh-12rem)] min-h-[400px] mt-4">
+              <aside class="chat-sidebar w-60 flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-l-lg overflow-hidden">
+                <p-button
+                  [label]="'chat.newThread' | translate"
+                  icon="pi pi-plus"
+                  [outlined]="true"
+                  size="small"
+                  (onClick)="onNewConversation()"
+                  [pTooltip]="'chat.newThread' | translate"
+                  class="m-2"
+                ></p-button>
+                <div class="flex-1 overflow-y-auto min-h-0">
+                  @if (chatThreadsLoading()) {
+                    <div class="px-3 py-4 text-center">
+                      <span class="text-sm text-gray-500 dark:text-gray-400">{{ 'common.loading' | translate }}</span>
+                    </div>
+                  } @else if (chatThreads().length === 0) {
+                    <div class="px-3 py-4 text-center">
+                      <span class="text-sm text-gray-500 dark:text-gray-400">{{ 'chat.noConversations' | translate }}</span>
+                    </div>
+                  } @else {
+                    @for (thread of chatThreads(); track thread.id) {
+                      <div
+                        class="chat-thread-item group flex items-center gap-2 px-3 py-2.5 cursor-pointer text-left border-b border-gray-100 dark:border-gray-700/50 last:border-b-0 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+                        [class.bg-blue-50]="activeThreadId() === thread.id"
+                        [class.dark:bg-blue-900/20]="activeThreadId() === thread.id"
+                        (click)="onSelectThread(thread)"
+                      >
+                        <span class="truncate flex-1 min-w-0 text-sm text-gray-800 dark:text-gray-200" [title]="getThreadLabel(thread)">
+                          {{ getThreadLabel(thread) }}
+                        </span>
+                        <div class="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          <p-button
+                            icon="pi pi-download"
+                            [text]="true"
+                            size="small"
+                            severity="secondary"
+                            (onClick)="exportThread(thread); $event.stopPropagation()"
+                            [pTooltip]="'chat.exportThread' | translate"
+                          ></p-button>
+                          <p-button
+                            icon="pi pi-trash"
+                            [text]="true"
+                            size="small"
+                            severity="danger"
+                            (onClick)="confirmDeleteThread(thread); $event.stopPropagation()"
+                            [pTooltip]="'chat.deleteThread' | translate"
+                          ></p-button>
+                        </div>
+                      </div>
+                    }
+                  }
+                </div>
+              </aside>
+              <div class="chat-main flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900">
+                <div class="chat-messages flex-1 overflow-y-auto space-y-4 p-4 min-h-0">
                 @for (msg of chatMessages(); track $index) {
                   <div class="chat-message p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                     <div class="message-question mb-3">
@@ -480,7 +575,7 @@ interface ChatMessageWithAudio {
                   </div>
                 }
               </div>
-              <div class="chat-input flex gap-2" data-tour="chat-input">
+              <div class="chat-input flex gap-2 p-4" data-tour="chat-input">
                 <input
                   [value]="question()"
                   (input)="onQuestionInput($event)"
@@ -507,6 +602,7 @@ interface ChatMessageWithAudio {
                   (onClick)="sendQuestion()"
                 ></p-button>
               </div>
+            </div>
             </div>
           </p-tabpanel>
 
@@ -539,55 +635,63 @@ interface ChatMessageWithAudio {
       }
 
       <!-- Parser Selection Dialog -->
-      <p-dialog
+      <app-base-dialog
         [visible]="showParserDialog()"
-        [modal]="true"
         [header]="getParserDialogHeader()"
-        [style]="{ width: '400px' }"
-        (onHide)="cancelParserDialog()"
+        [width]="'min(95vw, 420px)'"
+        (closed)="cancelParserDialog()"
       >
-        <div class="space-y-4">
-          <p class="text-sm text-gray-700 dark:text-gray-300">
-            @if (pendingFiles() && pendingFiles()!.length > 1) {
-              {{ 'documents.selectParserForFiles' | translate: { count: pendingFiles()!.length } }}
-            } @else {
-              {{ 'documents.selectParser' | translate }}: <strong>{{ pendingFiles()?.[0]?.name }}</strong>
-            }
-          </p>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              {{ 'parsers.selectParser' | translate }}
-            </label>
-            <p-select
-              [options]="parserOptionsWithDisabled()"
-              [ngModel]="selectedParser()"
-              (ngModelChange)="selectedParser.set($event)"
-              optionLabel="name"
-              optionValue="id"
-              optionDisabled="disabled"
-              [placeholder]="'parsers.selectParser' | translate"
-              class="w-full"
-              styleClass="w-full"
-            >
-              <ng-template let-p pTemplate="item">
-                <span [class.opacity-50]="p.disabled">{{ p.name }}</span>
-                @if (p.requiresApiKey && !p.hasApiKeyConfigured) {
-                  <span class="text-xs text-amber-600 ml-2">({{ 'parsers.apiKeyRequired' | translate }})</span>
-                }
-              </ng-template>
-            </p-select>
+        <ng-template #bodyTemplate>
+          <div class="space-y-4">
+            <p class="text-sm text-gray-700 dark:text-gray-300">
+              @if (pendingFiles() && pendingFiles()!.length > 1) {
+                {{ 'documents.selectParserForFiles' | translate: { count: pendingFiles()!.length } }}
+              } @else {
+                {{ 'documents.selectParser' | translate }}: <strong class="break-words">{{ pendingFiles()?.[0]?.name }}</strong>
+              }
+            </p>
+            <div class="min-w-0">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {{ 'parsers.selectParser' | translate }}
+              </label>
+              <p-select
+                [options]="parserOptionsWithDisabled()"
+                [ngModel]="selectedParser()"
+                (ngModelChange)="selectedParser.set($event)"
+                optionLabel="name"
+                optionValue="id"
+                optionDisabled="disabled"
+                [placeholder]="'parsers.selectParser' | translate"
+                [appendTo]="'body'"
+                class="w-full"
+                styleClass="w-full"
+              >
+                <ng-template let-p pTemplate="item">
+                  <span [class.opacity-50]="p.disabled">{{ p.name }}</span>
+                  @if (p.requiresApiKey && !p.hasApiKeyConfigured) {
+                    <span class="text-xs text-amber-600 dark:text-amber-400 ml-2">({{ 'parsers.apiKeyRequired' | translate }})</span>
+                  }
+                </ng-template>
+                <ng-template let-selected pTemplate="selectedItem">
+                  @if (selected) {
+                    <span>{{ selected.name }}</span>
+                  }
+                </ng-template>
+              </p-select>
+            </div>
+            <!-- Buttons in body to ensure visibility (footer slot can fail to render) -->
+            <div class="flex flex-wrap justify-end gap-2 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+              @if (uploadingFiles()) {
+                <p-button [label]="'documents.cancelUpload' | translate" severity="secondary" [outlined]="true" (onClick)="cancelUpload()"></p-button>
+              } @else {
+                <p-button [label]="'common.cancel' | translate" severity="secondary" [outlined]="true" (onClick)="cancelParserDialog()"></p-button>
+                <p-button [label]="'parsers.confirmAndUpload' | translate" icon="pi pi-check" (onClick)="confirmParserSelection()"
+                  [disabled]="!canConfirmUpload()" severity="primary"></p-button>
+              }
+            </div>
           </div>
-        </div>
-        <ng-template pTemplate="footer">
-          @if (uploadingFiles()) {
-            <p-button [label]="'documents.cancelUpload' | translate" severity="secondary" [outlined]="true" (onClick)="cancelUpload()"></p-button>
-          } @else {
-            <p-button [label]="'common.cancel' | translate" severity="secondary" [outlined]="true" (onClick)="cancelParserDialog()"></p-button>
-            <p-button [label]="'parsers.uploadWithParser' | translate" (onClick)="confirmParserSelection()"
-              [disabled]="!canConfirmUpload()"></p-button>
-          }
         </ng-template>
-      </p-dialog>
+      </app-base-dialog>
 
       <app-file-content-dialog
         [file]="fileForContentDialog()"
@@ -657,6 +761,11 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   voiceTranscribing = signal(false);
   voiceAvailable = signal(false);
   chatMessages = signal<ChatMessageWithAudio[]>([]);
+  /** Active chat thread; null = new conversation (no thread yet) */
+  activeThreadId = signal<string | null>(null);
+  /** Threads for the current document (for picker) */
+  chatThreads = signal<ChatThreadInfo[]>([]);
+  chatThreadsLoading = signal(false);
   chatResponseMode = signal<ChatResponseMode>((ChatResponseModeValues ?? CHAT_MODE).TextOnly);
   voiceAutoSend = signal(false);
   /** Currently playing message index; only one at a time */
@@ -848,6 +957,11 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
           this.loadWorkspaceChatSettings();
           this.startJobsPolling();
 
+          // Reset chat state when document changes
+          this.activeThreadId.set(null);
+          this.chatMessages.set([]);
+          this.loadChatThreads();
+
           // Read pagination from URL — untracked so these signals
           // don't become effect dependencies
           this.paginationService.initializeFromQueryParams();
@@ -989,6 +1103,110 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       next: (list) => this.parsers.set(list),
       error: () => {},
     });
+  }
+
+  loadChatThreads(): void {
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    if (!wsId || !docId) return;
+    this.chatThreadsLoading.set(true);
+    this.apiService
+      .getChatThreads(wsId, docId, { page: 1, limit: 50 })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.chatThreads.set(res.threads);
+          this.chatThreadsLoading.set(false);
+        },
+        error: () => this.chatThreadsLoading.set(false),
+      });
+  }
+
+  loadMessagesForThread(threadId: string): void {
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    if (!wsId || !docId) return;
+    this.apiService
+      .getChatMessages(wsId, docId, threadId, { page: 1, limit: 100 })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          const msgs: ChatMessageWithAudio[] = res.messages
+            .filter((m) => m.question || m.answerText)
+            .map((m) => ({
+              question: m.question || '',
+              answerText: m.answerText ?? undefined,
+              confidence: m.confidence ?? undefined,
+              citations: (m.citations as Citation[]) ?? undefined,
+              fromCache: false,
+            }));
+          this.chatMessages.set(msgs);
+        },
+      });
+  }
+
+  onNewConversation(): void {
+    this.activeThreadId.set(null);
+    this.chatMessages.set([]);
+  }
+
+  onSelectThread(thread: ChatThreadInfo): void {
+    this.activeThreadId.set(thread.id);
+    this.loadMessagesForThread(thread.id);
+  }
+
+  confirmDeleteThread(thread: ChatThreadInfo): void {
+    this.confirmationService.confirm({
+      message: this.translateService.instant(_('chat.confirmDeleteThread')),
+      header: this.translateService.instant(_('chat.deleteThread')),
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      acceptLabel: this.translateService.instant(_('common.delete')),
+      rejectLabel: this.translateService.instant(_('common.cancel')),
+      accept: () => this.deleteThread(thread),
+    });
+  }
+
+  getThreadLabel(thread: ChatThreadInfo): string {
+    const title = thread.title || this.i18nService.translate('chat.threadTitle');
+    const date = thread.updatedAt ? new Date(thread.updatedAt).toLocaleDateString(undefined, { dateStyle: 'short' }) : '';
+    return date ? `${title} (${date})` : title;
+  }
+
+  exportThread(thread: ChatThreadInfo): void {
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    if (!wsId || !docId) return;
+    this.apiService
+      .exportChatThread(wsId, docId, thread.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `chat-${(thread.title || 'conversation').replace(/[^a-zA-Z0-9-_]/g, '_').slice(0, 40)}-${thread.id.slice(0, 8)}.md`;
+          link.click();
+          URL.revokeObjectURL(url);
+        },
+      });
+  }
+
+  private deleteThread(thread: ChatThreadInfo): void {
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    if (!wsId || !docId) return;
+    this.apiService
+      .deleteChatThread(wsId, docId, thread.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          if (this.activeThreadId() === thread.id) {
+            this.onNewConversation();
+          }
+          this.loadChatThreads();
+        },
+      });
   }
 
   loadDocument(): void {
@@ -1509,12 +1727,98 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     return typeof s === 'string' ? s : String(s);
   }
 
-  /** Parser dialog header as string (avoids [object Object] from translate) */
-  getParserDialogHeader(): string {
-    const files = this.pendingFiles();
-    if (files && files.length > 1) {
-      return this.translateService.instant(_('documents.selectParserForFiles'), { count: files.length });
+  jurisdictionReEvaluating = signal(false);
+
+  /** Number of jurisdiction candidates (for showing dropdown when > 1) */
+  jurisdictionCandidatesCount(doc: Document | null): number {
+    const candidates = doc?.jurisdictionCandidates;
+    if (!Array.isArray(candidates)) return 0;
+    return candidates.length;
+  }
+
+  /** Options for jurisdiction dropdown: None + unique candidates. Include current if not in candidates. */
+  jurisdictionOptions = computed(() => {
+    const doc = this.document();
+    const candidates = doc?.jurisdictionCandidates;
+    const options: Array<{ label: string; value: string | null }> = [
+      { label: this.translateService.instant(_('documents.jurisdictionNone')), value: null },
+    ];
+    if (!Array.isArray(candidates) || candidates.length === 0) return options;
+    const seen = new Set<string>();
+    for (const c of candidates) {
+      const j = c?.jurisdiction?.trim();
+      if (j && !seen.has(j)) {
+        seen.add(j);
+        options.push({ label: j, value: j });
+      }
     }
+    const current = this.getDisplayJurisdiction(doc);
+    if (current && !seen.has(current)) {
+      options.push({ label: current, value: current });
+    }
+    return options;
+  });
+
+  /** Document is available and has at least one file with content for re-evaluation */
+  canReEvaluateJurisdiction = computed(() => {
+    const doc = this.document();
+    if (!doc || doc.status !== 'available') return false;
+    const total = this.filesTotal();
+    return total > 0;
+  });
+
+  onJurisdictionChange(value: string | null): void {
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    if (!wsId || !docId) return;
+    const resolvedJurisdiction = value?.trim() || null;
+    this.apiService.updateDocument(wsId, docId, { resolvedJurisdiction }).subscribe({
+      next: (updated) => {
+        this.document.update((d) => (d ? { ...d, resolvedJurisdiction: updated.resolvedJurisdiction ?? undefined } : null));
+        this.messageService.add({
+          severity: 'success',
+          summary: this.translateService.instant(_('common.success')),
+          detail: this.translateService.instant(_('documents.jurisdictionUpdated')),
+        });
+      },
+      error: (err) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translateService.instant(_('common.error')),
+          detail: err.error?.message ?? this.translateService.instant(_('documents.updateError')),
+        });
+      },
+    });
+  }
+
+  onReEvaluateJurisdiction(): void {
+    const wsId = this.workspaceId();
+    const docId = this.documentId();
+    if (!wsId || !docId || this.jurisdictionReEvaluating()) return;
+    this.jurisdictionReEvaluating.set(true);
+    this.apiService.reEvaluateJurisdiction(wsId, docId).subscribe({
+      next: () => {
+        this.jurisdictionReEvaluating.set(false);
+        this.messageService.add({
+          severity: 'success',
+          summary: this.translateService.instant(_('common.success')),
+          detail: this.translateService.instant(_('documents.jurisdictionReEvaluateQueued')),
+        });
+        this.loadDocument();
+      },
+      error: (err) => {
+        this.jurisdictionReEvaluating.set(false);
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translateService.instant(_('common.error')),
+          detail: err.error?.message ?? this.translateService.instant(_('documents.updateError')),
+        });
+      },
+    });
+  }
+
+  /** Parser dialog header - generic only; file-specific message is in body to avoid duplication */
+  getParserDialogHeader(): string {
     const h = this.translateService.instant(_('documents.parserDialogTitle'));
     return typeof h === 'string' ? h : 'Choose Document Parser';
   }
@@ -1781,6 +2085,44 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     return !!p && this.isParserEnabled(p);
   }
 
+  parserDialogFooterButtons = computed<DialogFooterButton[]>(() => {
+    if (this.uploadingFiles()) {
+      return [
+        {
+          label: this.translateService.instant(_('documents.cancelUpload')),
+          severity: 'secondary',
+          outlined: true,
+          action: 'emit',
+          emitKey: 'cancelUpload',
+        },
+      ];
+    }
+    return [
+      {
+        label: this.translateService.instant(_('common.cancel')),
+        severity: 'secondary',
+        outlined: true,
+        action: 'close',
+      },
+      {
+        label: this.translateService.instant(_('parsers.confirmAndUpload')),
+        icon: 'pi pi-check',
+        severity: 'primary',
+        disabled: !this.canConfirmUpload(),
+        action: 'emit',
+        emitKey: 'confirmParser',
+      },
+    ];
+  });
+
+  onParserDialogButton(e: { key: string }): void {
+    if (e.key === 'confirmParser') {
+      this.confirmParserSelection();
+    } else if (e.key === 'cancelUpload') {
+      this.cancelUpload();
+    }
+  }
+
   sendQuestion(questionTextOverride?: string, forceFresh?: boolean, replaceAtIndex?: number): void {
     const questionText = (questionTextOverride ?? this.question().trim()).trim();
     if (!questionText) return;
@@ -1797,7 +2139,6 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     const mode = this.chatResponseMode();
     const workspaceId = this.workspaceId();
     const documentId = this.documentId();
-    const chatRequest = { question: questionText, language: currentLang, forceFresh };
 
     const handleChatResponse = (response: ChatResponse) => {
       const wasFirstMessage = this.chatMessages().length === 0 && replaceAtIndex == null;
@@ -1851,6 +2192,11 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       showError(detailKey);
     };
 
+    let resolvedThreadId: string | null = this.activeThreadId();
+    const runChat = () => {
+      const tid = resolvedThreadId!;
+      const chatRequest = { question: questionText, language: currentLang, forceFresh, threadId: tid };
+
     if (this.devVisualizationsService.enabled()) {
       this.apiService
         .chatPrepare(workspaceId, documentId, chatRequest, { signal: this.chatAbortController!.signal })
@@ -1874,13 +2220,116 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
           },
         });
     } else {
+      const wasFirstMessage = this.chatMessages().length === 0 && replaceAtIndex == null;
+      const needsAudio =
+        mode === (ChatResponseModeValues ?? CHAT_MODE).AudioOnly || mode === (ChatResponseModeValues ?? CHAT_MODE).AudioAndText;
+
+      const placeholderMessage: ChatMessageWithAudio = {
+        question: questionText,
+        answerText: '',
+        streaming: true,
+        audioState: 'none',
+      };
+      if (replaceAtIndex != null) {
+        this.chatMessages.update((messages) => {
+          const next = [...messages];
+          if (next[replaceAtIndex]) next[replaceAtIndex] = { ...placeholderMessage };
+          return next;
+        });
+      } else {
+        this.chatMessages.update((messages) => [...messages, placeholderMessage]);
+      }
+      this.loading.set(false);
+
+      const targetIndex = replaceAtIndex ?? this.chatMessages().length - 1;
+
       this.apiService
-        .chat(workspaceId, documentId, chatRequest, { signal: this.chatAbortController.signal })
+        .chatStream(workspaceId, documentId, chatRequest, { signal: this.chatAbortController!.signal })
         .subscribe({
-          next: handleChatResponse,
+          next: (event) => {
+            if (event.type === 'chunk') {
+              console.log(
+                '[ChatFlow] Update chatMessages signal: chunk',
+                `targetIndex=${targetIndex}`,
+                `contentLength=${event.content?.length ?? 0}`,
+              );
+              this.chatMessages.update((messages) => {
+                const next = [...messages];
+                if (next[targetIndex]) {
+                  next[targetIndex] = {
+                    ...next[targetIndex],
+                    answerText: (next[targetIndex].answerText ?? '') + event.content,
+                  };
+                }
+                return next;
+              });
+            } else if (event.type === 'done') {
+              console.log(
+                '[ChatFlow] Update chatMessages signal: done',
+                `targetIndex=${targetIndex}`,
+                `answerLength=${event.answerText?.length ?? 0}`,
+                `citationsCount=${event.citations?.length ?? 0}`,
+              );
+              const finalMessage: ChatMessageWithAudio = {
+                question: questionText,
+                answerText: event.answerText,
+                confidence: event.confidence,
+                citations: event.citations,
+                audioState: needsAudio ? 'synthesizing' : 'none',
+                fromCache: false,
+                streaming: false,
+              };
+              this.chatMessages.update((messages) => {
+                const next = [...messages];
+                if (next[targetIndex]) next[targetIndex] = finalMessage;
+                return next;
+              });
+              if (wasFirstMessage) {
+                this.onboardingService.markChecklistItem('run_first_review');
+              }
+              if (needsAudio && event.answerText?.trim()) {
+                this.synthesizeAndPlayForMessage(targetIndex, event.answerText, currentLang);
+              }
+            } else if (event.type === 'error') {
+              console.log(
+                '[ChatFlow] Update chatMessages signal: error',
+                `targetIndex=${targetIndex}`,
+                `message=${event.message}`,
+              );
+              this.chatMessages.update((messages) => {
+                const next = [...messages];
+                if (next[targetIndex]) {
+                  next[targetIndex] = {
+                    ...next[targetIndex],
+                    answerText: (next[targetIndex].answerText ?? '') + `[Error: ${event.message}]`,
+                    streaming: false,
+                  };
+                }
+                return next;
+              });
+              handleChatError({}, 'chat.sendError');
+            }
+          },
           error: handleChatError,
         });
     }
+    };
+    if (!resolvedThreadId) {
+      this.apiService
+        .createChatThread(workspaceId, documentId, questionText.slice(0, 80))
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (thread) => {
+            this.activeThreadId.set(thread.id);
+            this.loadChatThreads();
+            resolvedThreadId = thread.id;
+            runChat();
+          },
+          error: (e) => handleChatError(e),
+        });
+      return;
+    }
+    runChat();
   }
 
   onLlmPayloadApproved(requestId: string): void {

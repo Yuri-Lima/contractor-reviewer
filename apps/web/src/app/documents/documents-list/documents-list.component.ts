@@ -9,7 +9,7 @@ import { Toolbar } from 'primeng/toolbar';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ContextMenu } from 'primeng/contextmenu';
 import { Toast } from 'primeng/toast';
-import { Dialog } from 'primeng/dialog';
+import { BaseDialogComponent, type DialogFooterButton } from '../../core/components/base-dialog';
 import { TextareaModule } from 'primeng/textarea';
 import { SelectModule } from 'primeng/select';
 import { AccordionModule } from 'primeng/accordion';
@@ -55,7 +55,7 @@ import { DocumentsListServiceImpl } from './documents-list.service';
     ConfirmDialog,
     Toast,
     ContextMenu,
-    Dialog,
+    BaseDialogComponent,
     TextareaModule,
     SelectModule,
     AccordionModule,
@@ -237,13 +237,28 @@ import { DocumentsListServiceImpl } from './documents-list.service';
         <div class="documents-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="documents-grid">
           @for (doc of documents(); track doc.id) {
             <div
-              class="document-card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-md dark:hover:shadow-lg transition-all duration-200 relative cursor-pointer"
+              class="document-card group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-md dark:hover:shadow-lg transition-all duration-200 relative cursor-pointer"
               [class.ring-2]="selectedDocument()?.id === doc.id"
               [class.ring-blue-500]="selectedDocument()?.id === doc.id"
               [class.dark:ring-blue-400]="selectedDocument()?.id === doc.id"
               (click)="selectDocument(doc)"
               (contextmenu)="onDocumentContextMenu($event, doc)"
             >
+              <div
+                class="absolute top-3 right-3 z-10 opacity-0 scale-75 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-300 ease-out"
+                (click)="$event.stopPropagation()"
+              >
+                <p-button
+                  icon="pi pi-trash"
+                  severity="danger"
+                  [outlined]="true"
+                  size="small"
+                  [loading]="deletingDocId() === doc.id"
+                  [disabled]="deletingDocId() !== null"
+                  (onClick)="confirmDelete(doc)"
+                  [pTooltip]="'tooltip.deleteDocument' | translate"
+                ></p-button>
+              </div>
               <a
                 [routerLink]="workspaceDocLink(workspaceId(), doc.id)"
                 class="block no-underline"
@@ -293,47 +308,27 @@ import { DocumentsListServiceImpl } from './documents-list.service';
         </p-card>
       }
 
-      <p-dialog
+      <app-base-dialog
         [visible]="promptDialogVisible()"
         [header]="'documents.promptDialogTitle' | translate"
-        [modal]="true"
-        [style]="{ width: 'min(95vw, 600px)' }"
-        [contentStyle]="{ overflow: 'auto', maxHeight: '70vh' }"
-        [baseZIndex]="10000"
-        (onHide)="clearPromptDialogState()"
+        [width]="'min(95vw, 600px)'"
+        [maxHeight]="'70vh'"
+        [contentClass]="'overflow-auto'"
+        [footerButtons]="promptDialogFooterButtons()"
+        (closed)="clearPromptDialogState()"
+        (buttonClicked)="onPromptDialogButton($event)"
       >
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{{ 'documents.promptDialogDescription' | translate }}</p>
-        <textarea
-          pTextarea
-          [ngModel]="editedGeneratedPrompt()"
-          (ngModelChange)="editedGeneratedPrompt.set($event)"
-          rows="12"
-          class="w-full font-mono text-sm mb-4"
-        ></textarea>
-        <div class="flex flex-wrap gap-2 justify-end">
-          <p-button
-            [label]="'documents.approveAndCreate' | translate"
-            icon="pi pi-check"
-            (onClick)="onApproveAndCreate()"
-          ></p-button>
-          <p-button
-            [label]="'documents.rejectAndCreate' | translate"
-            icon="pi pi-times"
-            severity="secondary"
-            [outlined]="true"
-            (onClick)="onRejectAndCreate()"
-          ></p-button>
-          <p-button
-            [label]="'documents.recreatePrompt' | translate"
-            icon="pi pi-refresh"
-            severity="secondary"
-            [outlined]="true"
-            [loading]="generatingPrompt()"
-            [disabled]="generatingPrompt()"
-            (onClick)="onRecreatePrompt()"
-          ></p-button>
-        </div>
-      </p-dialog>
+        <ng-template #bodyTemplate>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{{ 'documents.promptDialogDescription' | translate }}</p>
+          <textarea
+            pTextarea
+            [ngModel]="editedGeneratedPrompt()"
+            (ngModelChange)="editedGeneratedPrompt.set($event)"
+            rows="12"
+            class="w-full font-mono text-sm mb-4"
+          ></textarea>
+        </ng-template>
+      </app-base-dialog>
 
       <p-confirmDialog></p-confirmDialog>
       <p-toast></p-toast>
@@ -513,6 +508,43 @@ export class DocumentsListComponent implements OnInit {
 
   clearContextMarkdown(): void {
     this.contextMarkdown.set('');
+  }
+
+  promptDialogFooterButtons = computed<DialogFooterButton[]>(() => [
+    {
+      label: this.translateService.instant(_('documents.approveAndCreate')),
+      icon: 'pi pi-check',
+      action: 'emit',
+      emitKey: 'approve',
+    },
+    {
+      label: this.translateService.instant(_('documents.rejectAndCreate')),
+      icon: 'pi pi-times',
+      severity: 'secondary',
+      outlined: true,
+      action: 'emit',
+      emitKey: 'reject',
+    },
+    {
+      label: this.translateService.instant(_('documents.recreatePrompt')),
+      icon: 'pi pi-refresh',
+      severity: 'secondary',
+      outlined: true,
+      loading: this.generatingPrompt(),
+      disabled: this.generatingPrompt(),
+      action: 'emit',
+      emitKey: 'recreate',
+    },
+  ]);
+
+  onPromptDialogButton(e: { key: string }): void {
+    if (e.key === 'approve') {
+      this.onApproveAndCreate();
+    } else if (e.key === 'reject') {
+      this.onRejectAndCreate();
+    } else if (e.key === 'recreate') {
+      this.onRecreatePrompt();
+    }
   }
 
   clearPromptDialogState(): void {

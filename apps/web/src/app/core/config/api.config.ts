@@ -87,6 +87,8 @@ export const API_CONFIG = {
     documentsGeneratePrompt: (workspaceId: string) =>
       `/workspaces/${workspaceId}/documents/generate-prompt`,
     chat: (workspaceId: string, documentId: string) => `/workspaces/${workspaceId}/documents/${documentId}/chat`,
+    chatStream: (workspaceId: string, documentId: string) =>
+      `/workspaces/${workspaceId}/documents/${documentId}/chat/stream`,
     redline: (workspaceId: string, documentId: string) => `/workspaces/${workspaceId}/documents/${documentId}/redline`,
     privacy: (workspaceId: string) => `/workspaces/${workspaceId}/privacy`,
     audit: (workspaceId: string) => `/workspaces/${workspaceId}/audit`,
@@ -95,6 +97,8 @@ export const API_CONFIG = {
     prompts: (workspaceId: string) => `/workspaces/${workspaceId}/prompts`,
     documentPrompts: (workspaceId: string, documentId: string) =>
       `/workspaces/${workspaceId}/documents/${documentId}/prompts`,
+    documentReEvaluateJurisdiction: (workspaceId: string, documentId: string) =>
+      `/workspaces/${workspaceId}/documents/${documentId}/re-evaluate-jurisdiction`,
     documentParsers: (workspaceId: string) => `/workspaces/${workspaceId}/document-parsers`,
   },
 };

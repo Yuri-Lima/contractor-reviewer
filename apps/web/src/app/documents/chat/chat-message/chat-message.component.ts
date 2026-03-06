@@ -51,14 +51,16 @@ const TRUNCATE_LENGTH = 80;
       </button>
 
       @if (expanded()) {
-        <div class="p-4 pt-2 space-y-3">
-          <div class="message-question">
+        <div class="p-4 pt-2 space-y-4 flex flex-col">
+          <!-- You: right-aligned bubble -->
+          <div class="message-question flex flex-col items-end text-right max-w-[85%] ml-auto px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/50">
             <strong class="text-blue-600 dark:text-blue-400">{{ 'documents.you' | translate }}:</strong>
             <p class="text-gray-800 dark:text-gray-200 mt-1 whitespace-pre-wrap">{{ message().question }}</p>
           </div>
 
           @if (hasAnswer()) {
-            <div class="message-answer">
+            <!-- Assistant: left-aligned bubble -->
+            <div class="message-answer flex flex-col items-start text-left max-w-[85%] mr-auto px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
               <strong class="text-green-600 dark:text-green-400">{{ 'documents.assistant' | translate }}:</strong>
               @if (chatResponseMode() !== 'audio_only') {
                 <p class="text-gray-800 dark:text-gray-200 mt-1 mb-2 whitespace-pre-wrap">{{ message().answerText }}</p>
@@ -147,6 +149,17 @@ const TRUNCATE_LENGTH = 80;
       }
     </div>
   `,
+  styles: [
+    `
+      :host {
+        display: block;
+        margin-bottom: 0.125rem;
+      }
+      :host:last-child {
+        margin-bottom: 0;
+      }
+    `,
+  ],
 })
 export class ChatMessageComponent {
   private readonly translateService = inject(TranslateService);

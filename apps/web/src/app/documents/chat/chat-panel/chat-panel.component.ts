@@ -55,7 +55,7 @@ import { ChatSidebarComponent } from '../chat-sidebar/chat-sidebar.component';
             (deleteThread)="deleteThread.emit($event)"
           />
           <div class="chat-main flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900">
-            <div class="chat-messages flex-1 overflow-y-auto space-y-4 p-4 min-h-0">
+            <div class="chat-messages flex flex-col flex-1 overflow-y-auto px-4 pb-4 pt-1 min-h-0">
               @for (msg of messages(); track $index) {
                 <app-chat-message
                   [message]="msg"
@@ -116,7 +116,7 @@ import { ChatSidebarComponent } from '../chat-sidebar/chat-sidebar.component';
             (deleteThread)="deleteThread.emit($event)"
           />
           <div class="chat-main flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900 min-h-0">
-            <div class="chat-messages flex-1 overflow-y-auto space-y-4 p-4 min-h-0">
+            <div class="chat-messages flex flex-col flex-1 overflow-y-auto px-4 pb-4 pt-1 min-h-0">
               @for (msg of messages(); track $index) {
                 <app-chat-message
                   [message]="msg"
@@ -159,6 +159,12 @@ import { ChatSidebarComponent } from '../chat-sidebar/chat-sidebar.component';
       }
       .chat-section-dialog app-chat-sidebar {
         flex-shrink: 0;
+      }
+      .chat-messages {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding-top: 0.125rem; /* minimal - match gap so first item has same spacing as between items */
       }
     `,
   ],

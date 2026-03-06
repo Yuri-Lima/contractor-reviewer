@@ -163,6 +163,7 @@ See `.env.production.example` in the repository root. Summary:
 | `PARSER_KEYS_ENCRYPTION_KEY` | If using DPT-2/LlamaParse/Unstructured | 32-byte hex key |
 | `S3_*` | If using S3/R2 | Storage credentials |
 | `EVENTHOG_*`, `SENTRY_DSN` | Optional | Observability |
+| `LOG_LEVEL` | Optional | Log verbosity: `error`, `warn`, `log`, `info`, `debug`, `verbose`, or `off`. Default: `log` in production. Use `warn` or `error` in production to reduce flow-tracking logs. See [logging.md](logging.md). |
 
 ## Storage
 

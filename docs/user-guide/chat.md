@@ -2,7 +2,7 @@
 
 ## Summary
 
-Chat lets you ask questions about your contract in natural language. The AI assistant answers using the document content and, when available, legal sources. Each answer includes **citations** (references to specific pages, paragraphs, or legal sources) so you can verify the evidence behind the response. You can use voice input, choose how responses are displayed (text, audio, or both), and optionally request a fresh response instead of a cached one.
+Chat lets you ask questions about your contract in natural language. The AI assistant answers using the document content and, when available, legal sources. Each answer includes **citations** (references to specific pages, paragraphs, or legal sources) so you can verify the evidence behind the response. You can use **conversations** (threads) to keep related questions together, **export** a conversation as markdown, use voice input, choose how responses are displayed (text, audio, or both), and optionally request a fresh response instead of a cached one. The assistant uses **memory** (summaries of prior exchanges) to provide better context across turns.
 
 ## When to Use
 
@@ -22,9 +22,17 @@ Chat lets you ask questions about your contract in natural language. The AI assi
 
 1. Open a document with available files (see [Documents](documents.md)).
 2. Click the **Chat** tab in the document view.
-3. Type your question in the input field (e.g., "What is the termination notice period?").
-4. Click **Send** or press Enter.
-5. The assistant responds with an answer and citations.
+3. (Optional) Select an existing **conversation** from the list, or click **New conversation** to start fresh.
+4. Type your question in the input field (e.g., "What is the termination notice period?").
+5. Click **Send** or press Enter.
+6. The assistant responds with an answer and citations.
+
+### Manage Conversations
+
+- **New conversation**: Click **New conversation** to start a new thread. Each thread keeps its own history.
+- **Switch conversation**: Click a conversation in the list to load its messages.
+- **Delete conversation**: Click the trash icon next to a conversation to remove it and all its messages.
+- **Export conversation**: Click the download icon next to a conversation to export it as a markdown file (`.md`).
 
 ### Use Voice Input (Optional)
 
@@ -74,6 +82,10 @@ When the AI cannot find sufficient evidence, it may respond with **NOT FOUND** a
 ## Developer Mode
 
 When **Developer Mode** is enabled in Account Settings, chat uses a two-step flow: **Prepare** → **Approve** → **Execute**. Before the question is sent to the AI, an LLM Payload Preview dialog appears with tabs for Question, System Prompt, User Prompt, Contract Chunks, Legal Chunks, and Model Params. You can review the payload and click **Approve and Send** to proceed. See [Developer Mode](developer-mode.md) for details.
+
+## Memory and Context
+
+The assistant maintains **memory** (summaries of prior questions and answers) for each conversation. This memory is injected into the context when you ask follow-up questions, so the assistant can refer to earlier findings. Memory is stored per conversation and per document. It is purged according to the same retention policy as chat messages. When no-logs mode skips chat persistence, memory is not updated.
 
 ## Related Topics
 

@@ -109,13 +109,17 @@ User question
   ↓
 Embed question (OpenAI text-embedding-3-small)
   ↓
-Vector search (contract chunks + legal chunks)
+Vector search (document chunks + legal chunks)
+  ↓
+Inject memory (document/thread conversation summaries)
   ↓
 Build context with citations
   ↓
 OpenAI chat (PromptService, workspace overrides)
   ↓
 Response with confidence + citations
+  ↓
+SummarizeMemory job (async) → update thread memory for future turns
 ```
 
 ## User Guide
@@ -126,9 +130,11 @@ For end-user help and step-by-step instructions, see the topic-based user guide:
 
 ## Architecture Docs
 
+- [logging.md](logging.md) — Backend logging strategy, flow-tracking logs, LOG_LEVEL configuration
 - [websocket.md](websocket.md) — WebSocket architecture, Redis Streams, job progress
 - [deployment.md](deployment.md) — Production deployment with Traefik, TLS
 - [rag-pipeline.md](rag-pipeline.md) — RAG pipeline reference (file map, flow, config)
+- [memory.md](memory.md) — Chat memory (thread/document summaries, SummarizeMemory job, RAG injection, purge, DSAR)
 - [vector-db-separation.md](vector-db-separation.md) — Future migration to separate vector DB
 - [storage.md](storage.md) — S3/local storage, validations
 - [workspace-rbac.md](workspace-rbac.md) — Multi-tenant, RBAC

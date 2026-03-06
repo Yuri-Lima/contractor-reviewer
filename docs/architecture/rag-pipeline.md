@@ -6,16 +6,21 @@ Canonical reference for the ContractAI Review RAG pipeline. Use this document to
 
 | Component | File | Role |
 |-----------|------|------|
-| Main RAG flow | `apps/api/src/rag/rag.service.ts` | `generateAnswer()`: embed question, search chunks, build context, call OpenAI |
-| Contract retrieval | Same file | `searchContractChunks()` — pgvector cosine similarity |
+| Main RAG flow | `apps/api/src/rag/rag.service.ts` | `generateAnswer()`: embed question, search chunks, inject memory, build context, call OpenAI |
+| Document retrieval | Same file | `searchDocumentChunks()` — pgvector cosine similarity |
 | Legal retrieval | Same file | `searchLegalChunks()` — pgvector + jurisdiction filter |
+| Jurisdiction resolution | `apps/api/src/rag/jurisdiction-resolver.service.ts`, `jurisdiction-evaluation.service.ts` | Evidence extraction, LLM evaluation, candidates for user override; see [jurisdiction-resolution.md](./jurisdiction-resolution.md) |
+| Memory injection | Same file | `MemoryService.getDocumentAndThreadMemory()` — document/thread summaries prepended to context |
 | Embeddings | `apps/api/src/rag/embeddings.service.ts` | OpenAI `text-embedding-3-small` |
 | Chunking | `apps/api/src/rag/chunking.service.ts` | Paragraph/sentence/fixed-size strategies |
 | Prompts | `apps/api/src/prompts/prompt.service.ts` | DB-backed prompts, workspace overrides |
 | Prompt Generator | `apps/api/src/prompts/prompt-generator.service.ts` | LLM-assisted generation of document/workspace prompts from title+description; see [prompt-generator.md](./prompt-generator.md) |
 | Vector store | `apps/api/src/vector-store/` | `IVectorStore` interface, pgvector implementation |
 | Ingestion | `apps/api/src/workers/parsing.processor.ts`, `chunking.processor.ts`, `embeddings.processor.ts` | Parsing → Chunking → Embeddings |
+| Memory summarization | `apps/api/src/workers/summarize-memory.processor.ts` | BullMQ job: summarize thread Q&A → upsert thread memory |
 | Redline RAG | `apps/api/src/documents/redline.service.ts` | Similar flow for redline generation |
+| Memory | `apps/api/src/memory/memory.service.ts` | Thread/document memory for RAG context injection |
+| Memory entity | `apps/api/src/entities/memory.entity.ts` | `scopeType` (thread/document/workspace), `scopeId`, `content`, `version` |
 | Parsers | `apps/api/src/parsers/` | Docling, PDFPlumber, DPT-2 adapters |
 
 ## Data Flow
@@ -45,16 +50,17 @@ flowchart TD
     CheckCache --> Similarity{Similarity >= threshold?}
     Similarity -->|yes| ReturnCached[Return Cached + fromCache: true]
     Similarity -->|no| FullRAG
-    FullRAG --> SearchContract[vectorStore.searchContractChunks]
-    SearchContract --> SearchLegal[vectorStore.searchLegalChunks]
-    SearchLegal --> BuildContext[Build context with citations]
+    FullRAG --> SearchDocument[vectorStore.searchDocumentChunks]
+    SearchDocument --> SearchLegal[vectorStore.searchLegalChunks]
+    SearchLegal --> InjectMemory[Inject document/thread memory]
+    InjectMemory --> BuildContext[Build context with citations]
     BuildContext --> PromptService[PromptService.getPrompt]
     PromptService --> OpenAI[OpenAI chat]
     OpenAI --> StoreCache[Store in Cache]
     StoreCache --> ReturnFresh[Return + fromCache: false]
 ```
 
-Flow: `ChatController` → `RagService.generateAnswer()` → semantic cache lookup (or bypass if `forceFresh`) → `EmbeddingsService` + `IVectorStore` + `PromptService` → OpenAI → optional cache store.
+Flow: `ChatController` → `RagService.generateAnswer()` → semantic cache lookup (or bypass if `forceFresh`) → `EmbeddingsService` + `IVectorStore` + `MemoryService.getDocumentAndThreadMemory()` + `PromptService` → OpenAI → optional cache store. After saving the chat message, a `SummarizeMemory` job is enqueued (unless no-logs skips persistence).
 
 ### Semantic Query Cache
 
@@ -63,7 +69,7 @@ Before running the full RAG pipeline, the system checks a Redis-based semantic q
 - **Cache keys**: `rag:cache:data:{key}`, `rag:cache:index:{documentId}:{jurisdiction}:{language}`, `rag:doc:{documentId}:keys`
 - **Lookup**: Generate query embedding → compare cosine similarity with cached embeddings → if `max(similarity) >= threshold`, return cached response with `fromCache: true`
 - **Threshold**: Configurable per user (Account Settings > Chat) or server default (`RAG_CACHE_SIMILARITY_THRESHOLD`, default 0.95)
-- **Invalidation**: On document delete and when embeddings job completes (reprocessing)
+- **Invalidation**: On document delete, when embeddings job completes (reprocessing), and when jurisdiction is overridden or re-evaluated
 - **TTL**: 24h default (`RAG_CACHE_TTL_SECONDS`)
 - **Client**: `forceFresh: true` bypasses cache; responses include `fromCache` flag
 
@@ -101,7 +107,7 @@ interface ChatResponse {
 
 ```typescript
 interface Citation {
-  type: 'contract' | 'legal';
+  type: 'document' | 'legal';  // 'contract' is deprecated; use 'document' for new code
   fileName?: string;
   pageNumber?: number;
   paragraph?: string;
@@ -113,11 +119,13 @@ interface Citation {
 }
 ```
 
+**Note:** `'contract'` is deprecated. Use `'document'` for citations from the user's uploaded document. The union still accepts `'contract'` for backward compatibility with cached/legacy responses. Use `isDocumentCitation(c)` to treat both as document citations.
+
 ### VectorStore (from `apps/api/src/vector-store/vector-store.interface.ts`)
 
 ```typescript
 interface IVectorStore {
-  searchContractChunks(queryEmbedding: number[], documentId: string, limit?: number): Promise<VectorSearchResult<Chunk>[]>;
+  searchDocumentChunks(queryEmbedding: number[], documentId: string, limit?: number): Promise<VectorSearchResult<Chunk>[]>;
   searchLegalChunks(queryEmbedding: number[], filters?: LegalChunkFilters, limit?: number): Promise<LegalChunkSearchResult[]>;
 }
 
@@ -166,11 +174,27 @@ interface LegalChunkSearchResult extends VectorSearchResult<Embedding> {
 
 **Prompt hierarchy:** For system keys (`chat.system`, `redline.system`): `global.system` + `workspace.system` + document override (per scope toggles). See [prompt-generator.md](prompt-generator.md) for prompt categories and create-document API.
 
+## Memory (Conversation Summaries)
+
+The system maintains **memory** per thread and optionally per document. Memory is used to inject prior conversation context into RAG prompts for multi-turn coherence.
+
+| Component | File | Role |
+|-----------|------|------|
+| Memory entity | `apps/api/src/entities/memory.entity.ts` | `scopeType` (thread/document/workspace), `scopeId`, `content`, `version` |
+| MemoryService | `apps/api/src/memory/memory.service.ts` | `upsert`, `getByScope`, `getDocumentAndThreadMemory`, `listByWorkspace` |
+| SummarizeMemory job | `apps/api/src/workers/summarize-memory.processor.ts` | After each chat message (when persisted), LLM summarizes thread Q&A → upsert thread memory |
+| Memory queue | `apps/api/src/queue/queue.module.ts` | BullMQ queue `memory` |
+| Purge | `apps/api/src/retention/purge.service.ts` | `purgeExpiredMemory()` — orphaned memories + retention-based; runs after chat purge |
+| DSAR export | `apps/api/src/privacy/privacy.service.ts` | Memories included in privacy export JSON |
+
+Memory is injected into the RAG context before the LLM call. Thread memory is updated asynchronously via the `memory` queue.
+
 ## Current State Summary
 
 | Area | Status |
 |------|--------|
 | RAG pipeline | `RagService` + workers — centralized, works |
+| Memory | Thread/document summaries; SummarizeMemory job; RAG injection; DSAR export; purge |
 | Prompts | `PromptService` — DB-backed, workspace overrides |
 | Docling | **Default parser** — DoclingAdapter, `services/docling/` |
 | DOCX | Supported — Docling, PDFPlumber, DPT-2 |

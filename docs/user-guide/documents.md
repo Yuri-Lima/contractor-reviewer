@@ -44,6 +44,10 @@ You can use a prompt category, generate a custom prompt, or neither. Document pr
 6. Confirm the upload. Files are processed in the background.
 7. Wait until status changes from "Processing" to "Available".
 
+### Jurisdiction
+
+When a document has multiple jurisdiction candidates (e.g., governing law clauses from different files), the document view shows a **jurisdiction dropdown** so you can choose or override the AI-selected jurisdiction. Use the **Re-evaluate** button to re-run the jurisdiction analysis from all files. Jurisdiction affects which legal sources are used in Chat and Redline. See [Chat](chat.md) for how legal context is applied.
+
 ### View File Content
 
 1. In the document view, select the **View** tab (or equivalent).

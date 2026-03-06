@@ -3,7 +3,7 @@
  * Uses Redis with workspace/document-scoped keys for horizontal scaling.
  * TTL 5 minutes; one-time use (deleted after execute).
  */
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import IORedis from 'ioredis';
 import { randomUUID } from 'crypto';
 import { ChatPreparePayload } from '@contractai-review/shared';
@@ -24,7 +24,7 @@ function parsePayload(raw: string | null): ChatPreparePayload | null {
       typeof parsed === 'object' &&
       typeof (parsed as ChatPreparePayload).systemPrompt === 'string' &&
       typeof (parsed as ChatPreparePayload).userPrompt === 'string' &&
-      Array.isArray((parsed as ChatPreparePayload).contractChunks) &&
+      Array.isArray((parsed as ChatPreparePayload).documentChunks) &&
       Array.isArray((parsed as ChatPreparePayload).legalChunks)
     ) {
       return parsed as ChatPreparePayload;
@@ -37,6 +37,8 @@ function parsePayload(raw: string | null): ChatPreparePayload | null {
 
 @Injectable()
 export class ChatPrepareCacheService {
+  private readonly logger = new Logger(ChatPrepareCacheService.name);
+
   constructor(
     @Inject(REDIS_CLIENT)
     private readonly redis: IORedis,
@@ -54,6 +56,11 @@ export class ChatPrepareCacheService {
     const key = buildKey(workspaceId, documentId, requestId);
     const value = JSON.stringify(payload);
     await this.redis.set(key, value, 'EX', TTL_SECONDS);
+    this.logger.log('[ChatPrepare] Payload stored', {
+      workspaceId,
+      documentId,
+      requestId,
+    });
     return requestId;
   }
 

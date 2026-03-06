@@ -8,6 +8,7 @@ import { DocumentPromptsController } from './document-prompts.controller';
 import { Document } from '../entities/document.entity';
 import { DocumentFile } from '../entities/document-file.entity';
 import { DocumentJob } from '../entities/document-job.entity';
+import { ChatThread } from '../entities/chat-thread.entity';
 import { ChatMessage } from '../entities/chat-message.entity';
 import { DocumentVersion } from '../entities/document-version.entity';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
@@ -22,6 +23,7 @@ import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { TranscriptionModule } from '../transcription/transcription.module';
 import { TtsModule } from '../tts/tts.module';
+import { ChatThreadService } from './chat-thread.service';
 import { ChatMessageService } from './chat-message.service';
 import { VersionService } from './version.service';
 import { RedlineService } from './redline.service';
@@ -29,6 +31,7 @@ import { DiffService } from './diff.service';
 import { DocumentDeletionOrchestrator } from './document-deletion.orchestrator';
 import { Embedding } from '../entities/embedding.entity';
 import { ChunksModule } from '../chunks/chunks.module';
+import { MemoryModule } from '../memory/memory.module';
 
 @Module({
   imports: [
@@ -36,6 +39,7 @@ import { ChunksModule } from '../chunks/chunks.module';
       Document,
       DocumentFile,
       DocumentJob,
+      ChatThread,
       ChatMessage,
       DocumentVersion,
       WorkspaceSettings,
@@ -51,6 +55,7 @@ import { ChunksModule } from '../chunks/chunks.module';
     PromptsModule,
     AuditModule,
     AuthModule,
+    MemoryModule,
     TranscriptionModule,
     TtsModule,
   ],
@@ -62,12 +67,20 @@ import { ChunksModule } from '../chunks/chunks.module';
   ],
   providers: [
     DocumentsService,
+    ChatThreadService,
     ChatMessageService,
     VersionService,
     RedlineService,
     DiffService,
     DocumentDeletionOrchestrator,
   ],
-  exports: [DocumentsService, ChatMessageService, VersionService, RedlineService, DiffService],
+  exports: [
+    DocumentsService,
+    ChatThreadService,
+    ChatMessageService,
+    VersionService,
+    RedlineService,
+    DiffService,
+  ],
 })
 export class DocumentsModule {}

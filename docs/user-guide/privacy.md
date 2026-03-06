@@ -39,6 +39,7 @@ The Privacy page lets you control how your data is stored and for how long. You 
 
 1. Find the **Export Data (DSAR-lite)** section.
 2. Read what will be exported:
+   - **Memories** (conversation summaries for threads and documents)
    - Chat messages (according to no-logs configuration)
    - Document version metadata
    - Audit logs related to your user
@@ -51,6 +52,7 @@ The Privacy page lets you control how your data is stored and for how long. You 
 
 - **Files**: Kept according to **File Retention** in Workspace Settings (e.g., 1–365 days). A daily purge deletes expired files.
 - **Text and embeddings**: Kept according to **Text and Embeddings Retention** (e.g., 1–730 days).
+- **Memories**: Conversation summaries (thread/document) used to improve chat context. Stored unless no-logs skips chat. Purged with chat (retention-based and orphan cleanup).
 - **Chat messages**: Stored unless no-logs is enabled with "Do not persist chat messages."
 - **Versions**: Stored unless no-logs is enabled with "Do not persist versions."
 - **Audit logs**: Action, user, target, metadata. Retention depends on workspace and system configuration.

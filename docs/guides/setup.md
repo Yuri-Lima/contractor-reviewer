@@ -117,6 +117,7 @@ Abre em http://localhost:4200.
 | `RATE_LIMIT_TOKENS_PER_DAY` | Não | Budget diário de tokens OpenAI por usuário/workspace (padrão: `100000`). Bloqueia abuso. |
 | `WS_PORT` | Não | Porta do servidor WebSocket (padrão: `3200`) |
 | `WS_ENABLED` | Não | `false` para desabilitar WebSocket e consumer de stream |
+| `LOG_LEVEL` | Não | Verbosidade dos logs: `error`, `warn`, `log`, `info`, `debug`, `verbose`, `off`. Padrão: `debug` em dev, `log` em produção. Use `warn` ou `error` em produção para reduzir logs de fluxo. Ver [logging.md](../architecture/logging.md). |
 
 ## Estrutura do monorepo
 

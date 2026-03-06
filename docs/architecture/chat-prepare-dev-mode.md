@@ -4,7 +4,7 @@ Reference for the two-phase chat flow used when Developer Mode is enabled. Allow
 
 ## Purpose
 
-- Inspect system prompt, user prompt, contract chunks, legal chunks, and model params before the LLM is called
+- Inspect system prompt, user prompt, document chunks, legal chunks, and model params before the LLM is called
 - Verify RAG context and retrieval quality during development
 - Only active when both Developer Mode (frontend) and `CHAT_PREPARE_ENABLED` (backend) are enabled
 
@@ -53,7 +53,7 @@ Same body as main chat:
   "payload": {
     "systemPrompt": "string",
     "userPrompt": "string",
-    "contractChunks": [
+    "documentChunks": [
       { "text": "string", "pageNumber": 1, "paragraphId": "p1", "similarity": 0.85 }
     ],
     "legalChunks": [

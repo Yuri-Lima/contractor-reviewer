@@ -64,7 +64,7 @@ Account Settings > Chat tab: users can set `ragCacheSimilarityThreshold` (0.80â€
 
 - **Shared Redis**: BullMQ requires `maxmemory-policy=noeviction` for queue reliability. Cache keys have TTL and expire; when memory is full, Redis rejects writes â€” RagCacheService handles errors gracefully (RAG works without cache).
 - **Best-effort**: Cache is best-effort; RAG functions correctly when Redis is unavailable.
-- **No plaintext logging**: Never log contract content, chunks, or user questions. Cache hit/miss counts are acceptable for observability.
+- **No plaintext logging**: Never log document content, chunks, or user questions. Cache hit/miss counts are acceptable for observability.
 
 ## API Flags
 

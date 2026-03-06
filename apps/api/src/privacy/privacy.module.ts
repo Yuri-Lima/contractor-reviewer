@@ -11,9 +11,11 @@ import { ChatMessage } from '../entities/chat-message.entity';
 import { DocumentVersion } from '../entities/document-version.entity';
 import { WorkspaceModule } from '../workspace/workspace.module';
 import { AuditModule } from '../audit/audit.module';
+import { MemoryModule } from '../memory/memory.module';
 
 @Module({
   imports: [
+    MemoryModule,
     TypeOrmModule.forFeature([
       WorkspaceSettings,
       Document,

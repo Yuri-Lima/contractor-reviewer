@@ -10,6 +10,7 @@ import { DocumentJob } from '../entities/document-job.entity';
 import { AuditLog } from '../entities/audit-log.entity';
 import { ChatMessage } from '../entities/chat-message.entity';
 import { DocumentVersion } from '../entities/document-version.entity';
+import { MemoryService } from '../memory/memory.service';
 
 @Injectable()
 export class PrivacyService {
@@ -28,6 +29,7 @@ export class PrivacyService {
     private chatMessageRepository: Repository<ChatMessage>,
     @InjectRepository(DocumentVersion)
     private versionRepository: Repository<DocumentVersion>,
+    private memoryService: MemoryService,
   ) {}
 
   /**
@@ -97,9 +99,19 @@ export class PrivacyService {
         })
       : [];
 
+    const memories = await this.memoryService.listByWorkspace(workspaceId);
+
     return {
       workspaceId,
       exportedAt: new Date().toISOString(),
+      memories: memories.map((m) => ({
+        id: m.id,
+        scopeType: m.scopeType,
+        scopeId: m.scopeId,
+        content: m.content,
+        version: m.version,
+        updatedAt: m.updatedAt.toISOString(),
+      })),
       chatMessages: chatMessages.map((msg) => ({
         id: msg.id,
         documentId: msg.documentId,

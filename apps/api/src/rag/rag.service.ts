@@ -1,16 +1,15 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { OpenAI } from 'openai';
 import { Chunk } from '../entities/chunk.entity';
-import { Embedding } from '../entities/embedding.entity';
 import { Document } from '../entities/document.entity';
 import {
   ChatPreparePayload,
   ChatPrepareResponse,
   Citation,
   ChatResponse,
+  type StreamEvent,
 } from '@contractai-review/shared';
 import { EmbeddingsService } from './embeddings.service';
 import { PromptService } from '../prompts/prompt.service';
@@ -23,6 +22,8 @@ import {
   VECTOR_STORE,
   VectorSearchResult,
 } from '../vector-store/vector-store.interface';
+import { LlmProviderRegistry } from '../llm/llm-provider.registry';
+import { MemoryService } from '../memory/memory.service';
 
 // Re-export for backward compatibility
 export type { Citation };
@@ -30,7 +31,7 @@ export type RagResponse = ChatResponse;
 
 @Injectable()
 export class RagService {
-  private readonly openaiClient: OpenAI;
+  private readonly logger = new Logger(RagService.name);
   private readonly chatModel: string;
 
   constructor(
@@ -44,24 +45,21 @@ export class RagService {
     private configService: ConfigService,
     private ragCacheService: RagCacheService,
     private chatPrepareCacheService: ChatPrepareCacheService,
+    private llmProviderRegistry: LlmProviderRegistry,
+    private memoryService: MemoryService,
   ) {
-    const apiKey = this.configService.get<string>('OPENAI_API_KEY');
-    if (!apiKey) {
-      console.warn('OPENAI_API_KEY not set - chat answers will fail');
-    }
-    this.openaiClient = new OpenAI({ apiKey: apiKey || 'dummy-key' });
     this.chatModel = this.configService.get<string>('OPENAI_CHAT_MODEL') || 'gpt-4o-mini';
   }
 
   /**
-   * Search for similar chunks using vector similarity
+   * Search for similar document chunks using vector similarity
    */
-  async searchContractChunks(
+  async searchDocumentChunks(
     queryEmbedding: number[],
     documentId: string,
     limit: number = 5,
   ): Promise<VectorSearchResult<Chunk>[]> {
-    return this.vectorStore.searchContractChunks(queryEmbedding, documentId, limit);
+    return this.vectorStore.searchDocumentChunks(queryEmbedding, documentId, limit);
   }
 
   /**
@@ -89,9 +87,24 @@ export class RagService {
     workspaceId: string,
     jurisdiction?: string,
     language: string = 'en',
-    options?: { signal?: AbortSignal; forceFresh?: boolean; similarityThreshold?: number },
+    options?: {
+      signal?: AbortSignal;
+      forceFresh?: boolean;
+      similarityThreshold?: number;
+      /** Last N Q&A pairs for multi-turn (formatted User: X\nAssistant: Y\n) */
+      conversationHistory?: string;
+      /** Thread ID for memory injection (document/thread memory) */
+      threadId?: string;
+    },
   ): Promise<RagResponse> {
     try {
+      this.logger.log('[RAG] generateAnswer start', {
+        documentId,
+        workspaceId,
+        jurisdiction: jurisdiction ?? 'none',
+        language,
+      });
+
       // Generate embedding for the question
       const questionEmbedding = await this.embeddingsService.generateEmbedding(
         question,
@@ -108,12 +121,13 @@ export class RagService {
           { similarityThreshold: options?.similarityThreshold },
         );
         if (cached) {
+          this.logger.log('[RAG] Cache hit', { documentId, fromCache: true });
           return { ...cached, fromCache: true };
         }
       }
 
-      // Search contract chunks
-      const contractChunks = await this.searchContractChunks(
+      // Search document chunks
+      const documentChunks = await this.searchDocumentChunks(
         questionEmbedding,
         documentId,
         5,
@@ -124,22 +138,30 @@ export class RagService {
       ? await this.searchLegalChunks(questionEmbedding, undefined, jurisdiction, 3)
       : [];
 
+    this.logger.log('[RAG] Vector search results', {
+      documentId,
+      documentChunksCount: documentChunks.length,
+      legalChunksCount: legalChunks.length,
+      topDocumentSimilarity: documentChunks[0]?.distance,
+      topLegalSimilarity: legalChunks[0]?.distance,
+    });
+
     // Determine confidence based on results
     // Note: distance here is similarity (1 - cosine_distance), so higher = more similar
     // Cosine distance: 0 = identical, 1 = completely different
     // Similarity: 1 - distance, so 1 = identical, 0 = completely different
     const hasGoodMatches =
-      contractChunks.length > 0 && contractChunks[0].distance > 0.7;
+      documentChunks.length > 0 && documentChunks[0].distance > 0.7;
     const hasLegalMatches = legalChunks.length > 0 && legalChunks[0].distance > 0.7;
     
     // Also check if we have any matches at all (even with lower similarity)
-    const hasAnyMatches = contractChunks.length > 0 || legalChunks.length > 0;
+    const hasAnyMatches = documentChunks.length > 0 || legalChunks.length > 0;
     const hasMediumMatches = 
-      (contractChunks.length > 0 && contractChunks[0].distance > 0.5) ||
+      (documentChunks.length > 0 && documentChunks[0].distance > 0.5) ||
       (legalChunks.length > 0 && legalChunks[0].distance > 0.5);
     
     // If we have multiple chunks, even with lower similarity, it's still relevant
-    const hasMultipleChunks = contractChunks.length >= 2;
+    const hasMultipleChunks = documentChunks.length >= 2;
 
     let confidence: 'high' | 'medium' | 'low' = 'low';
     if (hasGoodMatches && hasLegalMatches) {
@@ -161,12 +183,12 @@ export class RagService {
     });
 
     // Add citations for top chunks (even if similarity is lower, they're still relevant)
-    for (const result of contractChunks.slice(0, 3)) {
+    for (const result of documentChunks.slice(0, 3)) {
       // Lower threshold to include more citations (0.4 instead of 0.6)
       // Since distance is similarity, lower values still mean some relevance
-      if (result.distance > 0.4 || contractChunks.length <= 3) {
+      if (result.distance > 0.4 || documentChunks.length <= 3) {
         citations.push({
-          type: 'contract',
+          type: 'document',
           fileName: document?.title || 'Document',
           pageNumber: result.item.pageNumber || undefined,
           paragraphId: result.item.paragraphId || undefined,
@@ -189,18 +211,18 @@ export class RagService {
       }
     }
 
-    // Generate answer using OpenAI
     const answerText = await this.generateAnswerText(
       question,
-      contractChunks,
+      documentChunks,
       legalChunks,
       language,
       workspaceId,
       documentId,
-      options,
+      options?.conversationHistory,
+      { ...options, threadId: options?.threadId },
     );
 
-    const notFound = contractChunks.length === 0 && legalChunks.length === 0;
+    const notFound = documentChunks.length === 0 && legalChunks.length === 0;
 
     const response: RagResponse = {
       answerText,
@@ -220,10 +242,9 @@ export class RagService {
 
     return { ...response, fromCache: false };
     } catch (error) {
-      // Never log question content or answer text
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('RAG generateAnswer error (documentId, workspaceId):', documentId, workspaceId, errorMessage);
-      
+      this.logRagError('generateAnswer', documentId, workspaceId, error);
+
       // Check if it's an embedding/quota error
       if (errorMessage.includes('quota') || errorMessage.includes('429')) {
         return {
@@ -263,7 +284,7 @@ export class RagService {
       options,
     );
 
-    const contractChunks = await this.searchContractChunks(
+    const documentChunks = await this.searchDocumentChunks(
       questionEmbedding,
       documentId,
       5,
@@ -273,13 +294,13 @@ export class RagService {
       ? await this.searchLegalChunks(questionEmbedding, undefined, jurisdiction, 3)
       : [];
 
-    const contractContext = contractChunks
-      .map((c, i) => `[Contract Excerpt ${i + 1}]: ${c.item.text}`)
+    const documentContext = documentChunks
+      .map((c, i) => `[Document Excerpt ${i + 1}]: ${c.item.text}`)
       .join('\n\n');
     const legalContext = legalChunks
       .map((c, i) => `[Legal Source ${i + 1}]: ${c.item.text}`)
       .join('\n\n');
-    const context = [contractContext, legalContext].filter(Boolean).join('\n\n');
+    const context = [documentContext, legalContext].filter(Boolean).join('\n\n');
 
     const [workspaceSettings, document] = await Promise.all([
       this.workspaceSettingsService.getSettings(workspaceId),
@@ -308,7 +329,7 @@ export class RagService {
     const payload: ChatPreparePayload = {
       systemPrompt: system,
       userPrompt: user,
-      contractChunks: contractChunks.map((c) => ({
+      documentChunks: documentChunks.map((c) => ({
         text: c.item.text,
         pageNumber: c.item.pageNumber ?? undefined,
         paragraphId: c.item.paragraphId ?? undefined,
@@ -352,28 +373,35 @@ export class RagService {
     );
 
     if (!payload) {
+      this.logger.log('[RAG] Execute payload expired or invalid', {
+        requestId,
+        documentId,
+      });
       throw new BadRequestException(
         'Preparation expired or invalid. Please submit your question again.',
       );
     }
 
-    const answerText = await this.callOpenAI(
+    this.logger.log('[RAG] Execute payload consumed', { requestId, documentId });
+
+    const answerText = await this.callLlm(
       payload.systemPrompt,
       payload.userPrompt,
-      options,
+      workspaceId,
+      { ...options, documentId },
     );
 
-    const contractChunks = payload.contractChunks;
+    const documentChunks = payload.documentChunks;
     const legalChunks = payload.legalChunks;
     const hasGoodMatches =
-      contractChunks.length > 0 && contractChunks[0].similarity > 0.7;
+      documentChunks.length > 0 && documentChunks[0].similarity > 0.7;
     const hasLegalMatches =
       legalChunks.length > 0 && legalChunks[0].similarity > 0.7;
-    const hasAnyMatches = contractChunks.length > 0 || legalChunks.length > 0;
+    const hasAnyMatches = documentChunks.length > 0 || legalChunks.length > 0;
     const hasMediumMatches =
-      (contractChunks.length > 0 && contractChunks[0].similarity > 0.5) ||
+      (documentChunks.length > 0 && documentChunks[0].similarity > 0.5) ||
       (legalChunks.length > 0 && legalChunks[0].similarity > 0.5);
-    const hasMultipleChunks = contractChunks.length >= 2;
+    const hasMultipleChunks = documentChunks.length >= 2;
 
     let confidence: 'high' | 'medium' | 'low' = 'low';
     if (hasGoodMatches && hasLegalMatches) {
@@ -391,10 +419,10 @@ export class RagService {
     });
     const citations: Citation[] = [];
 
-    for (const result of contractChunks.slice(0, 3)) {
-      if (result.similarity > 0.4 || contractChunks.length <= 3) {
+    for (const result of documentChunks.slice(0, 3)) {
+      if (result.similarity > 0.4 || documentChunks.length <= 3) {
         citations.push({
-          type: 'contract',
+          type: 'document',
           fileName: document?.title || 'Document',
           pageNumber: result.pageNumber,
           paragraphId: result.paragraphId,
@@ -420,32 +448,283 @@ export class RagService {
         answerText,
         confidence,
         citations,
-        notFound: contractChunks.length === 0 && legalChunks.length === 0,
+        notFound: documentChunks.length === 0 && legalChunks.length === 0,
         fromCache: false,
       },
       question: payload.question,
     };
   }
 
-  /** Call OpenAI with system and user prompts (extracted for reuse). */
-  private async callOpenAI(
+  private logRagError(
+    operation: string,
+    documentId: string,
+    workspaceId: string,
+    error: unknown,
+  ): void {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`RAG ${operation} error (documentId, workspaceId):`, documentId, workspaceId, errorMessage);
+  }
+
+  /**
+   * Log full LLM context (system + user prompts) when LOG_LLM_PROMPT_CONTEXT=true.
+   * Enable for debugging: LOG_LLM_PROMPT_CONTEXT=true in .env
+   */
+  private logLlmPromptContextWhenEnabled(
     system: string,
     user: string,
-    options?: { signal?: AbortSignal },
-  ): Promise<string> {
-    const response = await this.openaiClient.chat.completions.create(
-      {
+    context?: { documentId?: string; workspaceId?: string; model?: string },
+  ): void {
+    if (this.configService.get<string>('LOG_LLM_PROMPT_CONTEXT') !== 'true') {
+      return;
+    }
+    const { documentId, workspaceId, model } = context ?? {};
+    this.logger.log(
+      `[LLM_CONTEXT] documentId=${documentId ?? 'n/a'} workspaceId=${workspaceId ?? 'n/a'} model=${model ?? this.chatModel}`,
+    );
+    this.logger.log(`[LLM_CONTEXT] === SYSTEM PROMPT (${system.length} chars) ===\n${system}`);
+    this.logger.log(`[LLM_CONTEXT] === USER PROMPT (${user.length} chars) ===\n${user}`);
+    this.logger.log(`[LLM_CONTEXT] === END CONTEXT ===`);
+  }
+
+  /**
+   * Stream answer using RAG. Yields chunk/done/error events.
+   * Cache hit: yields done event with full response. Cache miss: streams from LLM.
+   */
+  async *generateAnswerStream(
+    question: string,
+    documentId: string,
+    workspaceId: string,
+    jurisdiction?: string,
+    language: string = 'en',
+    options?: {
+      signal?: AbortSignal;
+      forceFresh?: boolean;
+      similarityThreshold?: number;
+      conversationHistory?: string;
+      /** Thread ID for memory injection (document/thread memory) */
+      threadId?: string;
+    },
+  ): AsyncIterable<StreamEvent> {
+    try {
+      this.logger.log(
+        `[generateAnswerStream] Generate question embedding: documentId=${documentId} workspaceId=${workspaceId}`,
+      );
+      const questionEmbedding = await this.embeddingsService.generateEmbedding(
+        question,
+        options,
+      );
+
+      this.logger.log(
+        `[generateAnswerStream] Check semantic cache: documentId=${documentId} forceFresh=${options?.forceFresh ?? false}`,
+      );
+      if (!options?.forceFresh) {
+        const cached = await this.ragCacheService.get(
+          documentId,
+          jurisdiction,
+          questionEmbedding,
+          language,
+          { similarityThreshold: options?.similarityThreshold },
+        );
+        if (cached) {
+          this.logger.log(
+            `[generateAnswerStream] Cache hit: documentId=${documentId} answerLength=${cached.answerText?.length ?? 0}`,
+          );
+          yield { type: 'chunk', content: cached.answerText };
+          yield {
+            type: 'done',
+            answerText: cached.answerText,
+            confidence: cached.confidence,
+            citations: cached.citations ?? [],
+            notFound: cached.notFound ?? false,
+          };
+          return;
+        }
+      }
+
+      this.logger.log(
+        `[generateAnswerStream] Search document chunks (vector store): documentId=${documentId}`,
+      );
+      const documentChunks = await this.searchDocumentChunks(
+        questionEmbedding,
+        documentId,
+        5,
+      );
+      this.logger.log(
+        `[generateAnswerStream] Search document chunks result: documentId=${documentId} count=${documentChunks.length}`,
+      );
+      this.logger.log(
+        `[generateAnswerStream] Search legal chunks (vector store): documentId=${documentId} jurisdiction=${jurisdiction ?? 'none'}`,
+      );
+      const legalChunks = jurisdiction
+        ? await this.searchLegalChunks(questionEmbedding, undefined, jurisdiction, 3)
+        : [];
+      this.logger.log(
+        `[generateAnswerStream] Search legal chunks result: documentId=${documentId} count=${legalChunks.length}`,
+      );
+
+      const hasGoodMatches =
+        documentChunks.length > 0 && documentChunks[0].distance > 0.7;
+      const hasLegalMatches =
+        legalChunks.length > 0 && legalChunks[0].distance > 0.7;
+      const hasAnyMatches = documentChunks.length > 0 || legalChunks.length > 0;
+      const hasMediumMatches =
+        (documentChunks.length > 0 && documentChunks[0].distance > 0.5) ||
+        (legalChunks.length > 0 && legalChunks[0].distance > 0.5);
+      const hasMultipleChunks = documentChunks.length >= 2;
+
+      let confidence: 'high' | 'medium' | 'low' = 'low';
+      if (hasGoodMatches || hasLegalMatches) confidence = 'high';
+      else if (hasMediumMatches || hasMultipleChunks) confidence = 'medium';
+      else if (hasAnyMatches) confidence = 'low';
+
+      const doc = await this.documentRepository.findOne({
+        where: { id: documentId },
+      });
+      const citations: Citation[] = [];
+      for (const result of documentChunks.slice(0, 3)) {
+        if (result.distance > 0.4 || documentChunks.length <= 3) {
+          citations.push({
+            type: 'document',
+            fileName: doc?.title || 'Document',
+            pageNumber: result.item.pageNumber || undefined,
+            paragraphId: result.item.paragraphId || undefined,
+            quoteSnippet: result.item.text.substring(0, 200) + '...',
+          });
+        }
+      }
+      for (const result of legalChunks.slice(0, 2)) {
+        if (result.distance > 0.4 || legalChunks.length <= 2) {
+          citations.push({
+            type: 'legal',
+            sourceName: result.sourceName || 'Legal Source',
+            section: result.item.section || result.section || undefined,
+            url: result.url || undefined,
+            quoteSnippet: result.item.text.substring(0, 200) + '...',
+          });
+        }
+      }
+
+      const [workspaceSettings, docForScope] = await Promise.all([
+        this.workspaceSettingsService.getSettings(workspaceId),
+        this.documentRepository.findOne({ where: { id: documentId } }),
+      ]);
+      const scopeFlags =
+        workspaceSettings || docForScope
+          ? {
+              includeGlobal: workspaceSettings?.promptScopeIncludeGlobal ?? true,
+              includeWorkspace: workspaceSettings?.promptScopeIncludeWorkspace ?? true,
+              includeDocument: (docForScope as { promptScopeIncludeDocument?: boolean })?.promptScopeIncludeDocument ?? true,
+            }
+          : undefined;
+
+      let context =
+        [
+          documentChunks.map((c, i) => `[Document Excerpt ${i + 1}]: ${c.item.text}`).join('\n\n'),
+          legalChunks.map((c, i) => `[Legal Source ${i + 1}]: ${c.item.text}`).join('\n\n'),
+        ]
+          .filter(Boolean)
+          .join('\n\n') || 'No relevant context found.';
+
+      const memorySection = await this.memoryService.getDocumentAndThreadMemory(
+        documentId,
+        options?.threadId ?? null,
+      );
+      if (memorySection) {
+        context = `${memorySection}\n\n---\n\n${context}`;
+      }
+
+      this.logger.log(
+        `[generateAnswerStream] Resolve LLM provider via workspace settings: workspaceId=${workspaceId}`,
+      );
+      const provider = await this.llmProviderRegistry.resolveProvider(workspaceId);
+      this.logger.log(
+        `[generateAnswerStream] Build system + user prompts: documentId=${documentId} workspaceId=${workspaceId}`,
+      );
+      const { system, user } = await this.promptService.getChatPrompts(
+        {
+          languageName: this.promptService.getLanguageName(language),
+          context,
+          question,
+          conversationHistory: options?.conversationHistory,
+        },
+        { workspaceId, documentId, scopeFlags },
+      );
+
+      this.logLlmPromptContextWhenEnabled(system, user, {
+        documentId,
+        workspaceId,
         model: this.chatModel,
-        messages: [
+      });
+
+      this.logger.log(
+        `[generateAnswerStream] LLM provider.completeStream: documentId=${documentId} providerId=${provider.id}`,
+      );
+      let answerText = '';
+      for await (const chunk of provider.completeStream(
+        [
           { role: 'system', content: system },
           { role: 'user', content: user },
         ],
-        temperature: 0.3,
-        max_tokens: 500,
-      },
-      { signal: options?.signal },
-    );
-    return response.choices[0].message.content || 'NOT FOUND';
+        {
+          model: this.chatModel,
+          temperature: 0.3,
+          maxTokens: 500,
+          signal: options?.signal,
+        },
+      )) {
+        answerText += chunk;
+        yield { type: 'chunk', content: chunk };
+      }
+      this.logger.log(
+        `[generateAnswerStream] LLM provider.completeStream done: documentId=${documentId} answerLength=${answerText.length}`,
+      );
+
+      const notFound = documentChunks.length === 0 && legalChunks.length === 0;
+      yield {
+        type: 'done',
+        answerText,
+        confidence,
+        citations,
+        notFound,
+      };
+
+      await this.ragCacheService.set(
+        documentId,
+        jurisdiction,
+        questionEmbedding,
+        language,
+        { answerText, confidence, citations, notFound },
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      yield { type: 'error', message: errorMessage };
+      this.logRagError('generateAnswerStream', documentId, workspaceId, error);
+    }
+  }
+
+  /** Call LLM with system and user prompts (via provider adapter). */
+  private async callLlm(
+    system: string,
+    user: string,
+    workspaceId?: string,
+    options?: { signal?: AbortSignal; documentId?: string },
+  ): Promise<string> {
+    this.logLlmPromptContextWhenEnabled(system, user, {
+      documentId: options?.documentId,
+      workspaceId,
+      model: this.chatModel,
+    });
+    const provider = await this.llmProviderRegistry.resolveProvider(workspaceId);
+    const messages = [
+      { role: 'system' as const, content: system },
+      { role: 'user' as const, content: user },
+    ];
+    return provider.complete(messages, {
+      model: this.chatModel,
+      temperature: 0.3,
+      maxTokens: 500,
+      signal: options?.signal,
+    });
   }
 
   /**
@@ -453,23 +732,35 @@ export class RagService {
    */
   private async generateAnswerText(
     question: string,
-    contractChunks: VectorSearchResult<Chunk>[],
+    documentChunks: VectorSearchResult<Chunk>[],
     legalChunks: LegalChunkSearchResult[],
     language: string = 'en',
     workspaceId?: string,
     documentId?: string,
-    options?: { signal?: AbortSignal },
+    conversationHistory?: string,
+    options?: { signal?: AbortSignal; threadId?: string },
   ): Promise<string> {
     // Build context from chunks
-    const contractContext = contractChunks
-      .map((c, i) => `[Contract Excerpt ${i + 1}]: ${c.item.text}`)
+    const documentContext = documentChunks
+      .map((c, i) => `[Document Excerpt ${i + 1}]: ${c.item.text}`)
       .join('\n\n');
 
     const legalContext = legalChunks
       .map((c, i) => `[Legal Source ${i + 1}]: ${c.item.text}`)
       .join('\n\n');
 
-    const context = [contractContext, legalContext].filter(Boolean).join('\n\n');
+    let context = [documentContext, legalContext].filter(Boolean).join('\n\n');
+
+    // Prepend document/thread memory if available
+    if (documentId) {
+      const memory = await this.memoryService.getDocumentAndThreadMemory(
+        documentId,
+        options?.threadId ?? null,
+      );
+      if (memory) {
+        context = `${memory}\n\n---\n\n${context}`;
+      }
+    }
 
     const [workspaceSettings, document] = await Promise.all([
       workspaceId ? this.workspaceSettingsService.getSettings(workspaceId) : Promise.resolve(null),
@@ -491,12 +782,16 @@ export class RagService {
         languageName,
         context: context || 'No relevant context found.',
         question,
+        conversationHistory,
       },
       { workspaceId, documentId, scopeFlags },
     );
 
     try {
-      return await this.callOpenAI(system, user, options);
+      return await this.callLlm(system, user, workspaceId, {
+        ...options,
+        documentId,
+      });
     } catch (error) {
       return `Error generating answer: ${error instanceof Error ? error.message : String(error)}`;
     }

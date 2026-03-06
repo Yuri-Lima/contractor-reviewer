@@ -288,6 +288,8 @@
     "collapseChat": "Return to tab",
     "expandMessage": "Expand",
     "collapseMessage": "Collapse",
+    "showRawMarkdown": "Show raw Markdown",
+    "showRenderedMarkdown": "Show formatted",
     "title": "Chat",
     "language": "Language",
     "documents": "Documents",

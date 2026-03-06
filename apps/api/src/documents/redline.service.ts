@@ -11,11 +11,14 @@ import { PromptService } from '../prompts/prompt.service';
 import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
 import { IVectorStore, VECTOR_STORE } from '../vector-store/vector-store.interface';
 
+const DEFAULT_LLM_MAX_TOKENS = 2000;
+
 @Injectable()
 export class RedlineService {
   private readonly logger = new Logger(RedlineService.name);
   private readonly openaiClient: OpenAI;
   private readonly chatModel: string;
+  private readonly maxTokens: number;
 
   constructor(
     @Inject(VECTOR_STORE)
@@ -34,6 +37,9 @@ export class RedlineService {
     }
     this.openaiClient = new OpenAI({ apiKey: apiKey || 'dummy-key' });
     this.chatModel = this.configService.get<string>('OPENAI_CHAT_MODEL') || 'gpt-4o-mini';
+    const raw = this.configService.get<string>('LLM_MAX_TOKENS');
+    const parsed = raw ? parseInt(raw, 10) : DEFAULT_LLM_MAX_TOKENS;
+    this.maxTokens = parsed > 0 ? parsed : DEFAULT_LLM_MAX_TOKENS;
   }
 
   /**
@@ -144,7 +150,7 @@ export class RedlineService {
             { role: 'user', content: user },
           ],
           temperature: 0.3,
-          max_tokens: 1000,
+          max_tokens: this.maxTokens,
           response_format: { type: 'json_object' },
         },
         options?.signal ? { signal: options.signal } : undefined,

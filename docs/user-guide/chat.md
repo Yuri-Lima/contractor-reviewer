@@ -2,7 +2,7 @@
 
 ## Summary
 
-Chat lets you ask questions about your contract in natural language. The AI assistant answers using the document content and, when available, legal sources. Each answer includes **citations** (references to specific pages, paragraphs, or legal sources) so you can verify the evidence behind the response. You can use **conversations** (threads) to keep related questions together, **export** a conversation as markdown, use voice input, choose how responses are displayed (text, audio, or both), and optionally request a fresh response instead of a cached one. The assistant uses **memory** (summaries of prior exchanges) to provide better context across turns.
+Chat lets you ask questions about your contract in natural language. The AI assistant answers using the document content and, when available, legal sources. Each answer includes **citations** (references to specific pages, paragraphs, or legal sources) so you can verify the evidence behind the response. Answers are displayed as **rendered Markdown** (headings, lists, bold, code blocks, etc.) as they stream. Once the response is complete, you can switch to **raw Markdown** to view the underlying syntax. You can use **conversations** (threads) to keep related questions together, **export** a conversation as markdown, use voice input, choose how responses are displayed (text, audio, or both), and optionally request a fresh response instead of a cached one. The assistant uses **memory** (summaries of prior exchanges) to provide better context across turns.
 
 ## When to Use
 
@@ -43,6 +43,14 @@ Chat lets you ask questions about your contract in natural language. The AI assi
 5. Click **Send** to submit.
 
 *Note:* Voice input requires a modern browser that supports the Web Speech API. If unsupported, the option is disabled.
+
+### Rendered Markdown and Raw Toggle
+
+1. Assistant responses are shown as **formatted Markdown** (headings, lists, bold, code blocks, links) as they stream.
+2. After the full response has finished, a **code/eye icon** appears next to "Assistant:" in the message header.
+3. Click the icon to switch between **formatted** view (default) and **raw Markdown** view.
+4. Raw view shows the underlying Markdown syntax (e.g. `**bold**`, `# heading`) for copying or inspection.
+5. The toggle is only available when the response is complete; while streaming, only the formatted view is shown.
 
 ### View Citations
 

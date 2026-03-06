@@ -98,6 +98,7 @@ Abre em http://localhost:4200.
 | `REDIS_URL` | Sim | URL do Redis (ex: `redis://localhost:6379`) |
 | `JWT_SECRET` | Sim | Segredo para tokens JWT (mín. 32 caracteres em produção) |
 | `OPENAI_API_KEY` | Sim* | Chave OpenAI para RAG (*obrigatório para chat/embeddings) |
+| `LLM_MAX_TOKENS` | Não | Máx. tokens de saída para chat e redline (padrão: `2000`). Valores maiores permitem respostas mais longas. |
 | `PARSER_KEYS_ENCRYPTION_KEY` | Se usar parsers pagos | 32 bytes hex. Gerar: `openssl rand -hex 32`. Criptografa API keys de DPT-2, LlamaParse, Unstructured |
 | `DOCLING_URL` | Não | URL do Docling (padrão: `http://localhost:8000`) |
 | `PDFPLUMBER_URL` | Não | URL do PDFPlumber (padrão: `http://localhost:8001`) |

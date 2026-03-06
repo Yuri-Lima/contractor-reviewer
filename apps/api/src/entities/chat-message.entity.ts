@@ -7,11 +7,15 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Document } from './document.entity';
+import { ChatThread } from './chat-thread.entity';
 
 @Entity('chat_messages')
 export class ChatMessage {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column('uuid')
+  threadId: string; // Every message belongs to a thread
 
   @Column('uuid')
   documentId: string;
@@ -22,11 +26,14 @@ export class ChatMessage {
   @Column('uuid')
   userId: string; // User who asked the question
 
+  @Column({ type: 'varchar', length: 20 })
+  role: 'user' | 'assistant'; // For multi-turn clarity
+
   @Column({ type: 'text' })
-  question: string; // User's question
+  question: string; // User's question (role=user) or empty (role=assistant)
 
   @Column({ type: 'text', nullable: true })
-  answerText: string | null; // AI answer (may be null if no-logs enabled)
+  answerText: string | null; // AI answer (role=assistant; null for user or if no-logs)
 
   @Column({ type: 'varchar', nullable: true })
   confidence: string | null; // 'high' | 'medium' | 'low'
@@ -53,4 +60,8 @@ export class ChatMessage {
   @ManyToOne(() => Document, (document) => document.chatMessages, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'documentId' })
   document: Document;
+
+  @ManyToOne(() => ChatThread, (thread) => thread.messages, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'threadId' })
+  thread: ChatThread;
 }

@@ -280,7 +280,18 @@
     "deleteThread": "Unterhaltung löschen",
     "exportThread": "Unterhaltung exportieren",
     "confirmDeleteThread": "Sind Sie sicher, dass Sie diese Unterhaltung löschen möchten? Alle Nachrichten werden dauerhaft entfernt.",
-    "noConversations": "Noch keine Unterhaltungen. Stellen Sie eine Frage, um zu beginnen."
+    "noConversations": "Noch keine Unterhaltungen. Stellen Sie eine Frage, um zu beginnen.",
+    "exportThread": "Unterhaltung als Markdown exportieren",
+    "askAnything": "Fragen Sie alles",
+    "attachFile": "Datei anhängen",
+    "expandChat": "Chat erweitern",
+    "collapseChat": "Zur Registerkarte zurück",
+    "expandMessage": "Erweitern",
+    "collapseMessage": "Einklappen",
+    "title": "Chat",
+    "language": "Sprache",
+    "documents": "Dokumente",
+    "auto": "Auto"
   },
   "parsers": {
     "title": "Dokumenten-Parser",

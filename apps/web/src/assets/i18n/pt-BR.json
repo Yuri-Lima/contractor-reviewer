@@ -282,7 +282,18 @@
     "deleteThread": "Excluir conversa",
     "exportThread": "Exportar conversa",
     "confirmDeleteThread": "Tem certeza de que deseja excluir esta conversa? Todas as mensagens serão removidas permanentemente.",
-    "noConversations": "Nenhuma conversa ainda. Comece fazendo uma pergunta."
+    "noConversations": "Nenhuma conversa ainda. Comece fazendo uma pergunta.",
+    "exportThread": "Exportar conversa como Markdown",
+    "askAnything": "Pergunte qualquer coisa",
+    "attachFile": "Anexar arquivo",
+    "expandChat": "Expandir chat",
+    "collapseChat": "Voltar à aba",
+    "expandMessage": "Expandir",
+    "collapseMessage": "Recolher",
+    "title": "Chat",
+    "language": "Idioma",
+    "documents": "Documentos",
+    "auto": "Auto"
   },
   "parsers": {
     "title": "Analisadores de Documentos",

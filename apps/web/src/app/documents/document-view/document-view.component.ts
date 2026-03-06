@@ -68,6 +68,8 @@ import {
 } from '../../core/components/search-input';
 import { EditableTitleComponent } from '../../core/components/editable-title/editable-title.component';
 import { BaseListConfig } from '../../core/components/base-list/base-list.config';
+import { ChatPanelComponent } from '../chat';
+import type { ChatMessageWithAudio, ChatThreadInfo } from '../chat';
 import { LazyLoadEvent } from 'primeng/api';
 import { PaginationService } from '../../core/services/pagination.service';
 import { WebSocketService } from '../../core/services/websocket.service';
@@ -102,33 +104,6 @@ interface FilesResourceParams extends FilesRequestParams {
   refreshKey?: number;
 }
 
-/** Audio state for a chat message when TTS is enabled */
-type ChatMessageAudioState = 'none' | 'synthesizing' | 'ready' | 'playing';
-
-/** Extended chat message with optional audio playback state */
-interface ChatMessageWithAudio {
-  question: string;
-  answerText?: string;
-  confidence?: string;
-  citations?: Citation[];
-  audioState?: ChatMessageAudioState;
-  audioUrl?: string;
-  fromCache?: boolean;
-  /** True while streaming response chunks */
-  streaming?: boolean;
-}
-
-/** Chat thread from API (for picker) */
-interface ChatThreadInfo {
-  id: string;
-  documentId: string;
-  workspaceId: string;
-  userId: string;
-  title: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
 @Component({
   selector: 'app-document-view',
   standalone: true,
@@ -161,6 +136,7 @@ interface ChatThreadInfo {
     SearchInputComponent,
     EditableTitleComponent,
     LlmPayloadDialogComponent,
+    ChatPanelComponent,
   ],
   providers: [ConfirmationService, MessageService],
   template: `
@@ -426,184 +402,29 @@ interface ChatThreadInfo {
           </p-tabpanel>
 
           <p-tabpanel value="2">
-            <div class="chat-section flex h-[calc(100vh-12rem)] min-h-[400px] mt-4">
-              <aside class="chat-sidebar w-60 flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-l-lg overflow-hidden">
-                <p-button
-                  [label]="'chat.newThread' | translate"
-                  icon="pi pi-plus"
-                  [outlined]="true"
-                  size="small"
-                  (onClick)="onNewConversation()"
-                  [pTooltip]="'chat.newThread' | translate"
-                  class="m-2"
-                ></p-button>
-                <div class="flex-1 overflow-y-auto min-h-0">
-                  @if (chatThreadsLoading()) {
-                    <div class="px-3 py-4 text-center">
-                      <span class="text-sm text-gray-500 dark:text-gray-400">{{ 'common.loading' | translate }}</span>
-                    </div>
-                  } @else if (chatThreads().length === 0) {
-                    <div class="px-3 py-4 text-center">
-                      <span class="text-sm text-gray-500 dark:text-gray-400">{{ 'chat.noConversations' | translate }}</span>
-                    </div>
-                  } @else {
-                    @for (thread of chatThreads(); track thread.id) {
-                      <div
-                        class="chat-thread-item group flex items-center gap-2 px-3 py-2.5 cursor-pointer text-left border-b border-gray-100 dark:border-gray-700/50 last:border-b-0 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
-                        [class.bg-blue-50]="activeThreadId() === thread.id"
-                        [class.dark:bg-blue-900/20]="activeThreadId() === thread.id"
-                        (click)="onSelectThread(thread)"
-                      >
-                        <span class="truncate flex-1 min-w-0 text-sm text-gray-800 dark:text-gray-200" [title]="getThreadLabel(thread)">
-                          {{ getThreadLabel(thread) }}
-                        </span>
-                        <div class="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                          <p-button
-                            icon="pi pi-download"
-                            [text]="true"
-                            size="small"
-                            severity="secondary"
-                            (onClick)="exportThread(thread); $event.stopPropagation()"
-                            [pTooltip]="'chat.exportThread' | translate"
-                          ></p-button>
-                          <p-button
-                            icon="pi pi-trash"
-                            [text]="true"
-                            size="small"
-                            severity="danger"
-                            (onClick)="confirmDeleteThread(thread); $event.stopPropagation()"
-                            [pTooltip]="'chat.deleteThread' | translate"
-                          ></p-button>
-                        </div>
-                      </div>
-                    }
-                  }
-                </div>
-              </aside>
-              <div class="chat-main flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900">
-                <div class="chat-messages flex-1 overflow-y-auto space-y-4 p-4 min-h-0">
-                @for (msg of chatMessages(); track $index) {
-                  <div class="chat-message p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                    <div class="message-question mb-3">
-                      <strong class="text-blue-600 dark:text-blue-400">{{ 'documents.you' | translate }}:</strong>
-                      <p class="text-gray-800 dark:text-gray-200 mt-1">{{ msg.question }}</p>
-                    </div>
-                    @if (msg.answerText || msg.audioState === 'synthesizing') {
-                      <div class="message-answer">
-                        <strong class="text-green-600 dark:text-green-400">{{ 'documents.assistant' | translate }}:</strong>
-                        @if (chatResponseMode() !== ChatResponseMode.AudioOnly) {
-                          <p class="text-gray-800 dark:text-gray-200 mt-1 mb-2">{{ msg.answerText }}</p>
-                        }
-                        @if ((chatResponseMode() === ChatResponseMode.AudioOnly || chatResponseMode() === ChatResponseMode.AudioAndText) && msg.audioState === 'synthesizing') {
-                          <p class="text-sm text-gray-500 dark:text-gray-400 italic mb-2">{{ 'chat.synthesizing' | translate }}</p>
-                        }
-                        @if ((chatResponseMode() === ChatResponseMode.AudioOnly || chatResponseMode() === ChatResponseMode.AudioAndText) && (msg.audioState === 'ready' || msg.audioState === 'playing') && msg.audioUrl) {
-                          <div class="flex items-center gap-2 mb-2">
-                            @if (playingMessageIndex() === $index) {
-                              <p-button
-                                icon="pi pi-pause"
-                                [outlined]="true"
-                                size="small"
-                                (onClick)="pauseMessageAudio($index)"
-                                [pTooltip]="'chat.pauseAudio' | translate"
-                              ></p-button>
-                            } @else {
-                              <p-button
-                                [icon]="'pi pi-play'"
-                                [outlined]="true"
-                                size="small"
-                                (onClick)="playMessageAudio($index)"
-                                [pTooltip]="'chat.playAudio' | translate"
-                              ></p-button>
-                            }
-                            <span class="text-sm text-gray-500 dark:text-gray-400">{{ 'chat.playAudio' | translate }}</span>
-                          </div>
-                        }
-                        @if (chatResponseMode() === ChatResponseMode.AudioOnly && msg.answerText) {
-                          <p class="text-gray-800 dark:text-gray-200 mt-1 mb-2 sr-only">{{ msg.answerText }}</p>
-                        }
-                        @if (msg.fromCache) {
-                          <span class="inline-block px-2 py-1 rounded text-xs font-medium mb-2 mr-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                            {{ 'chat.fromCache' | translate }}
-                          </span>
-                          <p-button
-                            [icon]="'pi pi-refresh'"
-                            [outlined]="true"
-                            size="small"
-                            severity="secondary"
-                            (onClick)="sendQuestion(msg.question, true, $index)"
-                            [pTooltip]="'chat.getFreshResponse' | translate"
-                            [label]="'chat.getFreshResponse' | translate"
-                            class="mb-2"
-                          ></p-button>
-                        }
-                        <div class="confidence-badge inline-block px-2 py-1 rounded text-xs font-semibold mb-2"
-                             [class.bg-green-100]="msg.confidence === 'high'"
-                             [class.text-green-800]="msg.confidence === 'high'"
-                             [class.dark:bg-green-900]="msg.confidence === 'high'"
-                             [class.dark:text-green-200]="msg.confidence === 'high'"
-                             [class.bg-yellow-100]="msg.confidence === 'medium'"
-                             [class.text-yellow-800]="msg.confidence === 'medium'"
-                             [class.dark:bg-yellow-900]="msg.confidence === 'medium'"
-                             [class.dark:text-yellow-200]="msg.confidence === 'medium'"
-                             [class.bg-red-100]="msg.confidence === 'low'"
-                             [class.text-red-800]="msg.confidence === 'low'"
-                             [class.dark:bg-red-900]="msg.confidence === 'low'"
-                             [class.dark:text-red-200]="msg.confidence === 'low'">
-                          {{ 'documents.confidence' | translate }}: {{ getConfidenceLabel(msg.confidence || '') }}
-                        </div>
-                        @if (msg.citations && msg.citations.length > 0) {
-                          <div class="citations mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{{ 'documents.citations' | translate }}:</h4>
-                            @for (citation of msg.citations; track $index) {
-                              <div class="citation text-sm text-gray-600 dark:text-gray-400 mb-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">
-                                @if (citation.fileName) {
-                                  <span class="font-medium">{{ citation.fileName }}</span>
-                                }
-                                @if (citation.pageNumber) {
-                                  <span> - {{ 'documents.page' | translate }} {{ citation.pageNumber }}</span>
-                                }
-                                @if (citation.quoteSnippet) {
-                                  <div class="mt-1 italic text-xs">"{{ citation.quoteSnippet }}"</div>
-                                }
-                              </div>
-                            }
-                          </div>
-                        }
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-              <div class="chat-input flex gap-2 p-4" data-tour="chat-input">
-                <input
-                  [value]="question()"
-                  (input)="onQuestionInput($event)"
-                  class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  [placeholder]="'documents.askQuestion' | translate"
-                  (keyup.enter)="sendQuestion()"
-                />
-                @if (voiceAvailable()) {
-                  <p-button
-                    [icon]="voiceRecording() ? 'pi pi-stop' : 'pi pi-microphone'"
-                    [severity]="voiceRecording() ? 'danger' : 'secondary'"
-                    [outlined]="true"
-                    [disabled]="loading() || voiceTranscribing()"
-                    [loading]="voiceTranscribing()"
-                    (onClick)="toggleVoiceRecording()"
-                    [pTooltip]="voiceRecording() ? ('chat.stopListening' | translate) : ('chat.voiceInput' | translate)"
-                  ></p-button>
-                }
-                <p-button
-                  [label]="'documents.send' | translate"
-                  icon="pi pi-send"
-                  [disabled]="!question().trim() || loading()"
-                  [loading]="loading()"
-                  (onClick)="sendQuestion()"
-                ></p-button>
-              </div>
-            </div>
-            </div>
+            <app-chat-panel
+              [messages]="chatMessages()"
+              [threads]="chatThreads()"
+              [activeThreadId]="activeThreadId()"
+              [question]="question()"
+              [loading]="loading()"
+              [chatResponseMode]="chatResponseMode()"
+              [voiceAvailable]="voiceAvailable()"
+              [voiceRecording]="voiceRecording()"
+              [voiceTranscribing]="voiceTranscribing()"
+              [playingMessageIndex]="playingMessageIndex()"
+              [threadsLoading]="chatThreadsLoading()"
+              (questionChange)="question.set($event)"
+              (send)="sendQuestion()"
+              (voiceToggle)="toggleVoiceRecording()"
+              (newThread)="onNewConversation()"
+              (selectThread)="onSelectThread($event)"
+              (exportThread)="exportThread($event)"
+              (deleteThread)="confirmDeleteThread($event)"
+              (playAudio)="playMessageAudio($event)"
+              (pauseAudio)="pauseMessageAudio($event)"
+              (getFreshResponse)="onGetFreshResponse($event)"
+            />
           </p-tabpanel>
 
           <p-tabpanel value="3">
@@ -2120,6 +1941,14 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       this.confirmParserSelection();
     } else if (e.key === 'cancelUpload') {
       this.cancelUpload();
+    }
+  }
+
+  onGetFreshResponse(index: number): void {
+    const msgs = this.chatMessages();
+    const msg = msgs[index];
+    if (msg?.question) {
+      this.sendQuestion(msg.question, true, index);
     }
   }
 

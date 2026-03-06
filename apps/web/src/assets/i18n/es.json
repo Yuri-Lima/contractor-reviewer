@@ -280,7 +280,18 @@
     "deleteThread": "Eliminar conversación",
     "exportThread": "Exportar conversación",
     "confirmDeleteThread": "¿Estás seguro de que deseas eliminar esta conversación? Todos los mensajes se eliminarán permanentemente.",
-    "noConversations": "Aún no hay conversaciones. Comienza haciendo una pregunta."
+    "noConversations": "Aún no hay conversaciones. Comienza haciendo una pregunta.",
+    "exportThread": "Exportar conversación como Markdown",
+    "askAnything": "Pregunta lo que quieras",
+    "attachFile": "Adjuntar archivo",
+    "expandChat": "Expandir chat",
+    "collapseChat": "Volver a la pestaña",
+    "expandMessage": "Expandir",
+    "collapseMessage": "Contraer",
+    "title": "Chat",
+    "language": "Idioma",
+    "documents": "Documentos",
+    "auto": "Auto"
   },
   "parsers": {
     "title": "Analizadores de Documentos",

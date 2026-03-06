@@ -281,7 +281,17 @@
     "exportThread": "Export conversation",
     "confirmDeleteThread": "Are you sure you want to delete this conversation? All messages will be permanently removed.",
     "noConversations": "No conversations yet. Send a message to start.",
-    "exportThread": "Export conversation as Markdown"
+    "exportThread": "Export conversation as Markdown",
+    "askAnything": "Ask anything",
+    "attachFile": "Attach file",
+    "expandChat": "Expand chat",
+    "collapseChat": "Return to tab",
+    "expandMessage": "Expand",
+    "collapseMessage": "Collapse",
+    "title": "Chat",
+    "language": "Language",
+    "documents": "Documents",
+    "auto": "Auto"
   },
   "parsers": {
     "title": "Document Parsers",

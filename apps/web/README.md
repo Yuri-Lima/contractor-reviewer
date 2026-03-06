@@ -178,7 +178,7 @@ Crie um arquivo `.env` na raiz do projeto ou configure:
 - ✅ Listagem de documentos
 - ✅ Upload de arquivos com **seleção de parser** (Docling, PDFPlumber, DPT-2, LlamaParse, Unstructured)
 - ✅ **Failed Jobs** — bloco no document view exibindo jobs falhos com `lastError` (mensagem amigável para o usuário)
-- ✅ Chat com citações
+- ✅ Chat com citações e **Markdown renderizado** (Incremark, parsing incremental durante streaming; toggle para ver Markdown bruto quando a resposta termina)
 - ✅ Privacy panel (DSAR export, no-logs toggle)
 - ✅ Audit logs
 - ✅ Workspace Settings:

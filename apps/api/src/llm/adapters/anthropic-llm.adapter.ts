@@ -5,18 +5,24 @@ import type { LlmMessage, LlmCompleteOptions } from '@contractai-review/shared';
 import { LlmProviderId } from '@contractai-review/shared';
 import type { ILlmProvider } from '../interfaces/llm-provider.interface';
 
+const DEFAULT_LLM_MAX_TOKENS = 2000;
+
 @Injectable()
 export class AnthropicLlmAdapter implements ILlmProvider {
   private readonly logger = new Logger(AnthropicLlmAdapter.name);
   readonly id = LlmProviderId.Anthropic;
   private readonly client: Anthropic;
   private readonly defaultModel: string;
+  private readonly defaultMaxTokens: number;
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
     this.client = new Anthropic({ apiKey: apiKey || 'dummy-key' });
     this.defaultModel =
       this.configService.get<string>('ANTHROPIC_CHAT_MODEL') || 'claude-sonnet-4-20250514';
+    const raw = this.configService.get<string>('LLM_MAX_TOKENS');
+    const parsed = raw ? parseInt(raw, 10) : DEFAULT_LLM_MAX_TOKENS;
+    this.defaultMaxTokens = parsed > 0 ? parsed : DEFAULT_LLM_MAX_TOKENS;
   }
 
   async complete(
@@ -33,7 +39,7 @@ export class AnthropicLlmAdapter implements ILlmProvider {
 
     const response = await this.client.messages.create({
       model: options?.model ?? this.defaultModel,
-      max_tokens: options?.maxTokens ?? 500,
+      max_tokens: options?.maxTokens ?? this.defaultMaxTokens,
       system: systemContent || undefined,
       messages: anthropicMessages,
     });
@@ -58,7 +64,7 @@ export class AnthropicLlmAdapter implements ILlmProvider {
 
     const stream = this.client.messages.stream({
       model: options?.model ?? this.defaultModel,
-      max_tokens: options?.maxTokens ?? 500,
+      max_tokens: options?.maxTokens ?? this.defaultMaxTokens,
       system: systemContent || undefined,
       messages: anthropicMessages,
     });

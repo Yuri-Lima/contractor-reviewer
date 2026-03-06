@@ -29,7 +29,7 @@ async def convert(file: UploadFile = File(...)):
     if suffix not in (".pdf", ".docx", ".doc", ".png", ".jpg", ".jpeg"):
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported format: {suffix}. Supported: pdf, docx, png, jpg",
+            detail=f"Unsupported format: {suffix}. Supported: pdf, doc, docx, png, jpg",
         )
 
     content = await file.read()

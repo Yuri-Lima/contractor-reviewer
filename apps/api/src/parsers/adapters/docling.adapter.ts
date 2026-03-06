@@ -13,6 +13,7 @@ import { combineAbortSignals } from '../../common/utils/combine-abort-signals';
 
 const SUPPORTED_MIMES = new Set([
   'application/pdf',
+  'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'image/png',
   'image/jpeg',
@@ -113,6 +114,7 @@ export class DoclingAdapter implements DocumentParserAdapter {
   private getExtension(mimeType: string): string {
     const map: Record<string, string> = {
       'application/pdf': '.pdf',
+      'application/msword': '.doc',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
         '.docx',
       'image/png': '.png',

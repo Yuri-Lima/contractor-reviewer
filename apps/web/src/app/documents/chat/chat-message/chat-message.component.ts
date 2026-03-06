@@ -14,13 +14,14 @@ import { TooltipModule } from 'primeng/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import type { ChatMessageWithAudio } from '../chat.types';
 import type { ChatResponseMode } from '@contractai-review/shared';
+import { IncremarkWrapperComponent } from '../incremark-wrapper';
 
 const TRUNCATE_LENGTH = 80;
 
 @Component({
   selector: 'app-chat-message',
   standalone: true,
-  imports: [CommonModule, Button, TooltipModule, TranslatePipe],
+  imports: [CommonModule, Button, TooltipModule, TranslatePipe, IncremarkWrapperComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
@@ -61,9 +62,32 @@ const TRUNCATE_LENGTH = 80;
           @if (hasAnswer()) {
             <!-- Assistant: left-aligned bubble -->
             <div class="message-answer flex flex-col items-start text-left max-w-[85%] mr-auto px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
-              <strong class="text-green-600 dark:text-green-400">{{ 'documents.assistant' | translate }}:</strong>
+              <div class="flex items-center gap-2 w-full">
+                <strong class="text-green-600 dark:text-green-400">{{ 'documents.assistant' | translate }}:</strong>
+                @if (canShowRawToggle() && chatResponseMode() !== 'audio_only') {
+                  <p-button
+                    [icon]="showRawMarkdown() ? 'pi pi-eye' : 'pi pi-code'"
+                    [rounded]="true"
+                    [text]="true"
+                    size="small"
+                    severity="secondary"
+                    (onClick)="toggleRawMarkdown()"
+                    [pTooltip]="(showRawMarkdown() ? ('chat.showRenderedMarkdown' | translate) : ('chat.showRawMarkdown' | translate))"
+                    [attr.aria-label]="(showRawMarkdown() ? ('chat.showRenderedMarkdown' | translate) : ('chat.showRawMarkdown' | translate))"
+                  ></p-button>
+                }
+              </div>
               @if (chatResponseMode() !== 'audio_only') {
-                <p class="text-gray-800 dark:text-gray-200 mt-1 mb-2 whitespace-pre-wrap">{{ message().answerText }}</p>
+                @if (showRawMarkdown()) {
+                  <pre class="text-gray-800 dark:text-gray-200 mt-1 mb-2 whitespace-pre-wrap font-sans text-sm">{{ message().answerText }}</pre>
+                } @else {
+                  <div class="mt-1 mb-2 w-full">
+                    <app-incremark-wrapper
+                      [content]="message().answerText ?? ''"
+                      [isFinished]="!message().streaming"
+                    />
+                  </div>
+                }
               }
               @if ((chatResponseMode() === 'audio_only' || chatResponseMode() === 'audio_and_text') && message().audioState === 'synthesizing') {
                 <p class="text-sm text-gray-500 dark:text-gray-400 italic mb-2">{{ 'chat.synthesizing' | translate }}</p>
@@ -176,8 +200,17 @@ export class ChatMessageComponent {
   expandedChange = output<boolean>();
 
   private expandedSignal = signal(true);
+  private showRawMarkdownSignal = signal(false);
 
   expanded = computed(() => this.expandedSignal());
+  showRawMarkdown = computed(() => this.showRawMarkdownSignal());
+
+  /** Toggle is only available when the full response has finished (not streaming). */
+  canShowRawToggle = computed(() => !this.message().streaming);
+
+  toggleRawMarkdown(): void {
+    this.showRawMarkdownSignal.update((v) => !v);
+  }
   collapsed = computed(() => !this.expandedSignal());
 
   hasAnswer = computed(() => {

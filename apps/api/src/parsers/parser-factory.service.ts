@@ -28,8 +28,8 @@ const PARSER_REGISTRY: Record<
   },
   [DocumentParser.DOCLING]: {
     name: 'Docling',
-    description: 'IBM Docling. Self-hosted, no API key. PDF, DOCX, images.',
-    supportedFormats: ['pdf', 'docx', 'png', 'jpg'],
+    description: 'IBM Docling. Self-hosted, no API key. PDF, DOC, DOCX, images.',
+    supportedFormats: ['pdf', 'doc', 'docx', 'png', 'jpg'],
   },
   [DocumentParser.LLAMAPARSE]: {
     name: 'LlamaParse',

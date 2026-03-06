@@ -29,10 +29,13 @@ import { MemoryService } from '../memory/memory.service';
 export type { Citation };
 export type RagResponse = ChatResponse;
 
+const DEFAULT_LLM_MAX_TOKENS = 2000;
+
 @Injectable()
 export class RagService {
   private readonly logger = new Logger(RagService.name);
   private readonly chatModel: string;
+  private readonly maxTokens: number;
 
   constructor(
     @Inject(VECTOR_STORE)
@@ -49,6 +52,9 @@ export class RagService {
     private memoryService: MemoryService,
   ) {
     this.chatModel = this.configService.get<string>('OPENAI_CHAT_MODEL') || 'gpt-4o-mini';
+    const raw = this.configService.get<string>('LLM_MAX_TOKENS');
+    const parsed = raw ? parseInt(raw, 10) : DEFAULT_LLM_MAX_TOKENS;
+    this.maxTokens = parsed > 0 ? parsed : DEFAULT_LLM_MAX_TOKENS;
   }
 
   /**
@@ -345,7 +351,7 @@ export class RagService {
       question,
       model: this.chatModel,
       temperature: 0.3,
-      maxTokens: 500,
+      maxTokens: this.maxTokens,
     };
 
     const requestId = await this.chatPrepareCacheService.set(
@@ -668,7 +674,7 @@ export class RagService {
         {
           model: this.chatModel,
           temperature: 0.3,
-          maxTokens: 500,
+          maxTokens: this.maxTokens,
           signal: options?.signal,
         },
       )) {
@@ -722,7 +728,7 @@ export class RagService {
     return provider.complete(messages, {
       model: this.chatModel,
       temperature: 0.3,
-      maxTokens: 500,
+      maxTokens: this.maxTokens,
       signal: options?.signal,
     });
   }

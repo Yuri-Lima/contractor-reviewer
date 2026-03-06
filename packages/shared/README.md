@@ -5,7 +5,7 @@ Shared types, interfaces, enums, utilities, and constants for ContractAI Review 
 ## Structure
 
 - **`src/enums`** — Enums (DocumentStatus, WorkspaceRole, JobType, etc.)
-- **`src/types`** — TypeScript interfaces (Document, CreateDocumentRequest, ChatResponse, etc.)
+- **`src/types`** — TypeScript interfaces (Document, CreateDocumentRequest, ChatResponse, Citation, etc.)
 - **`src/utils`** — Utility functions (e.g., `mapI18nToMlLang`, `getViewerFormat`)
 - **`src/constants`** — Constants (prompts, prompt-categories, upload limits, etc.)
 

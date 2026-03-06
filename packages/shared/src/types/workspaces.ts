@@ -2,6 +2,7 @@ import { WorkspaceRole } from '../enums/workspace.enum';
 import { RetentionConfig } from './common';
 import type { TranscriptionProviderId } from './transcription';
 import type { TtsProviderId, TtsProviderConfig, ChatResponseMode } from './tts';
+import type { LlmProviderId } from './llm';
 
 export interface WorkspaceSettingsConfig {
   retention: RetentionConfig;
@@ -10,6 +11,8 @@ export interface WorkspaceSettingsConfig {
     chunkingStrategy: string;
     defaultDocumentParser?: string;
     parserApiKeys?: Record<string, boolean>;
+    /** Default LLM provider for chat/redline (openai | anthropic) */
+    defaultLlmProvider?: LlmProviderId;
   };
   /** Transcription provider API keys (masked: configured/not) */
   transcriptionProviderApiKeys?: Record<TranscriptionProviderId, boolean>;
@@ -52,6 +55,7 @@ export interface UpdateWorkspaceSettingsRequest {
     chunkingStrategy?: string;
     defaultDocumentParser?: string;
     parserApiKeys?: Record<string, string | boolean>;
+    defaultLlmProvider?: LlmProviderId;
   };
   /** Transcription keys: provider id -> string (set) | false (remove) */
   transcriptionProviderApiKeys?: Record<TranscriptionProviderId, string | boolean>;

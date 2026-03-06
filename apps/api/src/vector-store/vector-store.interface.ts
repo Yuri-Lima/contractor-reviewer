@@ -28,14 +28,14 @@ export interface LegalChunkFilters {
  * Swap implementations (pgvector, Pinecone, etc.) without changing consumers.
  *
  * Return semantics:
- * - Contract search: returns Chunk rows (text, pageNumber, paragraphId) - self-contained for citations
+ * - Document search: returns Chunk rows (text, pageNumber, paragraphId) - self-contained for citations
  * - Legal search: returns Embedding rows with denormalized metadata (sourceName, section, country, jurisdiction, url)
  *
- * Consumers fetch document title (relational) separately for contract citation fileName.
+ * Consumers fetch document title (relational) separately for document citation fileName.
  */
 export interface IVectorStore {
-  /** Search contract chunks by embedding similarity within a document. Returns chunk rows with text, pageNumber, paragraphId. */
-  searchContractChunks(
+  /** Search document chunks by embedding similarity within a document. Returns chunk rows with text, pageNumber, paragraphId. */
+  searchDocumentChunks(
     queryEmbedding: number[],
     documentId: string,
     limit?: number,

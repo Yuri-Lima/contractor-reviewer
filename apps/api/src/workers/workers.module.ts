@@ -4,10 +4,13 @@ import { ParsingProcessor } from './parsing.processor';
 import { ChunkingProcessor } from './chunking.processor';
 import { EmbeddingsProcessor } from './embeddings.processor';
 import { OcrProcessor } from './ocr.processor';
+import { SummarizeMemoryProcessor } from './summarize-memory.processor';
+import { JurisdictionEvaluationProcessor } from './jurisdiction-evaluation.processor';
 import { JobProgressPublisher } from './job-progress.publisher';
 import { DocumentJob } from '../entities/document-job.entity';
 import { DocumentFile } from '../entities/document-file.entity';
 import { Document } from '../entities/document.entity';
+import { ChatMessage } from '../entities/chat-message.entity';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
 import { ChunksModule } from '../chunks/chunks.module';
 import { StorageModule } from '../storage/storage.module';
@@ -16,6 +19,8 @@ import { CacheModule } from '../cache/cache.module';
 import { QueueModule } from '../queue/queue.module';
 import { ParsersModule } from '../parsers/parsers.module';
 import { WorkspaceModule } from '../workspace/workspace.module';
+import { MemoryModule } from '../memory/memory.module';
+import { LlmModule } from '../llm/llm.module';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -56,7 +61,13 @@ function writeLog(location: string, message: string, data: any, hypothesisId: st
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([DocumentJob, DocumentFile, Document, WorkspaceSettings]),
+    TypeOrmModule.forFeature([
+      DocumentJob,
+      DocumentFile,
+      Document,
+      WorkspaceSettings,
+      ChatMessage,
+    ]),
     ChunksModule,
     StorageModule,
     RagModule,
@@ -64,12 +75,16 @@ function writeLog(location: string, message: string, data: any, hypothesisId: st
     QueueModule,
     ParsersModule,
     WorkspaceModule,
+    MemoryModule,
+    LlmModule,
   ],
   providers: [
     ParsingProcessor,
     ChunkingProcessor,
     EmbeddingsProcessor,
     OcrProcessor,
+    SummarizeMemoryProcessor,
+    JurisdictionEvaluationProcessor,
     JobProgressPublisher,
   ],
 })

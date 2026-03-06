@@ -5,10 +5,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DocumentJob, JobStatus, JobType } from '../entities/document-job.entity';
 import { DocumentFile, FileStatus } from '../entities/document-file.entity';
-import { Document, DocumentStatus, JurisdictionStatus } from '../entities/document.entity';
+import { Document, DocumentStatus } from '../entities/document.entity';
 import { Inject } from '@nestjs/common';
 import { StorageServiceToken, IStorageService } from '../storage/storage.module';
-import { JurisdictionResolverService } from '../rag/jurisdiction-resolver.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { ParserFactoryService } from '../parsers/parser-factory.service';
@@ -16,9 +15,6 @@ import { DocumentParser } from '@contractai-review/shared';
 import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
 import { JobProgressPublisher } from './job-progress.publisher';
 import { abortAsPromise } from '../common/utils/abort-promise';
-import * as fs from 'fs';
-import * as path from 'path';
-
 interface ParsingJobData {
   jobId: string;
   documentId: string;
@@ -27,37 +23,6 @@ interface ParsingJobData {
   mimeType: string;
   parser?: string;
   workspaceId?: string;
-}
-
-function writeLog(location: string, message: string, data: unknown, hypothesisId: string) {
-  try {
-    let workspaceRoot = process.cwd();
-    let currentDir = workspaceRoot;
-    let found = false;
-    for (let i = 0; i < 10; i++) {
-      if (fs.existsSync(path.join(currentDir, 'package.json')) &&
-          fs.existsSync(path.join(currentDir, 'apps'))) {
-        workspaceRoot = currentDir;
-        found = true;
-        break;
-      }
-      const parent = path.dirname(currentDir);
-      if (parent === currentDir) break;
-      currentDir = parent;
-    }
-    if (!found) {
-      workspaceRoot = path.resolve(__dirname, '../../../../..');
-    }
-    const logPath = path.join(workspaceRoot, '.cursor/debug.log');
-    const logDir = path.dirname(logPath);
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true });
-    }
-    const logEntry = JSON.stringify({ location, message, data, timestamp: Date.now(), hypothesisId, runId: 'run1' }) + '\n';
-    fs.appendFileSync(logPath, logEntry);
-  } catch (e) {
-    console.error('[writeLog error]', e);
-  }
 }
 
 @Processor('parsing', {
@@ -77,11 +42,12 @@ export class ParsingProcessor extends WorkerHost {
     private documentRepository: Repository<Document>,
     @Inject(StorageServiceToken)
     private storageService: IStorageService,
-    private jurisdictionResolver: JurisdictionResolverService,
     private parserFactory: ParserFactoryService,
     private workspaceSettingsService: WorkspaceSettingsService,
     @InjectQueue('chunking')
     private chunkingQueue: Queue,
+    @InjectQueue('jurisdiction-evaluation')
+    private jurisdictionEvaluationQueue: Queue,
     private jobProgressPublisher: JobProgressPublisher,
   ) {
     super();
@@ -150,6 +116,10 @@ export class ParsingProcessor extends WorkerHost {
     if (allFilesReady && document.files.some((f) => f.status === FileStatus.AVAILABLE)) {
       document.status = DocumentStatus.AVAILABLE;
       await this.documentRepository.save(document);
+      await this.jurisdictionEvaluationQueue.add('evaluate', {
+        documentId,
+        workspaceId: document.workspaceId,
+      });
     }
   }
 
@@ -160,7 +130,6 @@ export class ParsingProcessor extends WorkerHost {
   ): Promise<void> {
     const { jobId, documentId, fileId, storageKey, mimeType, parser: parserParam, workspaceId: jobWorkspaceId } = job.data;
 
-    writeLog('parsing.processor', 'Parsing job received', { jobId, documentId, fileId, mimeType, parser: parserParam }, 'C');
     this.logger.log(`Starting parsing job ${jobId} for file ${fileId} (${mimeType})`);
 
     try {
@@ -240,24 +209,10 @@ export class ParsingProcessor extends WorkerHost {
         await this.fileRepository.save(file);
       }
 
-      await this.updateJobStatus(jobId, JobStatus.PROCESSING, 50);
-
-      if (document && extractedText) {
-        const jurisdictionResult = await this.withTimeout(
-          this.jurisdictionResolver.resolveJurisdiction(extractedText),
-          30000,
-          `Jurisdiction resolution failed for document ${documentId}`,
-        );
-        if (jurisdictionResult.jurisdiction) {
-          document.resolvedJurisdiction = jurisdictionResult.jurisdiction;
-          document.jurisdictionStatus = jurisdictionResult.status as JurisdictionStatus;
-          await this.documentRepository.save(document);
-        }
-      }
-
       await this.updateJobStatus(jobId, JobStatus.PROCESSING, 80);
 
       if (extractedText) {
+        this.logger.log(`[Parsing] Branch: chunking (text extracted), jobId=${jobId}`);
         const chunkingJob = this.jobRepository.create({
           documentId,
           type: JobType.CHUNKING,
@@ -273,6 +228,7 @@ export class ParsingProcessor extends WorkerHost {
           pageCount,
         });
       } else {
+        this.logger.log(`[Parsing] Branch: skip (no text extracted), jobId=${jobId}`);
         this.logger.warn(`Job ${jobId}: No text extracted, skipping chunking`);
       }
 
@@ -282,7 +238,6 @@ export class ParsingProcessor extends WorkerHost {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const parserUsed = parserParam ?? 'default';
-      writeLog('parsing.processor', 'Parsing job error', { jobId, parser: parserUsed, error: errorMessage }, 'D');
       this.logger.error(
         `Parsing failed [parser=${parserUsed}] Job ${jobId}: ${errorMessage}`,
         error instanceof Error ? error.stack : undefined,

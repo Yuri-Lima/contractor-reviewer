@@ -73,6 +73,8 @@ export class EmbeddingsProcessor extends WorkerHost {
   ): Promise<void> {
     const { jobId, documentId, chunkIds } = job.data;
 
+    this.logger.log(`[Embeddings] Start jobId=${jobId} documentId=${documentId} chunkCount=${chunkIds.length}`);
+
     try {
       await this.updateJobStatus(jobId, JobStatus.PROCESSING, 0);
 
@@ -129,6 +131,7 @@ export class EmbeddingsProcessor extends WorkerHost {
 
       await this.updateJobStatus(jobId, JobStatus.COMPLETED, 100);
       await this.ragCacheService.invalidateDocument(documentId);
+      this.logger.log(`[Embeddings] Job completed`, { jobId, documentId });
     } catch (error) {
       await this.updateJobStatus(
         jobId,

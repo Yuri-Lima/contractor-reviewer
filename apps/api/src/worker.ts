@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { WorkersModule } from './workers/workers.module';
+import { getLoggerConfig } from './common/utils/log-level';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -44,7 +45,9 @@ async function bootstrap() {
   writeLog('worker.ts:6', 'Worker bootstrap started', {pid:process.pid,nodeEnv:process.env.NODE_ENV}, 'A');
   // #endregion
   
-  const app = await NestFactory.createApplicationContext(AppModule);
+  const app = await NestFactory.createApplicationContext(AppModule, {
+    logger: getLoggerConfig(),
+  });
   
   // #region agent log
   writeLog('worker.ts:10', 'App context created, initializing WorkersModule', {}, 'A');

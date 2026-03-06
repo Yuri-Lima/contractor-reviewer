@@ -10,6 +10,7 @@ import { QueueModule } from './queue/queue.module';
 import { DocumentsModule } from './documents/documents.module';
 import { WorkersModule } from './workers/workers.module';
 import { RagModule } from './rag/rag.module';
+import { MemoryModule } from './memory/memory.module';
 import { PrivacyModule } from './privacy/privacy.module';
 import { AuditModule } from './audit/audit.module';
 import { RetentionModule } from './retention/retention.module';
@@ -57,6 +58,7 @@ if (!isWorker) {
     StorageModule,
     QueueModule,
     RagModule,
+    MemoryModule,
     DocumentsModule,
     WorkersModule,
     PrivacyModule,

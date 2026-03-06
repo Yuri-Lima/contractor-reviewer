@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -11,8 +11,8 @@ import { Tag } from 'primeng/tag';
 import { Toast } from 'primeng/toast';
 import { MessageModule } from 'primeng/message';
 import { ConfirmDialog } from 'primeng/confirmdialog';
-import { Dialog } from 'primeng/dialog';
 import { MessageService, ConfirmationService } from 'primeng/api';
+import { BaseDialogComponent, type DialogFooterButton } from '../../core/components/base-dialog';
 import { ApiService } from '../../core/services/api.service';
 import { OnboardingService } from '../../onboarding/onboarding.service';
 import {
@@ -43,7 +43,7 @@ import { DiffMatchPatch, DiffOp } from 'diff-match-patch-ts';
     Toast,
     MessageModule,
     ConfirmDialog,
-    Dialog,
+    BaseDialogComponent,
     TranslatePipe,
   ],
   providers: [MessageService, ConfirmationService],
@@ -520,6 +520,30 @@ export class RedlineComponent implements OnInit, OnDestroy {
         return 'danger';
       default:
         return 'warn';
+    }
+  }
+
+  regionConfirmFooterButtons = computed<DialogFooterButton[]>(() => [
+    {
+      label: this.translateService.instant(_('redline.selectManually')),
+      severity: 'secondary',
+      outlined: true,
+      action: 'emit',
+      emitKey: 'selectManually',
+    },
+    {
+      label: this.translateService.instant(_('redline.useSuggestedRegion')),
+      severity: 'primary',
+      action: 'emit',
+      emitKey: 'useSuggestedRegion',
+    },
+  ]);
+
+  onRegionConfirmButton(e: { key: string }): void {
+    if (e.key === 'selectManually') {
+      this.selectRegionManually();
+    } else if (e.key === 'useSuggestedRegion') {
+      this.confirmSuggestedRegion();
     }
   }
 

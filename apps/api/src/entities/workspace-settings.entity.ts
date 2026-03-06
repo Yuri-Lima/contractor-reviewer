@@ -46,6 +46,10 @@ export class WorkspaceSettings {
   @Column({ type: 'varchar', default: 'docling' })
   defaultDocumentParser: string;
 
+  /** Default LLM provider for chat/redline (openai | anthropic) */
+  @Column({ type: 'varchar', nullable: true })
+  defaultLlmProvider: string | null;
+
   @Column({ type: 'jsonb', nullable: true })
   parserApiKeys: Record<string, string> | null;
 

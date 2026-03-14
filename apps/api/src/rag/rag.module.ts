@@ -6,7 +6,6 @@ import { EmbeddingsService } from './embeddings.service';
 import { RagService } from './rag.service';
 import { JurisdictionResolverService } from './jurisdiction-resolver.service';
 import { JurisdictionEvaluationService } from './jurisdiction-evaluation.service';
-import { OcrService } from './ocr.service';
 import { ChatPrepareCacheService } from './chat-prepare-cache.service';
 import { Document } from '../entities/document.entity';
 import { DocumentFile } from '../entities/document-file.entity';
@@ -38,7 +37,6 @@ import { MemoryModule } from '../memory/memory.module';
     RagService,
     JurisdictionResolverService,
     JurisdictionEvaluationService,
-    OcrService,
     ChatPrepareCacheService,
   ],
   exports: [
@@ -49,7 +47,6 @@ import { MemoryModule } from '../memory/memory.module';
     RagService,
     JurisdictionResolverService,
     JurisdictionEvaluationService,
-    OcrService,
   ],
 })
 export class RagModule {}

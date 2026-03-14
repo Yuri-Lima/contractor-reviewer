@@ -487,6 +487,7 @@ export class DocumentsService {
         'file.errorMessage',
         'file.pageCount',
         'file.parsedBy',
+        'file.parsingContext',
         'file.createdAt',
         'file.updatedAt',
       ])

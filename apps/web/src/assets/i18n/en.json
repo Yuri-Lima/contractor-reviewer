@@ -130,11 +130,21 @@
       "gb": "GB"
     },
     "createdAt": "Created At",
+    "parser": "Parser",
     "fileStatus": {
       "available": "Available",
       "processing": "Processing",
       "uploading": "Uploading",
       "error": "Error"
+    },
+    "parsingContext": {
+      "parser": "Parser",
+      "parserVersion": "Version",
+      "pipelineMode": "Pipeline mode",
+      "usedOcr": "Used OCR",
+      "pageCount": "Pages",
+      "exportFormat": "Export format",
+      "notAvailable": "Not available"
     },
     "loadFilesError": "Error loading files",
     "searchFiles": "Search files...",

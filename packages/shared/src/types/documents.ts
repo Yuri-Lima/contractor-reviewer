@@ -46,6 +46,8 @@ export interface DocumentFile {
   ocrText?: string;
   errorMessage?: string;
   pageCount?: number;
+  parsedBy?: string;
+  parsingContext?: ParsingContext;
   createdAt: string;
   updatedAt: string;
 }
@@ -94,3 +96,14 @@ export type FileSearchScope = 'all' | 'fileName' | 'mimeType' | 'status' | 'crea
 
 /** Search mode: fuzzy (pg_trgm) or contains (ILIKE) */
 export type SearchMode = 'fuzzy' | 'contains';
+
+/** Context about how a document was parsed, stored per file for frontend display. */
+export interface ParsingContext {
+  parserId: string;
+  parserVersion?: string;
+  pipelineMode?: string;
+  usedOcr?: boolean;
+  pageCount?: number;
+  exportFormat?: string;
+  detectedFeatures?: string[];
+}

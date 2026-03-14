@@ -11,7 +11,7 @@ import { StorageServiceToken, IStorageService } from '../storage/storage.module'
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { ParserFactoryService } from '../parsers/parser-factory.service';
-import { DocumentParser } from '@contractai-review/shared';
+import { DocumentParser, ParsingContext } from '@contractai-review/shared';
 import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
 import { JobProgressPublisher } from './job-progress.publisher';
 import { abortAsPromise } from '../common/utils/abort-promise';
@@ -90,7 +90,11 @@ export class ParsingProcessor extends WorkerHost {
     this.jobProgressPublisher.publish(job.documentId, job).catch(() => {});
   }
 
-  private async markFileAvailable(fileId: string, parsedBy?: string): Promise<void> {
+  private async markFileAvailable(
+    fileId: string,
+    parsedBy?: string,
+    parsingContext?: ParsingContext | null,
+  ): Promise<void> {
     const file = await this.fileRepository.findOne({
       where: { id: fileId },
       relations: ['document'],
@@ -99,6 +103,9 @@ export class ParsingProcessor extends WorkerHost {
 
     file.status = FileStatus.AVAILABLE;
     if (parsedBy) file.parsedBy = parsedBy;
+    if (parsingContext !== undefined) {
+      file.parsingContext = parsingContext;
+    }
     await this.fileRepository.save(file);
     await this.updateDocumentStatusIfReady(file.documentId);
   }
@@ -167,15 +174,19 @@ export class ParsingProcessor extends WorkerHost {
         );
         extractedText = fileBuffer.toString('utf-8');
         file.ocrText = extractedText;
+        file.parsingContext = {
+          parserId: 'direct',
+          exportFormat: 'plain',
+        };
         await this.fileRepository.save(file);
         usedParser = 'direct';
       } else {
-        const parserId = (parserParam as DocumentParser) ?? await this.getDefaultParser(workspaceId);
-        const { adapter, options } = await this.parserFactory.getParserWithApiKey(parserId, workspaceId);
-
-        if (!adapter.isSupported(mimeType)) {
-          throw new Error(`Parser ${parserId} does not support mime type: ${mimeType}`);
-        }
+        const preferredId = (parserParam as DocumentParser) ?? await this.getDefaultParser(workspaceId);
+        const { adapter, options, parserId } = await this.parserFactory.getParserWithFallback(
+          mimeType,
+          preferredId,
+          workspaceId,
+        );
 
         await this.updateJobStatus(jobId, JobStatus.PROCESSING, 30);
 
@@ -206,6 +217,13 @@ export class ParsingProcessor extends WorkerHost {
         file.ocrText = extractedText;
         if (pageCount != null) file.pageCount = pageCount;
         file.parsedBy = usedParser;
+        file.parsingContext = result.parserContext
+          ? result.parserContext
+          : ({
+              parserId: usedParser,
+              pageCount: pageCount ?? undefined,
+              exportFormat: 'markdown',
+            });
         await this.fileRepository.save(file);
       }
 
@@ -233,7 +251,12 @@ export class ParsingProcessor extends WorkerHost {
       }
 
       await this.updateJobStatus(jobId, JobStatus.COMPLETED, 100);
-      await this.markFileAvailable(fileId, usedParser);
+      const fileToMark = await this.fileRepository.findOne({ where: { id: fileId } });
+      await this.markFileAvailable(
+        fileId,
+        usedParser,
+        fileToMark?.parsingContext ?? undefined,
+      );
       this.logger.log(`Job ${jobId}: Completed successfully`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

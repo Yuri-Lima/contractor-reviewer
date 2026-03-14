@@ -6,11 +6,17 @@ export const ALLOWED_EXTENSIONS = [
   '.pdf',
   '.doc',
   '.docx',
+  '.pptx',
+  '.xlsx',
   '.txt',
   '.md',
   '.png',
   '.jpg',
   '.jpeg',
+  '.tiff',
+  '.tif',
+  '.bmp',
+  '.webp',
 ] as const;
 
 export const ALLOWED_MIME_TYPES = [
@@ -18,11 +24,16 @@ export const ALLOWED_MIME_TYPES = [
   'application/x-pdf', // Alternative PDF MIME type used by some browsers/systems
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'text/plain',
   'text/markdown',
   'text/x-markdown',
   'image/png',
   'image/jpeg',
+  'image/tiff',
+  'image/bmp',
+  'image/webp',
 ] as const;
 
 /** HTML accept attribute value for file inputs (e.g. .pdf,.doc,.docx,.txt,.md,...) */

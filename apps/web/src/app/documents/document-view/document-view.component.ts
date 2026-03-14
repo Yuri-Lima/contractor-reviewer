@@ -331,6 +331,7 @@ interface FilesResourceParams extends FilesRequestParams {
                     <th pSortableColumn="status" pColumnFilter field="status" filterMatchMode="equals" filterType="text">
                       {{ 'documents.status' | translate }}
                     </th>
+                    <th>{{ 'documents.parser' | translate }}</th>
                     <th pSortableColumn="createdAt" pColumnFilter field="createdAt" filterMatchMode="dateIs" filterType="date">
                       {{ 'documents.createdAt' | translate }}
                     </th>
@@ -349,6 +350,9 @@ interface FilesResourceParams extends FilesRequestParams {
                     <td>{{ formatFileSize(file.sizeBytes) }}</td>
                     <td>
                       <p-tag [value]="getFileStatusLabel(file.status)" [severity]="getFileStatusSeverity(file.status)"></p-tag>
+                    </td>
+                    <td>
+                      <span [pTooltip]="getParsingDetailsTooltip(file)">{{ getParserBadge(file) }}</span>
                     </td>
                     <td>{{ file.createdAt | localeDate: 'short' }}</td>
                     <td>
@@ -2527,6 +2531,29 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     };
     const result = severityMap[status];
     return result !== undefined ? result : 'secondary';
+  }
+
+  /** Parser badge for files table: parserId or parsedBy fallback, or N/A when unknown. */
+  getParserBadge(file: DocumentFile): string {
+    const ctx = file.parsingContext;
+    const fallback = file.parsedBy;
+    if (ctx?.parserId) return ctx.parserId;
+    if (fallback) return fallback;
+    return this.translateService.instant('common.notAvailable');
+  }
+
+  /** Tooltip with parsing details (parser, mode, OCR, pages, format). */
+  getParsingDetailsTooltip(file: DocumentFile): string {
+    const ctx = file.parsingContext;
+    if (!ctx) return this.translateService.instant('documents.parsingContext.notAvailable');
+    const parts: string[] = [];
+    if (ctx.parserId) parts.push(this.translateService.instant('documents.parsingContext.parser') + ': ' + ctx.parserId);
+    if (ctx.parserVersion) parts.push(this.translateService.instant('documents.parsingContext.parserVersion') + ': ' + ctx.parserVersion);
+    if (ctx.pipelineMode) parts.push(this.translateService.instant('documents.parsingContext.pipelineMode') + ': ' + ctx.pipelineMode);
+    if (ctx.usedOcr !== undefined) parts.push(this.translateService.instant('documents.parsingContext.usedOcr') + ': ' + (ctx.usedOcr ? this.translateService.instant('common.yes') : this.translateService.instant('common.no')));
+    if (ctx.pageCount != null) parts.push(this.translateService.instant('documents.parsingContext.pageCount') + ': ' + ctx.pageCount);
+    if (ctx.exportFormat) parts.push(this.translateService.instant('documents.parsingContext.exportFormat') + ': ' + ctx.exportFormat);
+    return parts.length > 0 ? parts.join('\n') : this.translateService.instant('documents.parsingContext.notAvailable');
   }
 
   openFileContentDialog(file: DocumentFile, event: MouseEvent): void {

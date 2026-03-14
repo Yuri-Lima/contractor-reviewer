@@ -3,7 +3,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ParsingProcessor } from './parsing.processor';
 import { ChunkingProcessor } from './chunking.processor';
 import { EmbeddingsProcessor } from './embeddings.processor';
-import { OcrProcessor } from './ocr.processor';
 import { SummarizeMemoryProcessor } from './summarize-memory.processor';
 import { JurisdictionEvaluationProcessor } from './jurisdiction-evaluation.processor';
 import { JobProgressPublisher } from './job-progress.publisher';
@@ -82,7 +81,6 @@ function writeLog(location: string, message: string, data: any, hypothesisId: st
     ParsingProcessor,
     ChunkingProcessor,
     EmbeddingsProcessor,
-    OcrProcessor,
     SummarizeMemoryProcessor,
     JurisdictionEvaluationProcessor,
     JobProgressPublisher,

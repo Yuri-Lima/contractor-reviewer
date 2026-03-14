@@ -125,11 +125,21 @@
     "fileType": "Dateityp",
     "fileSize": "Dateigröße",
     "createdAt": "Erstellt am",
+    "parser": "Parser",
     "fileStatus": {
       "available": "Verfügbar",
       "processing": "Wird verarbeitet",
       "uploading": "Wird hochgeladen",
       "error": "Fehler"
+    },
+    "parsingContext": {
+      "parser": "Parser",
+      "parserVersion": "Version",
+      "pipelineMode": "Pipeline-Modus",
+      "usedOcr": "OCR verwendet",
+      "pageCount": "Seiten",
+      "exportFormat": "Exportformat",
+      "notAvailable": "Nicht verfügbar"
     },
     "loadFilesError": "Fehler beim Laden der Dateien",
     "searchFiles": "Dateien suchen...",

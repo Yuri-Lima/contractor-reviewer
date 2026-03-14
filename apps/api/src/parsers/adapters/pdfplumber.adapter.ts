@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   DocumentParser,
+  ParsingContext,
   ParseResult,
 } from '@contractai-review/shared';
 import { DocumentParserAdapter, ParserOptions } from '../parser.interface';
@@ -72,10 +73,17 @@ export class PdfplumberAdapter implements DocumentParserAdapter {
         metadata?: Record<string, unknown>;
       };
 
+      const parserContext: ParsingContext = {
+        parserId: 'pdfplumber',
+        pageCount: data.page_count ?? undefined,
+        exportFormat: 'markdown',
+      };
+
       return {
         markdown: data.markdown ?? '',
         pageCount: data.page_count ?? null,
         metadata: data.metadata ?? undefined,
+        parserContext,
       };
     } catch (err) {
       if (err instanceof Error) {

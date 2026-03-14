@@ -65,15 +65,6 @@ function writeLog(location: string, message: string, data: any, hypothesisId: st
         },
       },
       {
-        name: 'ocr',
-        defaultJobOptions: {
-          attempts: 2, // OCR is expensive, fewer retries
-          backoff: { type: 'exponential', delay: 5000 },
-          removeOnComplete: { count: 100 },
-          removeOnFail: { count: 50 },
-        },
-      },
-      {
         name: 'chunking',
         defaultJobOptions: {
           attempts: 3,

@@ -127,11 +127,21 @@
     "fileType": "Tipo de Arquivo",
     "fileSize": "Tamanho do Arquivo",
     "createdAt": "Data de Criação",
+    "parser": "Analisador",
     "fileStatus": {
       "available": "Disponível",
       "processing": "Processando",
       "uploading": "Enviando",
       "error": "Erro"
+    },
+    "parsingContext": {
+      "parser": "Analisador",
+      "parserVersion": "Versão",
+      "pipelineMode": "Modo de pipeline",
+      "usedOcr": "Usou OCR",
+      "pageCount": "Páginas",
+      "exportFormat": "Formato de exportação",
+      "notAvailable": "Não disponível"
     },
     "loadFilesError": "Erro ao carregar arquivos",
     "searchFiles": "Buscar arquivos...",

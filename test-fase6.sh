@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script de teste para Fase 6 — Endpoints REST (mínimo)
-# Testa: Redline, Privacy, Account, Audit
+# Testa: Privacy, Account, Audit
 #
 # Execute a partir da raiz do projeto (test-contract-naira.txt opcional para upload).
 
@@ -155,29 +155,8 @@ else
   echo -e "${COLOR_YELLOW}⚠️  Arquivo test-contract-naira.txt não encontrado, pulando upload${COLOR_RESET}"
 fi
 
-# 5. Testar Redline
-echo -e "\n${COLOR_BLUE}5. Testar Redline${COLOR_RESET}"
-echo "   Testando playbook: balanced"
-REDLINE_RESPONSE=$(curl -s -X POST "$API_URL/workspaces/$WORKSPACE_ID/documents/$DOCUMENT_ID/redline" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"playbook":"balanced"}')
-
-REDLINE_VERSION_ID=$(echo $REDLINE_RESPONSE | jq -r '.versionId // empty')
-REDLINE_PLAYBOOK=$(echo $REDLINE_RESPONSE | jq -r '.playbook // empty')
-
-if [ ! -z "$REDLINE_VERSION_ID" ] && [ "$REDLINE_VERSION_ID" != "null" ]; then
-  echo -e "${COLOR_GREEN}✅ Redline gerado${COLOR_RESET}"
-  echo "   Version ID: $REDLINE_VERSION_ID"
-  echo "   Playbook: $REDLINE_PLAYBOOK"
-  echo "   Changes: $(echo $REDLINE_RESPONSE | jq '.changes | length')"
-else
-  echo -e "${COLOR_YELLOW}⚠️  Resposta do redline:${COLOR_RESET}"
-  echo "$REDLINE_RESPONSE" | jq .
-fi
-
-# 6. Testar Privacy - Toggle No-Logs
-echo -e "\n${COLOR_BLUE}6. Testar Privacy - Toggle No-Logs${COLOR_RESET}"
+# 5. Testar Privacy - Toggle No-Logs
+echo -e "\n${COLOR_BLUE}5. Testar Privacy - Toggle No-Logs${COLOR_RESET}"
 echo "   Habilitando no-logs..."
 NO_LOGS_RESPONSE=$(curl -s -X POST "$API_URL/workspaces/$WORKSPACE_ID/privacy/no-logs" \
   -H "Content-Type: application/json" \
@@ -193,8 +172,8 @@ else
   echo "$NO_LOGS_RESPONSE" | jq .
 fi
 
-# 7. Testar Privacy - Export
-echo -e "\n${COLOR_BLUE}7. Testar Privacy - Export DSAR-lite${COLOR_RESET}"
+# 6. Testar Privacy - Export
+echo -e "\n${COLOR_BLUE}6. Testar Privacy - Export DSAR-lite${COLOR_RESET}"
 EXPORT_FILE="privacy-export-$(date +%s).json"
 EXPORT_RESPONSE=$(curl -s -X GET "$API_URL/workspaces/$WORKSPACE_ID/privacy/export" \
   -H "Authorization: Bearer $TOKEN" \
@@ -206,7 +185,7 @@ if [ -f "$EXPORT_FILE" ] && [ -s "$EXPORT_FILE" ]; then
   
   echo -e "${COLOR_GREEN}✅ Export criado: $EXPORT_FILE ($EXPORT_SIZE bytes)${COLOR_RESET}"
   echo "   Conteúdo:"
-  echo "$EXPORT_CONTENT" | jq '{workspaceId, exportedAt, chatMessages: (.chatMessages | length), versions: (.versions | length), auditLogs: (.auditLogs | length)}'
+  echo "$EXPORT_CONTENT" | jq '{workspaceId, exportedAt, chatMessages: (.chatMessages | length), auditLogs: (.auditLogs | length)}'
   
   # Verificar se audit logs estão no export
   EXPORT_AUDIT_COUNT=$(cat "$EXPORT_FILE" | jq '.auditLogs | length')
@@ -219,8 +198,8 @@ else
   echo -e "${COLOR_RED}❌ Falha ao exportar dados${COLOR_RESET}"
 fi
 
-# 8. Testar Audit Logs
-echo -e "\n${COLOR_BLUE}8. Testar Audit Logs${COLOR_RESET}"
+# 7. Testar Audit Logs
+echo -e "\n${COLOR_BLUE}7. Testar Audit Logs${COLOR_RESET}"
 echo "   Aguardando alguns segundos para garantir que logs foram criados..."
 sleep 2
 
@@ -242,12 +221,10 @@ if [ "$AUDIT_TOTAL" -gt 0 ] || [ "$AUDIT_LOGS_COUNT" -gt 0 ]; then
   echo ""
   echo "   Verificando ações registradas:"
   UPLOAD_COUNT=$(echo $AUDIT_RESPONSE | jq '[.logs[] | select(.action == "upload")] | length')
-  REDLINE_COUNT=$(echo $AUDIT_RESPONSE | jq '[.logs[] | select(.action == "redline_generate")] | length')
   EXPORT_COUNT=$(echo $AUDIT_RESPONSE | jq '[.logs[] | select(.action == "export_privacy")] | length')
   OPEN_VIEW_COUNT=$(echo $AUDIT_RESPONSE | jq '[.logs[] | select(.action == "open_view")] | length')
   
   echo "   - Upload: $UPLOAD_COUNT"
-  echo "   - Redline: $REDLINE_COUNT"
   echo "   - Export Privacy: $EXPORT_COUNT"
   echo "   - Open/View: $OPEN_VIEW_COUNT"
 else
@@ -256,8 +233,8 @@ else
   echo "   Verifique se o AuditService está sendo injetado corretamente nos controllers."
 fi
 
-# 9. Testar filtros de Audit
-echo -e "\n${COLOR_BLUE}9. Testar filtros de Audit${COLOR_RESET}"
+# 8. Testar filtros de Audit
+echo -e "\n${COLOR_BLUE}8. Testar filtros de Audit${COLOR_RESET}"
 echo "   Filtrando por ação: upload"
 AUDIT_FILTERED=$(curl -s -X GET "$API_URL/workspaces/$WORKSPACE_ID/audit?action=upload&limit=5" \
   -H "Authorization: Bearer $TOKEN")
@@ -265,8 +242,8 @@ AUDIT_FILTERED=$(curl -s -X GET "$API_URL/workspaces/$WORKSPACE_ID/audit?action=
 FILTERED_COUNT=$(echo $AUDIT_FILTERED | jq '.logs | length')
 echo "   Logs com ação 'upload': $FILTERED_COUNT"
 
-# 10. Testar Account Delete (último teste - destrutivo)
-echo -e "\n${COLOR_BLUE}10. Testar Account Delete${COLOR_RESET}"
+# 9. Testar Account Delete (último teste - destrutivo)
+echo -e "\n${COLOR_BLUE}9. Testar Account Delete${COLOR_RESET}"
 echo -e "${COLOR_YELLOW}⚠️  ATENÇÃO: Este teste vai desativar a conta do usuário!${COLOR_RESET}"
 read -p "   Deseja continuar? (s/N): " -n 1 -r
 echo
@@ -288,7 +265,7 @@ else
   echo -e "${COLOR_YELLOW}⚠️  Teste de delete account pulado${COLOR_RESET}"
 fi
 
-# 11. Resumo
+# 10. Resumo
 echo -e "\n${COLOR_BLUE}=== Resumo dos Testes ===${COLOR_RESET}"
 echo "Workspace ID: $WORKSPACE_ID"
 echo "Document ID: $DOCUMENT_ID"
@@ -296,7 +273,6 @@ echo ""
 echo -e "${COLOR_GREEN}✅ Testes concluídos!${COLOR_RESET}"
 echo ""
 echo "Endpoints testados:"
-echo "  ✅ POST /api/workspaces/:id/documents/:docId/redline"
 echo "  ✅ POST /api/workspaces/:id/privacy/no-logs"
 echo "  ✅ GET /api/workspaces/:id/privacy/export"
 echo "  ✅ GET /api/workspaces/:id/audit"

@@ -118,7 +118,6 @@
     "jurisdictionUpdated": "Jurisdicción actualizada",
     "jurisdictionReEvaluateQueued": "Reevaluación de jurisdicción en cola",
     "files": "Archivos",
-    "redline": "Redline",
     "chat": "Chat",
     "uploadFile": "Subir archivo",
     "fileName": "Nombre del Archivo",
@@ -301,7 +300,12 @@
     "title": "Chat",
     "language": "Idioma",
     "documents": "Documentos",
-    "auto": "Auto"
+    "auto": "Auto",
+    "confidence": {
+      "high": "Confianza alta",
+      "medium": "Confianza media",
+      "low": "Confianza baja"
+    }
   },
   "parsers": {
     "title": "Analizadores de Documentos",
@@ -329,87 +333,14 @@
     "unstructured": "Unstructured.io",
     "pdfplumber": "PDFPlumber"
   },
-  "redline": {
-    "title": "Generar Redline",
-    "description": "Seleccione texto del documento y genere sugerencias de cambios basadas en diferentes estrategias (playbooks).",
-    "configuration": "Configuración del Redline",
-    "selectedText": "Texto Seleccionado",
-    "selectTextPlaceholder": "Seleccione texto del visor o péguelo aquí...",
-    "selectedTextHint": "Seleccione texto del visor de documentos o pegue la cláusula que desea revisar",
-    "addToSelections": "Agregar a selecciones",
-    "selectionsForRedline": "Selecciones para Redline",
-    "selectionsEmpty": "Seleccione texto en el documento y haga clic en Agregar para construir su lista de selecciones.",
-    "selectionsAdded": "Selecciones agregadas a Redline. Puede configurar y generar.",
-    "selectedTextRequired": "El texto seleccionado es obligatorio",
-    "objective": "Objetivo (Opcional)",
-    "objectivePlaceholder": "Describa la intención del cambio...",
-    "playbook": "Playbook",
-    "selectPlaybook": "Selecciona un playbook",
-    "playbookRequired": "Playbook requerido",
-    "customInstructions": "Instrucciones personalizadas (Opcional)",
-    "addInstructions": "Añade instrucciones específicas para el redline...",
-    "instructionsDescription": "Instrucciones adicionales que se considerarán al generar el redline",
-    "generate": "Generar Redline",
-    "cancelGenerate": "Cancelar",
-    "generated": "Redline Generado",
-    "proposal": "Propuesta de Redline",
-    "proposedBy": "Propuesto por",
-    "changes": "cambio(s) sugerido(s)",
-    "change": "Cambio",
-    "original": "Original",
-    "suggested": "Sugerido",
-    "explanation": "Explicación",
-    "reason": "Razón",
-    "diffBlocks": "Cambios",
-    "accept": "Aceptar",
-    "reject": "Rechazar",
-    "apply": "Aplicar Cambios",
-    "noChanges": "No se sugieren cambios para este documento.",
-    "notFound": "NO ENCONTRADO: Evidencia insuficiente encontrada para esta sugerencia.",
-    "citations": "Citas del Contrato",
-    "legalCitations": "Citas Legales",
-    "viewSource": "Ver Fuente",
-    "generateSuccess": "Redline generado con éxito con {{count}} cambio(s)",
-    "generateError": "Error al generar redline",
-    "applySuccess": "Nueva versión {{version}} creada por {{user}}",
-    "applyError": "Error al aplicar cambios",
-    "confidence": {
-      "high": "Alta Confianza",
-      "medium": "Confianza Media",
-      "low": "Baja Confianza"
-    },
-    "playbooks": {
-      "balanced": "Equilibra las protecciones para ambas partes",
-      "conservative": "Minimiza los cambios, mantiene un lenguaje neutro",
-      "clientFriendly": "Favorece al cliente, sugiere cambios más favorables"
-    },
-    "rejectProposal": "Rechazar Propuesta",
-    "editText": "Editar Texto",
-    "editBlocks": "Editar Bloques",
-    "cancelEdit": "Cancelar Edición",
-    "saveEdit": "Guardar Edición",
-    "editingMode": "Modo de Edición",
-    "editSuggestedText": "Editar Texto Sugerido",
-    "editBlockText": "Editar Texto del Bloque",
-    "rejectProposalConfirm": "¿Está seguro de que desea rechazar esta propuesta? Todos los cambios se descartarán.",
-    "rejectProposalSuccess": "Propuesta rechazada. Puede generar una nueva propuesta.",
-    "confirmRegion": "Confirmar Región",
-    "fuzzyMatchFound": "Coincidencia difusa encontrada",
-    "matchedRegion": "Región Coincidente",
-    "useSuggestedRegion": "Usar Región Sugerida",
-    "selectManually": "Seleccionar Manualmente",
-    "manualSelectionNotImplemented": "La selección manual de región aún no está implementada. Usando región sugerida."
-  },
   "documentContent": {
     "title": "Contenido del Documento",
-    "currentVersion": "Versión Actual",
     "lastUpdated": "Última Actualización",
     "loading": "Cargando contenido...",
     "error": "Error al cargar contenido",
     "noContent": "No hay contenido disponible",
     "notProcessed": "Archivo aún no procesado. El contenido estará disponible cuando finalice el análisis.",
-    "refresh": "Actualizar Contenido",
-    "selectTextHint": "Seleccione texto para crear redline"
+    "refresh": "Actualizar Contenido"
   },
   "documentViewer": {
     "loading": "Cargando...",
@@ -427,17 +358,14 @@
     "skipDocumentContentDesc": "Después del procesamiento, el contenido del documento no se almacenará",
     "skipChatMessages": "No persistir mensajes de chat",
     "skipChatMessagesDesc": "Las preguntas y respuestas del chat no se almacenarán",
-    "skipVersions": "No persistir versiones",
-    "skipVersionsDesc": "El historial de versiones y redlines no se almacenará",
     "acceleratedPurge": "Purga acelerada (días)",
     "acceleratedPurgeDesc": "Cuando está habilitado, los datos se eliminarán después de este período (1-30 días)",
     "saveSettings": "Guardar configuración",
     "exportData": "Exportar datos (DSAR-lite)",
-    "exportDescription": "Descarga todos tus datos relacionados con este espacio de trabajo en formato JSON. Esto incluye mensajes de chat, versiones de documentos y registros de auditoría.",
+    "exportDescription": "Descarga todos tus datos relacionados con este espacio de trabajo en formato JSON. Esto incluye mensajes de chat y registros de auditoría.",
     "whatWillBeExported": "Lo que se exportará:",
     "exportItems": {
       "chatMessages": "Mensajes de chat (según configuración no-logs)",
-      "versionMetadata": "Metadatos de versiones de documentos",
       "auditLogs": "Registros de auditoría relacionados con tu usuario",
       "privacySettings": "Configuración de privacidad"
     },
@@ -476,7 +404,6 @@
       "download": "Descargar",
       "upload": "Subir",
       "chatQuery": "Consulta de chat",
-      "redlineGenerate": "Generar Redline",
       "view": "Ver",
       "create": "Crear"
     },
@@ -501,7 +428,7 @@
       "userAccount": "Tu cuenta de usuario",
       "ownedWorkspaces": "Todos los espacios de trabajo donde eres OWNER",
       "documents": "Todos los documentos y archivos asociados",
-      "chatHistory": "Historial de chat y versiones",
+      "chatHistory": "Historial de chat",
       "auditLogs": "Registros de auditoría relacionados"
     },
     "cannotBeUndone": "¡Esta acción no se puede deshacer!",
@@ -579,7 +506,6 @@
       "createWorkspace": "Crear tu primer workspace",
       "uploadContract": "Subir un contrato",
       "runFirstReview": "Ejecutar tu primera revisión IA (chat)",
-      "applyFirstRedline": "Aplicar tu primer cambio de redline",
       "exportDocument": "Exportar un documento"
     },
     "tour": {
@@ -598,20 +524,17 @@
       "documentsText": "Sube contratos (PDF, DOCX) y la IA los analizará e indexará para búsqueda y análisis.",
       "chat": "Chat",
       "chatText": "Haz preguntas sobre tu contrato. La IA usa RAG para citar cláusulas específicas y dar respuestas con evidencia.",
-      "redline": "Redline",
-      "redlineText": "Selecciona texto y genera cambios sugeridos usando distintos playbooks (Equilibrado, Conservador, Pro-cliente).",
       "settings": "Configuración",
       "settingsText": "Configura retención, parsers y prompts de IA por workspace.",
       "done": "¡Listo!",
       "doneText": "Usa la lista para seguir tu progreso. Puedes restablecer el onboarding en cualquier momento desde Ajustes de cuenta.",
       "documentsNoWorkspace": "Crea tu primer workspace para ver documentos aquí.",
       "chatNoDocument": "Crea un documento y sube un archivo para usar el chat con IA.",
-      "redlineNoDocument": "Crea un documento para usar la función de redline.",
       "ctx": {
         "documentsListTitle": "Crear documentos",
         "documentsListText": "Crea documentos para organizar tus archivos de contrato.",
         "documentsListCardsTitle": "Tarjetas de documentos",
-        "documentsListCardsText": "Haz clic en cualquier documento para ver, chatear y aplicar redlines.",
+        "documentsListCardsText": "Haz clic en cualquier documento para ver y chatear.",
         "wsSettingsTitle": "Configuración del workspace",
         "wsSettingsText": "Configura tu workspace aquí.",
         "wsSettingsRetentionTitle": "Políticas de retención",
@@ -619,13 +542,13 @@
         "wsSettingsRetentionTextEmbeddingsTitle": "Retención de texto y embeddings",
         "wsSettingsRetentionTextEmbeddingsText": "Cuánto tiempo se conservan el texto extraído y los vectores RAG (1–730 días). Tras OCR/parsing, controla la retención del contenido indexado para búsqueda y chat.",
         "wsSettingsRetentionFuzzyMatchTitle": "Configuración de coincidencia difusa",
-        "wsSettingsRetentionFuzzyMatchText": "Umbral (0–100%) para coincidir texto del contrato al aplicar redlines. Valores más altos exigen coincidencias más exactas; más bajos permiten sugerencias más flexibles.",
+        "wsSettingsRetentionFuzzyMatchText": "Umbral (0–100%) para coincidir texto del contrato. Valores más altos exigen coincidencias más exactas; más bajos permiten sugerencias más flexibles.",
         "wsSettingsChunkingTitle": "Procesamiento de documentos",
         "wsSettingsChunkingText": "Configura la estrategia de fragmentación para dividir documentos en RAG.",
         "wsSettingsParsersTitle": "Analizadores",
         "wsSettingsParsersText": "Habilita y configura analizadores (PDF, DOCX, etc.) y claves API.",
         "wsSettingsPromptsTitle": "Prompts",
-        "wsSettingsPromptsText": "Personaliza los prompts de IA para chat y redline por workspace.",
+        "wsSettingsPromptsText": "Personaliza los prompts de IA para chat por workspace.",
         "membersAddTitle": "Añadir miembros",
         "membersAddText": "Invita a miembros del equipo a colaborar.",
         "membersTableTitle": "Tabla de miembros",
@@ -757,7 +680,7 @@
   },
   "prompts": {
     "tabTitle": "Prompts de IA",
-    "description": "Personalice los prompts del sistema para chat y generación de redlines. Sobrescriba los valores globales por workspace.",
+    "description": "Personalice los prompts del sistema para chat. Sobrescriba los valores globales por workspace.",
     "globalDescription": "Edite los prompts de IA globales que se aplican a todos los workspaces y documentos. Estos valores predeterminados se utilizan cuando no hay sobrescrituras de workspace o documento.",
     "workspaceDescription": "Edite los prompts de IA del workspace. Se aplican a todos los documentos de este espacio de trabajo combinados con los prompts globales.",
     "globalSystemPrompt": "Prompt del sistema global",
@@ -765,15 +688,10 @@
     "includeGlobal": "Incluir prompts globales",
     "includeWorkspace": "Incluir prompts del workspace",
     "includeDocument": "Incluir prompts del documento",
-    "documentDescription": "Personalice los prompts de IA para este documento. Los prompts de documento se combinan con los de workspace y global. Solo aplican al chat y redline de este documento.",
+    "documentDescription": "Personalice los prompts de IA para este documento. Los prompts de documento se combinan con los de workspace y global. Solo aplican al chat de este documento.",
     "sourceDocument": "Sobrescritura de documento",
     "chatSystem": "Prompt del sistema para chat",
     "chatUser": "Prompt de usuario para chat",
-    "redlineSystem": "Prompt del sistema para redline",
-    "redlineUser": "Prompt de usuario para redline",
-    "playbookBalanced": "Playbook redline: Equilibrado",
-    "playbookConservative": "Playbook redline: Conservador",
-    "playbookClientFriendly": "Playbook redline: Favorable al cliente",
     "sourceWorkspace": "Sobrescritura del workspace",
     "sourceGlobal": "Valor global",
     "save": "Guardar",
@@ -828,18 +746,6 @@
     "registerAndAdd": "Registrar y Añadir",
     "userNotFoundRegister": "Usuario no encontrado. Complete el registro (correo, nombre, contraseña) para añadirlo."
   },
-  "versions": {
-    "title": "Versiones del Documento",
-    "loading": "Cargando versiones...",
-    "noVersions": "No se encontraron versiones para este documento.",
-    "version": "Versión",
-    "createdBy": "Creado por",
-    "view": "Ver",
-    "hide": "Ocultar",
-    "decisions": "Decisiones",
-    "noChanges": "Sin cambios en esta versión",
-    "loadError": "Error al cargar versiones"
-  },
   "tooltip": {
     "workspaces": "Espacios de trabajo",
     "documents": "Documentos",
@@ -860,7 +766,6 @@
     "removeMember": "Eliminar miembro",
     "uploadFile": "Subir archivo",
     "deleteDocument": "Eliminar documento",
-    "generateRedline": "Generar sugerencias de redline",
     "exportData": "Exportar tus datos",
     "resetOnboarding": "Restablecer estado de onboarding y mostrar lista de verificación",
     "startTour": "Iniciar el tour guiado",
@@ -872,8 +777,7 @@
     "nextPage": "Página siguiente",
     "zoomOut": "Reducir zoom",
     "zoomIn": "Aumentar zoom",
-    "zoomReset": "Restablecer zoom",
-    "viewVersion": "Ver versión"
+    "zoomReset": "Restablecer zoom"
   },
   "errors": {
     "generic": "Ocurrió un error",
@@ -957,7 +861,6 @@
     "documents": {
       "open": "Abrir",
       "chat": "Abrir chat",
-      "redline": "Abrir redline",
       "delete": "Eliminar documento"
     },
     "files": {
@@ -973,9 +876,6 @@
     "members": {
       "changeRole": "Cambiar rol",
       "remove": "Eliminar del espacio de trabajo"
-    },
-    "versions": {
-      "view": "Ver / Ocultar"
     }
   }
 }

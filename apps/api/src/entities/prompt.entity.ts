@@ -15,7 +15,7 @@ export class Prompt {
   id: string;
 
   @Column('varchar', { length: 100 })
-  key: string; // e.g. 'chat.system', 'chat.user', 'redline.playbook.balanced'
+  key: string; // e.g. 'chat.system', 'chat.user'
 
   @Column('varchar', { length: 50, default: 'default' })
   variant: string; // For A/B testing: 'default', 'v1', 'v2', etc.

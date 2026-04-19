@@ -10,8 +10,6 @@ ContractAI Review é um **assistente jurídico baseado em evidências** (não ap
 
 - **Façam upload de contratos** em múltiplos formatos (PDF, DOC, DOCX, TXT, imagens)
 - **Façam perguntas** sobre os contratos e recebam respostas com **citações precisas** dos documentos
-- **Gerem redlines** (sugestões de alteração) com diferentes estratégias (equilibrada, conservadora, favorável ao cliente)
-- **Acompanhem versões** de documentos com visualização de diferenças
 - **Colaborem** em workspaces multi-tenant com controle de acesso baseado em roles
 
 A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que todas as respostas sejam fundamentadas em evidências extraídas dos contratos e de fontes legais oficiais por país/jurisdição.
@@ -38,31 +36,20 @@ A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que 
 - Níveis de confiança (high, medium, low) para cada resposta
 - Respostas "NOT FOUND" quando não há evidência suficiente
 
-### ✏️ Redlines Inteligentes
-- Geração automática de sugestões de alteração contratual
-- **Playbooks configuráveis**:
-  - **Balanced**: Equilibrado entre partes
-  - **Conservative**: Minimiza mudanças, linguagem neutra
-  - **Client-friendly**: Mais favorável ao cliente
-- Visualização side-by-side de diferenças
-- Aceitar/rejeitar mudanças granularmente por bloco
-- Histórico completo de versões
-
 ### 👥 Multi-tenant e RBAC
 - **Workspaces** para isolamento completo de dados entre equipes/clientes
 - **Controle de acesso baseado em roles**:
   - **OWNER**: Controle total (billing, deletar workspace, configurações de retenção)
   - **ADMIN**: Gerenciar membros, ver tudo, deletar documentos
-  - **MEMBER**: Upload, chat, redline, download próprios + documentos compartilhados
-  - **VIEWER**: Apenas visualização/download (sem redline)
+  - **MEMBER**: Upload, chat, download próprios + documentos compartilhados
+  - **VIEWER**: Apenas visualização/download
 - Isolamento estrito: todos os recursos filtrados por workspace
 
 ### 🔒 Privacidade e Conformidade
 - **Painel de Privacidade** por workspace e por usuário
 - **Export DSAR-lite**: Download de dados pessoais em JSON/ZIP
   - Mensagens de chat
-  - Metadados de versões
-  - Prompts de redline (sem conteúdo do contrato se no-logs)
+  - Logs de auditoria
 - **Modo no-logs**: Opção para não persistir conteúdos sensíveis
 - Transparência sobre o que é armazenado e por quanto tempo
 
@@ -88,7 +75,6 @@ A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que 
 - Trilha de auditoria para todas as ações importantes:
   - Visualização/download de documentos
   - Queries de chat
-  - Geração de redlines
   - Deletar documentos
   - Export de dados de privacidade
 - Logs incluem: usuário, ação, tipo de alvo, IP, user agent, metadados seguros
@@ -98,7 +84,6 @@ A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que 
 - Suporte a múltiplos idiomas (EN, ES, PT-BR, DE)
 - Detecção automática do idioma do contrato e do usuário
 - Respostas no idioma do usuário
-- Redlines no idioma original do contrato
 - Citações legais mantêm idioma original + explicação traduzida
 
 ### 🔍 Resolução de Jurisdição
@@ -107,8 +92,8 @@ A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que 
 - Status: explicit (encontrado no contrato), inferred (inferido), unknown (solicita ao usuário)
 
 ### 🎯 Onboarding (SaaS)
-- **Tour guiado** (Shepherd.js): tour principal mostrando workspaces, documentos, chat, redline e configurações
-- **Checklist de primeiros passos**: criar workspace, upload, primeira revisão, redline, export
+- **Tour guiado** (Shepherd.js): tour principal mostrando workspaces, documentos, chat e configurações
+- **Checklist de primeiros passos**: criar workspace, upload, primeira revisão, export
 - **Auto-tracking**: checklist atualizada automaticamente ao completar cada tarefa
 - **Ícones de ajuda**: tooltips e painéis "Learn more" para conceitos (ex.: confidence score, citações)
 - **Reset**: reiniciar onboarding a qualquer momento em Account Settings > Help & Onboarding
@@ -160,21 +145,6 @@ Armazena em Cache (Redis) → Resposta com Confiança e Evidências (fromCache: 
 
 **Cache semântico**: respostas similares são cacheadas em Redis (TTL 24h). Usuário vê indicador "cached" e pode forçar resposta nova com "Get fresh response". Ver [docs/architecture/rag-cache.md](docs/architecture/rag-cache.md).
 
-### 3. Geração de Redlines
-```
-Solicitação de Redline + Playbook
-  ↓
-Análise do Contrato com IA
-  ↓
-Geração de Sugestões de Alteração
-  ↓
-Visualização Side-by-Side
-  ↓
-Aceitar/Rejeitar Mudanças
-  ↓
-Nova Versão Criada
-```
-
 ## Arquitetura
 
 ### Monorepo Structure
@@ -211,7 +181,7 @@ contractor-reviwer/
 ### AI/ML
 - **Embeddings**: OpenAI `text-embedding-3-small` (1536 dimensões)
 - **Chat**: OpenAI Responses API
-- **Prompts**: DB-backed, configuráveis por workspace (chat, redline, playbooks)
+- **Prompts**: DB-backed, configuráveis por workspace (chat)
 
 ## Quick Start
 
@@ -275,7 +245,7 @@ Para **Nx Cloud** (cache remoto e distribuição de tarefas em CI), execute `npx
 
 ### AI/ML
 - **OpenAI API** - Embeddings e geração de texto (RAG)
-- **Prompts DB-backed** - Prompts de chat/redline configuráveis por workspace
+- **Prompts DB-backed** - Prompts de chat configuráveis por workspace
 
 ### Infraestrutura
 - **Nx** - Build system e cache de tarefas para o monorepo
@@ -289,8 +259,6 @@ Para **Nx Cloud** (cache remoto e distribuição de tarefas em CI), execute `npx
 - ✅ Multi-tenant com workspaces e RBAC
 - ✅ Upload e processamento de documentos
 - ✅ Chat com RAG e citações
-- ✅ Geração de redlines com playbooks
-- ✅ Versionamento de documentos
 - ✅ Parsers opcionais (Docling, PDFPlumber, DPT-2, LlamaParse, Unstructured) com suporte a PDFs escaneados
 - ✅ Painel de privacidade e export DSAR-lite
 - ✅ Políticas de retenção e purge automático
@@ -306,7 +274,7 @@ Documentação organizada em `docs/`:
 
 ### Guia do Usuário (end-user help)
 
-- **[docs/user-guide/README.md](docs/user-guide/README.md)** — Guia por tópicos para usuários finais. Instruções passo a passo para workspaces, documentos, chat, redline, versões, configurações, privacidade, auditoria e modo desenvolvedor. Útil para LLMs ou sistemas de ajuda que respondem a perguntas "Como faço para…?".
+- **[docs/user-guide/README.md](docs/user-guide/README.md)** — Guia por tópicos para usuários finais. Instruções passo a passo para workspaces, documentos, chat, configurações, privacidade, auditoria e modo desenvolvedor. Útil para LLMs ou sistemas de ajuda que respondem a perguntas "Como faço para…?".
 
 ### Arquitetura (`docs/architecture/`)
 - **[overview.md](docs/architecture/overview.md)** — Visão geral do sistema, stack, diagrama de serviços

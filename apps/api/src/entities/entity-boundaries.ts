@@ -6,7 +6,6 @@ import { DocumentFile } from './document-file.entity';
 import { DocumentJob } from './document-job.entity';
 import { ChatThread } from './chat-thread.entity';
 import { ChatMessage } from './chat-message.entity';
-import { DocumentVersion } from './document-version.entity';
 import { AuditLog } from './audit-log.entity';
 import { WorkspaceSettings } from './workspace-settings.entity';
 import { LegalSource } from './legal-source.entity';
@@ -32,7 +31,6 @@ export const RELATIONAL_ENTITIES: EntityTarget<unknown>[] = [
   DocumentJob,
   ChatThread,
   ChatMessage,
-  DocumentVersion,
   AuditLog,
   WorkspaceSettings,
   LegalSource,

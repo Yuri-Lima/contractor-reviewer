@@ -39,9 +39,6 @@ Logs use consistent prefixes for filtering:
 | `[CreateDocument]`, `[GetDocument]`, `[DeleteDocument]` | Document CRUD |
 | `[Chat]`, `[ChatStream]`, `[ChatPrepare]`, `[ChatExecute]` | Chat/RAG |
 | `[RAG]` | RAG service (cache, vector search, execute payloads) |
-| `[GenerateRedline]`, `[ApplyRedline]` | Redline flow |
-| `[Redline]` | RedlineService generation |
-| `[Version]` | Version creation |
 | `[DeleteDocument]` | Document deletion orchestrator |
 | `[Parsing]`, `[Embeddings]`, `[PROGRESS]` | BullMQ workers |
 | `[VectorSearch]` | pgvector queries |
@@ -84,21 +81,7 @@ ChatController → RagService → embeddings → vector search → LLM → cache
 | Prepare cache | chat-prepare-cache.service.ts | `[ChatPrepare] Payload stored` |
 | Vector store | pgvector-store.service.ts | `[VectorSearch]` (resultCount, queryTimeMs) — debug level |
 
-### 3. Redline Flow
-
-```
-RedlineController.generateRedline → RedlineService → VersionService
-RedlineController.applyRedline → DiffService → VersionService
-```
-
-| Step | File | Log |
-|------|------|-----|
-| Generate request | redline.controller.ts | `[GenerateRedline] Request` |
-| Generation start | redline.service.ts | `[Redline] Generation start` |
-| Version created | version.service.ts | `[Version] Created` |
-| Apply request | redline.controller.ts | `[ApplyRedline] Request` |
-
-### 4. Document Deletion
+### 3. Document Deletion
 
 | Step | File | Log |
 |------|------|-----|
@@ -106,7 +89,7 @@ RedlineController.applyRedline → DiffService → VersionService
 | Steps | document-deletion.orchestrator.ts | `Step 0: RAG cache invalidated`, `Step 1: Chunks deleted`, etc. |
 | Complete | document-deletion.orchestrator.ts | `[DeleteDocument] Completed` |
 
-### 5. Auth & Workspace
+### 4. Auth & Workspace
 
 | Step | File | Log |
 |------|------|-----|

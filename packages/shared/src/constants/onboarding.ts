@@ -4,7 +4,6 @@ export const CHECKLIST_KEYS = [
   'create_workspace',
   'upload_contract',
   'run_first_review',
-  'apply_first_redline',
   'export_document',
 ] as const;
 

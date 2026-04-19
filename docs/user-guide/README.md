@@ -15,8 +15,6 @@ This user guide is structured by topic so an LLM or help system can quickly find
 | Workspaces | [workspaces.md](workspaces.md) | Create workspaces, add members, roles, switch workspace |
 | Documents | [documents.md](documents.md) | Create documents, upload files, view content, supported formats |
 | Chat | [chat.md](chat.md) | Ask questions about contracts, AI answers with citations, voice, response modes |
-| Redline | [redline.md](redline.md) | Select text, generate suggestions, playbooks, accept/reject changes |
-| Versions | [versions.md](versions.md) | View version history, side-by-side diff, apply changes |
 | Workspace Settings | [workspace-settings.md](workspace-settings.md) | Retention, parsers, API keys, workspace AI prompts |
 | Account Settings | [account-settings.md](account-settings.md) | Profile, global AI prompts, chat preferences, Developer Mode, delete account |
 | Privacy | [privacy.md](privacy.md) | DSAR export, no-logs option, data retention |

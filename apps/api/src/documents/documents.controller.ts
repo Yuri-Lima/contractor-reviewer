@@ -25,10 +25,8 @@ import { Roles } from '../workspace/decorators/roles.decorator';
 import { WorkspaceRole } from '../entities/workspace-member.entity';
 import { WorkspaceId, CurrentUser } from '../workspace/decorators';
 import { DocumentsService } from './documents.service';
-import { VersionService } from './version.service';
 import { Document } from '../entities/document.entity';
 import { DocumentFile } from '../entities/document-file.entity';
-import { DocumentVersion } from '../entities/document-version.entity';
 import { DocumentUploadValidator } from '../storage/document-upload-validator.service';
 import { NoopMalwareScanner } from '../storage/malware-scanner.interface';
 import { AuditService } from '../audit/audit.service';
@@ -51,7 +49,6 @@ export class DocumentsController {
 
   constructor(
     private documentsService: DocumentsService,
-    private versionService: VersionService,
     private documentUploadValidator: DocumentUploadValidator,
     private malwareScanner: NoopMalwareScanner,
     private auditService: AuditService,
@@ -428,41 +425,16 @@ export class DocumentsController {
     return this.documentsService.getDocumentJobs(documentId);
   }
 
-  @Get(':documentId/versions')
-  @UseGuards(RolesGuard)
-  @Roles(WorkspaceRole.VIEWER, WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
-  async getVersions(
-    @WorkspaceId() workspaceId: string,
-    @Param('documentId') documentId: string,
-  ): Promise<DocumentVersion[]> {
-    // Verify document exists and belongs to workspace
-    await this.documentsService.findById(documentId, workspaceId);
-    return this.versionService.getVersions(documentId, workspaceId);
-  }
-
   @Get(':documentId/content')
   @UseGuards(RolesGuard)
   @Roles(WorkspaceRole.VIEWER, WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
   async getDocumentContent(
     @WorkspaceId() workspaceId: string,
     @Param('documentId') documentId: string,
-  ): Promise<{ content: string; versionNumber: number; lastUpdated: Date }> {
-    // Verify document exists and belongs to workspace
-    await this.documentsService.findById(documentId, workspaceId);
-    return this.versionService.getCurrentContent(documentId, workspaceId);
-  }
-
-  @Get(':documentId/versions/:versionId/content')
-  @UseGuards(RolesGuard)
-  @Roles(WorkspaceRole.VIEWER, WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
-  async getVersionContent(
-    @WorkspaceId() workspaceId: string,
-    @Param('documentId') documentId: string,
-    @Param('versionId') versionId: string,
-  ): Promise<{ content: string; versionNumber: number; createdAt: Date }> {
-    // Verify document exists and belongs to workspace
-    await this.documentsService.findById(documentId, workspaceId);
-    return this.versionService.getVersionContent(versionId, documentId, workspaceId);
+  ): Promise<{ content: string; lastUpdated: Date }> {
+    const document = await this.documentsService.findById(documentId, workspaceId);
+    const content = await this.documentsService.getOriginalText(documentId, workspaceId);
+    return { content, lastUpdated: document.updatedAt ?? new Date() };
   }
 
   @Post(':documentId/re-evaluate-jurisdiction')

@@ -187,7 +187,6 @@ Crie um arquivo `.env` na raiz do projeto ou configure:
   - **Document Parsers** — parser padrão + API keys (DPT-2, LlamaParse, Unstructured)
   - **AI Prompts** — Workspace system prompt único; inclui toggles para global/workspace
 - ✅ Viewer de PDF
-- ✅ Redline e versões (diff side-by-side)
 - ✅ Progresso de jobs (parsing, chunking, embeddings)
 - ✅ Suporte multilíngue (EN, ES, PT-BR, DE)
 - ✅ **Onboarding** — tour guiado (Shepherd.js), checklist flutuante, ícones de ajuda (confidence, citações), reset em Account Settings
@@ -218,7 +217,6 @@ Endpoints principais:
 - `/api/workspaces/:id/documents` — Documentos
 - `/api/workspaces/:id/documents/:docId/files` — Upload de arquivos (body: `file`, `parser` opcional)
 - `/api/workspaces/:id/documents/:docId/chat` — Chat com RAG
-- `/api/workspaces/:id/documents/:docId/redline` — Geração de redline (playbook)
 - `/api/workspaces/:id/document-parsers` — Lista parsers disponíveis (`ParserInfo[]`)
 - `/api/workspaces/:id/settings` — Configurações (retention, documentProcessing, prompts)
 - `/api/workspaces/:id/privacy/export` — Export de privacidade

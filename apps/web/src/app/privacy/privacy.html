@@ -56,18 +56,6 @@
           <p-toggleswitch formControlName="skipChatMessages"></p-toggleswitch>
         </div>
 
-        <div class="flex items-center justify-between">
-          <div class="flex-1">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {{ 'privacy.skipVersions' | translate }}
-            </label>
-            <p class="text-sm text-gray-600 dark:text-gray-400">
-              {{ 'privacy.skipVersionsDesc' | translate }}
-            </p>
-          </div>
-          <p-toggleswitch formControlName="skipVersions"></p-toggleswitch>
-        </div>
-
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ 'privacy.acceleratedPurge' | translate }}
@@ -109,7 +97,7 @@
     </ng-template>
     <div class="p-4">
       <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-        {{ ('privacy.exportDescription' | translate) || 'Download all your data related to this workspace in JSON format. This includes chat messages, document versions, and audit logs.' }}
+        {{ ('privacy.exportDescription' | translate) || 'Download all your data related to this workspace in JSON format. This includes chat messages and audit logs.' }}
       </p>
       <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
         <h3 class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
@@ -117,7 +105,6 @@
         </h3>
         <ul class="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
           <li>{{ ('privacy.exportItems.chatMessages' | translate) || 'Chat messages (according to no-logs configuration)' }}</li>
-          <li>{{ ('privacy.exportItems.versionMetadata' | translate) || 'Document version metadata' }}</li>
           <li>{{ ('privacy.exportItems.auditLogs' | translate) || 'Audit logs related to your user' }}</li>
           <li>{{ ('privacy.exportItems.privacySettings' | translate) || 'Privacy settings' }}</li>
         </ul>

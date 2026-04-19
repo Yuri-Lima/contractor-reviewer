@@ -24,13 +24,12 @@ export class WorkspaceSettings {
   defaultTextEmbeddingsRetentionDays: number;
 
   @Column({ default: false })
-  noLogsEnabled: boolean; // When true, don't persist contract content or chat/versions
+  noLogsEnabled: boolean; // When true, don't persist contract content or chat
 
   @Column({ type: 'jsonb', nullable: true })
   noLogsConfig: {
     skipDocumentContent?: boolean; // Don't persist document text/chunks after processing
     skipChatMessages?: boolean; // Don't persist chat questions/answers
-    skipVersions?: boolean; // Don't persist version changes/prompts
     acceleratedPurgeDays?: number; // Purge data after N days (default: 1 day)
   } | null; // Granular no-logs configuration
 
@@ -46,7 +45,7 @@ export class WorkspaceSettings {
   @Column({ type: 'varchar', default: 'docling' })
   defaultDocumentParser: string;
 
-  /** Default LLM provider for chat/redline (openai | anthropic) */
+  /** Default LLM provider for chat (openai | anthropic) */
   @Column({ type: 'varchar', nullable: true })
   defaultLlmProvider: string | null;
 

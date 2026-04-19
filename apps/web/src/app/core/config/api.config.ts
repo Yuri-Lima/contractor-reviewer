@@ -89,7 +89,6 @@ export const API_CONFIG = {
     chat: (workspaceId: string, documentId: string) => `/workspaces/${workspaceId}/documents/${documentId}/chat`,
     chatStream: (workspaceId: string, documentId: string) =>
       `/workspaces/${workspaceId}/documents/${documentId}/chat/stream`,
-    redline: (workspaceId: string, documentId: string) => `/workspaces/${workspaceId}/documents/${documentId}/redline`,
     privacy: (workspaceId: string) => `/workspaces/${workspaceId}/privacy`,
     audit: (workspaceId: string) => `/workspaces/${workspaceId}/audit`,
     retention: (workspaceId: string) => `/workspaces/${workspaceId}/retention`,

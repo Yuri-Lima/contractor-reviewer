@@ -118,7 +118,6 @@
     "jurisdictionUpdated": "Gerichtsbarkeit aktualisiert",
     "jurisdictionReEvaluateQueued": "Neuberechnung der Gerichtsbarkeit in Warteschlange",
     "files": "Dateien",
-    "redline": "Redline",
     "chat": "Chat",
     "uploadFile": "Datei hochladen",
     "fileName": "Dateiname",
@@ -301,7 +300,12 @@
     "title": "Chat",
     "language": "Sprache",
     "documents": "Dokumente",
-    "auto": "Auto"
+    "auto": "Auto",
+    "confidence": {
+      "high": "Hohe Vertrauenswürdigkeit",
+      "medium": "Mittlere Vertrauenswürdigkeit",
+      "low": "Geringe Vertrauenswürdigkeit"
+    }
   },
   "parsers": {
     "title": "Dokumenten-Parser",
@@ -329,87 +333,14 @@
     "unstructured": "Unstructured.io",
     "pdfplumber": "PDFPlumber"
   },
-  "redline": {
-    "title": "Redline generieren",
-    "description": "Wählen Sie Text aus dem Dokument aus und generieren Sie Änderungsvorschläge basierend auf verschiedenen Strategien (Playbooks).",
-    "configuration": "Redline-Konfiguration",
-    "selectedText": "Ausgewählter Text",
-    "selectTextPlaceholder": "Wählen Sie Text aus dem Viewer aus oder fügen Sie ihn hier ein...",
-    "selectedTextHint": "Wählen Sie Text aus dem Dokumentenviewer aus oder fügen Sie die Klausel ein, die Sie überarbeiten möchten",
-    "addToSelections": "Zu Auswahl hinzufügen",
-    "selectionsForRedline": "Auswahlen für Redline",
-    "selectionsEmpty": "Wählen Sie Text im Dokument aus und klicken Sie auf Hinzufügen, um Ihre Auswahlliste zu erstellen.",
-    "selectionsAdded": "Auswahlen zu Redline hinzugefügt. Sie können jetzt konfigurieren und generieren.",
-    "selectedTextRequired": "Ausgewählter Text ist erforderlich",
-    "objective": "Ziel (Optional)",
-    "objectivePlaceholder": "Beschreiben Sie die Absicht der Änderung...",
-    "playbook": "Playbook",
-    "selectPlaybook": "Playbook auswählen",
-    "playbookRequired": "Playbook erforderlich",
-    "customInstructions": "Benutzerdefinierte Anweisungen (Optional)",
-    "addInstructions": "Fügen Sie spezifische Anweisungen für den Redline hinzu...",
-    "instructionsDescription": "Zusätzliche Anweisungen, die bei der Generierung des Redlines berücksichtigt werden",
-    "generate": "Redline generieren",
-    "cancelGenerate": "Abbrechen",
-    "generated": "Redline generiert",
-    "proposal": "Redline-Vorschlag",
-    "proposedBy": "Vorgeschlagen von",
-    "changes": "Änderung(en) vorgeschlagen",
-    "change": "Änderung",
-    "original": "Original",
-    "suggested": "Vorgeschlagen",
-    "explanation": "Erklärung",
-    "reason": "Grund",
-    "diffBlocks": "Änderungen",
-    "accept": "Akzeptieren",
-    "reject": "Ablehnen",
-    "apply": "Änderungen anwenden",
-    "noChanges": "Keine Änderungen für dieses Dokument vorgeschlagen.",
-    "notFound": "NICHT GEFUNDEN: Unzureichende Beweise für diesen Vorschlag gefunden.",
-    "citations": "Vertragszitate",
-    "legalCitations": "Rechtliche Zitate",
-    "viewSource": "Quelle anzeigen",
-    "generateSuccess": "Redline erfolgreich mit {{count}} Änderung(en) generiert",
-    "generateError": "Fehler beim Generieren des Redlines",
-    "applySuccess": "Neue Version {{version}} erstellt von {{user}}",
-    "applyError": "Fehler beim Anwenden der Änderungen",
-    "confidence": {
-      "high": "Hohes Vertrauen",
-      "medium": "Mittleres Vertrauen",
-      "low": "Niedriges Vertrauen"
-    },
-    "playbooks": {
-      "balanced": "Gleicht Schutz für beide Parteien aus",
-      "conservative": "Minimiert Änderungen, behält neutrale Sprache bei",
-      "clientFriendly": "Begünstigt den Kunden, schlägt günstigere Änderungen vor"
-    },
-    "rejectProposal": "Vorschlag ablehnen",
-    "editText": "Text bearbeiten",
-    "editBlocks": "Blöcke bearbeiten",
-    "cancelEdit": "Bearbeitung abbrechen",
-    "saveEdit": "Bearbeitung speichern",
-    "editingMode": "Bearbeitungsmodus",
-    "editSuggestedText": "Vorgeschlagenen Text bearbeiten",
-    "editBlockText": "Blocktext bearbeiten",
-    "rejectProposalConfirm": "Sind Sie sicher, dass Sie diesen Vorschlag ablehnen möchten? Alle Änderungen werden verworfen.",
-    "rejectProposalSuccess": "Vorschlag abgelehnt. Sie können einen neuen Vorschlag generieren.",
-    "confirmRegion": "Region bestätigen",
-    "fuzzyMatchFound": "Fuzzy-Übereinstimmung gefunden",
-    "matchedRegion": "Übereinstimmende Region",
-    "useSuggestedRegion": "Vorgeschlagene Region verwenden",
-    "selectManually": "Manuell auswählen",
-    "manualSelectionNotImplemented": "Manuelle Regionsauswahl ist noch nicht implementiert. Verwende vorgeschlagene Region."
-  },
   "documentContent": {
     "title": "Dokumentinhalt",
-    "currentVersion": "Aktuelle Version",
     "lastUpdated": "Zuletzt aktualisiert",
     "loading": "Inhalt wird geladen...",
     "error": "Fehler beim Laden des Inhalts",
     "noContent": "Kein Inhalt verfügbar",
     "notProcessed": "Datei noch nicht verarbeitet. Inhalt ist verfügbar, sobald die Analyse abgeschlossen ist.",
-    "refresh": "Inhalt aktualisieren",
-    "selectTextHint": "Text auswählen, um Redline zu erstellen"
+    "refresh": "Inhalt aktualisieren"
   },
   "documentViewer": {
     "loading": "Laden...",
@@ -427,17 +358,14 @@
     "skipDocumentContentDesc": "Nach der Verarbeitung wird der Dokumentinhalt nicht gespeichert",
     "skipChatMessages": "Chat-Nachrichten nicht speichern",
     "skipChatMessagesDesc": "Fragen und Antworten aus dem Chat werden nicht gespeichert",
-    "skipVersions": "Versionen nicht speichern",
-    "skipVersionsDesc": "Versionsverlauf und Redlines werden nicht gespeichert",
     "acceleratedPurge": "Beschleunigte Bereinigung (Tage)",
     "acceleratedPurgeDesc": "Wenn aktiviert, werden Daten nach diesem Zeitraum gelöscht (1-30 Tage)",
     "saveSettings": "Einstellungen speichern",
     "exportData": "Daten exportieren (DSAR-lite)",
-    "exportDescription": "Laden Sie alle Ihre Daten im Zusammenhang mit diesem Arbeitsbereich im JSON-Format herunter. Dies umfasst Chat-Nachrichten, Dokumentversionen und Audit-Protokolle.",
+    "exportDescription": "Laden Sie alle Ihre Daten im Zusammenhang mit diesem Arbeitsbereich im JSON-Format herunter. Dies umfasst Chat-Nachrichten und Audit-Protokolle.",
     "whatWillBeExported": "Was exportiert wird:",
     "exportItems": {
       "chatMessages": "Chat-Nachrichten (gemäß No-Logs-Konfiguration)",
-      "versionMetadata": "Metadaten der Dokumentversionen",
       "auditLogs": "Audit-Protokolle zu Ihrem Benutzer",
       "privacySettings": "Datenschutzeinstellungen"
     },
@@ -476,7 +404,6 @@
       "download": "Herunterladen",
       "upload": "Hochladen",
       "chatQuery": "Chat-Anfrage",
-      "redlineGenerate": "Redline generieren",
       "view": "Anzeigen",
       "create": "Erstellen"
     },
@@ -501,7 +428,7 @@
       "userAccount": "Ihr Benutzerkonto",
       "ownedWorkspaces": "Alle Arbeitsbereiche, in denen Sie OWNER sind",
       "documents": "Alle Dokumente und zugehörigen Dateien",
-      "chatHistory": "Chat-Verlauf und Versionen",
+      "chatHistory": "Chat-Verlauf",
       "auditLogs": "Zugehörige Audit-Protokolle"
     },
     "cannotBeUndone": "Diese Aktion kann nicht rückgängig gemacht werden!",
@@ -579,7 +506,6 @@
       "createWorkspace": "Erstellen Sie Ihren ersten Workspace",
       "uploadContract": "Laden Sie einen Vertrag hoch",
       "runFirstReview": "Führen Sie Ihre erste KI-Überprüfung aus (Chat)",
-      "applyFirstRedline": "Wenden Sie Ihre erste Redline-Änderung an",
       "exportDocument": "Dokument exportieren"
     },
     "tour": {
@@ -598,20 +524,17 @@
       "documentsText": "Laden Sie Verträge (PDF, DOCX) hoch. Die KI analysiert und indexiert sie für Suche und Analyse.",
       "chat": "Chat",
       "chatText": "Stellen Sie Fragen zu Ihrem Vertrag. Die KI nutzt RAG, um spezifische Klauseln zu zitieren und evidenzbasierte Antworten zu liefern.",
-      "redline": "Redline",
-      "redlineText": "Wählen Sie Text aus und generieren Sie Änderungsvorschläge mit verschiedenen Playbooks (Ausgewogen, Konservativ, Kundenfreundlich).",
       "settings": "Einstellungen",
       "settingsText": "Konfigurieren Sie Aufbewahrung, Parser und KI-Prompts pro Workspace.",
       "done": "Alles bereit!",
       "doneText": "Verwenden Sie die Checkliste, um Ihren Fortschritt zu verfolgen. Sie können das Onboarding jederzeit unter Konto-Einstellungen zurücksetzen.",
       "documentsNoWorkspace": "Erstellen Sie Ihren ersten Workspace, um Dokumente hier zu sehen.",
       "chatNoDocument": "Erstellen Sie ein Dokument und laden Sie eine Datei hoch, um den KI-Chat zu nutzen.",
-      "redlineNoDocument": "Erstellen Sie ein Dokument, um die Redline-Funktion zu nutzen.",
       "ctx": {
         "documentsListTitle": "Dokumente erstellen",
         "documentsListText": "Erstellen Sie Dokumente, um Ihre Vertragsdateien zu organisieren.",
         "documentsListCardsTitle": "Dokumentkarten",
-        "documentsListCardsText": "Klicken Sie auf ein Dokument, um es anzuzeigen, zu chatten und Redlines anzuwenden.",
+        "documentsListCardsText": "Klicken Sie auf ein Dokument, um es anzuzeigen und zu chatten.",
         "wsSettingsTitle": "Workspace-Einstellungen",
         "wsSettingsText": "Konfigurieren Sie hier Ihren Workspace.",
         "wsSettingsRetentionTitle": "Aufbewahrungsrichtlinien",
@@ -619,13 +542,13 @@
         "wsSettingsRetentionTextEmbeddingsTitle": "Text- und Embeddings-Aufbewahrung",
         "wsSettingsRetentionTextEmbeddingsText": "Wie lange extrahierter Text und RAG-Vektoren gespeichert werden (1–730 Tage). Nach OCR/Parsing steuert dies die Aufbewahrung des indexierten Inhalts für Suche und Chat.",
         "wsSettingsRetentionFuzzyMatchTitle": "Fuzzy-Match-Einstellungen",
-        "wsSettingsRetentionFuzzyMatchText": "Schwellenwert (0–100%) für die Textübereinstimmung bei Redlines. Höhere Werte erfordern exaktere Übereinstimmungen; niedrigere erlauben flexiblere Vorschläge.",
+        "wsSettingsRetentionFuzzyMatchText": "Schwellenwert (0–100%) für die Textübereinstimmung. Höhere Werte erfordern exaktere Übereinstimmungen; niedrigere erlauben flexiblere Vorschläge.",
         "wsSettingsChunkingTitle": "Dokumentenverarbeitung",
         "wsSettingsChunkingText": "Konfigurieren Sie die Chunking-Strategie für die Dokumentenaufteilung im RAG.",
         "wsSettingsParsersTitle": "Parser",
         "wsSettingsParsersText": "Parser (PDF, DOCX usw.) und API-Schlüssel aktivieren und konfigurieren.",
         "wsSettingsPromptsTitle": "Prompts",
-        "wsSettingsPromptsText": "Passen Sie KI-Prompts für Chat und Redline pro Workspace an.",
+        "wsSettingsPromptsText": "Passen Sie KI-Prompts für Chat pro Workspace an.",
         "membersAddTitle": "Mitglieder hinzufügen",
         "membersAddText": "Laden Sie Teammitglieder zur Zusammenarbeit ein.",
         "membersTableTitle": "Mitgliedertabelle",
@@ -757,7 +680,7 @@
   },
   "prompts": {
     "tabTitle": "KI-Prompts",
-    "description": "Passen Sie System-Prompts für Chat und Redline-Generierung an. Überschreiben Sie globale Standardwerte pro Workspace.",
+    "description": "Passen Sie System-Prompts für Chat an. Überschreiben Sie globale Standardwerte pro Workspace.",
     "globalDescription": "Bearbeiten Sie globale KI-Prompts, die für alle Workspaces und Dokumente gelten. Diese Standardwerte werden verwendet, wenn keine Workspace- oder Dokumentüberschreibungen festgelegt sind.",
     "workspaceDescription": "Bearbeiten Sie workspace-weite KI-Prompts. Sie gelten für alle Dokumente in diesem Workspace in Kombination mit globalen Prompts.",
     "globalSystemPrompt": "Globaler System-Prompt",
@@ -765,15 +688,10 @@
     "includeGlobal": "Globale Prompts einbeziehen",
     "includeWorkspace": "Workspace-Prompts einbeziehen",
     "includeDocument": "Dokument-Prompts einbeziehen",
-    "documentDescription": "Passen Sie KI-Prompts für dieses Dokument an. Dokument-Prompts werden mit Workspace- und Global-Prompts kombiniert. Gilt nur für Chat und Redline dieses Dokuments.",
+    "documentDescription": "Passen Sie KI-Prompts für dieses Dokument an. Dokument-Prompts werden mit Workspace- und Global-Prompts kombiniert. Gilt nur für Chat dieses Dokuments.",
     "sourceDocument": "Dokumentüberschreibung",
     "chatSystem": "Chat-System-Prompt",
     "chatUser": "Chat-Benutzer-Prompt",
-    "redlineSystem": "Redline-System-Prompt",
-    "redlineUser": "Redline-Benutzer-Prompt",
-    "playbookBalanced": "Redline-Playbook: Ausgewogen",
-    "playbookConservative": "Redline-Playbook: Konservativ",
-    "playbookClientFriendly": "Redline-Playbook: Kundenfreundlich",
     "sourceWorkspace": "Workspace-Überschreibung",
     "sourceGlobal": "Globaler Standard",
     "save": "Speichern",
@@ -828,18 +746,6 @@
     "registerAndAdd": "Registrieren und hinzufügen",
     "userNotFoundRegister": "Benutzer nicht gefunden. Führen Sie die vollständige Registrierung (E-Mail, Name, Passwort) durch, um sie hinzuzufügen."
   },
-  "versions": {
-    "title": "Dokumentversionen",
-    "loading": "Versionen werden geladen...",
-    "noVersions": "Keine Versionen für dieses Dokument gefunden.",
-    "version": "Version",
-    "createdBy": "Erstellt von",
-    "view": "Anzeigen",
-    "hide": "Ausblenden",
-    "decisions": "Entscheidungen",
-    "noChanges": "Keine Änderungen in dieser Version",
-    "loadError": "Fehler beim Laden der Versionen"
-  },
   "tooltip": {
     "workspaces": "Arbeitsbereiche",
     "documents": "Dokumente",
@@ -860,7 +766,6 @@
     "removeMember": "Mitglied entfernen",
     "uploadFile": "Datei hochladen",
     "deleteDocument": "Dokument löschen",
-    "generateRedline": "Redline-Vorschläge generieren",
     "exportData": "Daten exportieren",
     "resetOnboarding": "Onboarding-Status zurücksetzen und Checkliste anzeigen",
     "startTour": "Geführte Tour starten",
@@ -872,8 +777,7 @@
     "nextPage": "Nächste Seite",
     "zoomOut": "Verkleinern",
     "zoomIn": "Vergrößern",
-    "zoomReset": "Zoom zurücksetzen",
-    "viewVersion": "Version anzeigen"
+    "zoomReset": "Zoom zurücksetzen"
   },
   "errors": {
     "generic": "Ein Fehler ist aufgetreten",
@@ -957,7 +861,6 @@
     "documents": {
       "open": "Öffnen",
       "chat": "Chat öffnen",
-      "redline": "Redline öffnen",
       "delete": "Dokument löschen"
     },
     "files": {
@@ -973,9 +876,6 @@
     "members": {
       "changeRole": "Rolle ändern",
       "remove": "Aus Arbeitsbereich entfernen"
-    },
-    "versions": {
-      "view": "Anzeigen / Ausblenden"
     }
   }
 }

@@ -1,15 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository } from 'typeorm';
 import { PrivacyExportData } from '@contractai-review/shared';
 import { abortAsPromise } from '../common/utils/abort-promise';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
-import { Document } from '../entities/document.entity';
-import { DocumentFile } from '../entities/document-file.entity';
-import { DocumentJob } from '../entities/document-job.entity';
 import { AuditLog } from '../entities/audit-log.entity';
 import { ChatMessage } from '../entities/chat-message.entity';
-import { DocumentVersion } from '../entities/document-version.entity';
 import { MemoryService } from '../memory/memory.service';
 
 @Injectable()
@@ -17,18 +13,10 @@ export class PrivacyService {
   constructor(
     @InjectRepository(WorkspaceSettings)
     private settingsRepository: Repository<WorkspaceSettings>,
-    @InjectRepository(Document)
-    private documentRepository: Repository<Document>,
-    @InjectRepository(DocumentFile)
-    private fileRepository: Repository<DocumentFile>,
-    @InjectRepository(DocumentJob)
-    private jobRepository: Repository<DocumentJob>,
     @InjectRepository(AuditLog)
     private auditLogRepository: Repository<AuditLog>,
     @InjectRepository(ChatMessage)
     private chatMessageRepository: Repository<ChatMessage>,
-    @InjectRepository(DocumentVersion)
-    private versionRepository: Repository<DocumentVersion>,
     private memoryService: MemoryService,
   ) {}
 
@@ -59,12 +47,6 @@ export class PrivacyService {
       where: { workspaceId },
     });
 
-    // Get documents for this workspace
-    const documents = await this.documentRepository.find({
-      where: { workspaceId },
-      select: ['id', 'title', 'createdAt'],
-    });
-
     // Get audit logs for this user in this workspace
     const auditLogs = await this.auditLogRepository.find({
       where: {
@@ -84,20 +66,6 @@ export class PrivacyService {
       order: { createdAt: 'DESC' },
       take: 1000, // Limit to recent messages
     });
-
-    // Get versions for documents in this workspace (created by this user)
-    const documentIds = documents.map((d) => d.id);
-    const versions = documentIds.length > 0
-      ? await this.versionRepository.find({
-          where: {
-            workspaceId,
-            userId,
-            documentId: documentIds.length === 1 ? documentIds[0] : In(documentIds),
-          },
-          order: { createdAt: 'DESC' },
-          take: 1000, // Limit to recent versions
-        })
-      : [];
 
     const memories = await this.memoryService.listByWorkspace(workspaceId);
 
@@ -122,23 +90,6 @@ export class PrivacyService {
         notFound: msg.notFound,
         createdAt: msg.createdAt.toISOString(),
       })),
-      versions: versions.map((v) => ({
-        id: v.id,
-        documentId: v.documentId,
-        versionNumber: v.versionNumber,
-        playbook: v.playbook,
-        changes: v.changes, // May be null if no-logs enabled
-        createdAt: v.createdAt.toISOString(),
-      })),
-      redlinePrompts: versions
-        .filter((v) => v.prompt !== null)
-        .map((v) => ({
-          id: v.id,
-          documentId: v.documentId,
-          playbook: v.playbook || 'unknown',
-          prompt: v.prompt, // May be null if no-logs enabled
-          createdAt: v.createdAt.toISOString(),
-        })),
       auditLogs: auditLogs.map((log) => ({
         action: log.action,
         targetType: log.targetType,
@@ -156,7 +107,6 @@ export class PrivacyService {
     config?: {
       skipDocumentContent?: boolean;
       skipChatMessages?: boolean;
-      skipVersions?: boolean;
       acceleratedPurgeDays?: number;
     },
   ): Promise<void> {
@@ -182,7 +132,6 @@ export class PrivacyService {
         settings.noLogsConfig = {
           skipDocumentContent: false,
           skipChatMessages: true,
-          skipVersions: true,
           acceleratedPurgeDays: 1,
         };
       }
@@ -218,7 +167,6 @@ export class PrivacyService {
     config?: {
       skipDocumentContent?: boolean;
       skipChatMessages?: boolean;
-      skipVersions?: boolean;
       acceleratedPurgeDays?: number;
     } | null;
   }> {

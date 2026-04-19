@@ -98,6 +98,5 @@ The assistant maintains **memory** (summaries of prior questions and answers) fo
 ## Related Topics
 
 - [Documents](documents.md) — Upload files before using Chat
-- [Redline](redline.md) — Generate suggested edits based on AI analysis
 - [Account Settings](account-settings.md) — Chat preferences, response mode, Developer Mode
 - [Developer Mode](developer-mode.md) — LLM payload preview

@@ -79,8 +79,8 @@ export class DocumentController {
 
 1. **OWNER**: Full access (future billing, delete workspace, retention settings)
 2. **ADMIN**: Manage members, see all, delete docs
-3. **MEMBER**: Upload, chat, redline, download own + shared docs
-4. **VIEWER**: View/download only (no redline)
+3. **MEMBER**: Upload, chat, download own + shared docs
+4. **VIEWER**: View/download only
 
 ## Filtering by WorkspaceId
 

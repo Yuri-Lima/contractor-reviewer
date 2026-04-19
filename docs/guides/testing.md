@@ -167,7 +167,6 @@ Testes E2E estão em `apps/web/e2e/` (auth, workspaces, documents, settings, onb
 - [ ] RolesGuard bloqueia ações sem role suficiente (403)
 - [ ] Upload de documento com parser
 - [ ] Chat com citações
-- [ ] Redline com playbook
 - [ ] Export privacidade (DSAR-lite)
 - [ ] Onboarding: checklist, tour, reset
 

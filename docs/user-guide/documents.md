@@ -2,7 +2,7 @@
 
 ## Summary
 
-A document is a container for one or more uploaded files (e.g., a contract and its annexes). Each document has a title, optional description, and optional AI prompt to guide the assistant. You can upload PDFs, Word documents, PowerPoint and Excel files, plain text/Markdown, and images (PNG, JPG, TIFF, BMP, WEBP), then use Chat and Redline on the content.
+A document is a container for one or more uploaded files (e.g., a contract and its annexes). Each document has a title, optional description, and optional AI prompt to guide the assistant. You can upload PDFs, Word documents, PowerPoint and Excel files, plain text/Markdown, and images (PNG, JPG, TIFF, BMP, WEBP), then use Chat on the content.
 
 ## When to Use
 
@@ -48,14 +48,14 @@ You can use a prompt category, generate a custom prompt, or neither. Document pr
 
 ### Jurisdiction
 
-When a document has multiple jurisdiction candidates (e.g., governing law clauses from different files), the document view shows a **jurisdiction dropdown** so you can choose or override the AI-selected jurisdiction. Use the **Re-evaluate** button to re-run the jurisdiction analysis from all files. Jurisdiction affects which legal sources are used in Chat and Redline. See [Chat](chat.md) for how legal context is applied.
+When a document has multiple jurisdiction candidates (e.g., governing law clauses from different files), the document view shows a **jurisdiction dropdown** so you can choose or override the AI-selected jurisdiction. Use the **Re-evaluate** button to re-run the jurisdiction analysis from all files. Jurisdiction affects which legal sources are used in Chat. See [Chat](chat.md) for how legal context is applied.
 
 ### View File Content
 
 1. In the document view, select the **View** tab (or equivalent).
 2. Select a file from the list.
 3. The file content is displayed (PDF viewer, text view, or image view).
-4. Use the viewer to read the contract and select text for Redline.
+4. Use the viewer to read the contract.
 
 ## Supported Formats and Limits
 
@@ -71,7 +71,7 @@ If a file exceeds limits or is in an unsupported format, the upload will fail wi
 |--------|---------|
 | **Uploading** | File is being transferred. |
 | **Processing** | Parser, OCR, chunking, or embeddings are running. |
-| **Available** | Ready for Chat and Redline. |
+| **Available** | Ready for Chat. |
 | **Error** | Processing failed. Check the error message; you may need to retry or choose a different parser. |
 | **Quarantined** | File was flagged (e.g., security check) and is not available. |
 
@@ -95,5 +95,4 @@ For scanned documents or images, Docling already runs OCR — you do not need to
 
 - [Getting Started](getting-started.md) — Create first document and upload
 - [Chat](chat.md) — Ask questions about the contract
-- [Redline](redline.md) — Generate and apply suggested changes
 - [Workspace Settings](workspace-settings.md) — Default parsers, retention

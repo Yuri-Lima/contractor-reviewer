@@ -2,7 +2,7 @@
 
 ## Summary
 
-A workspace is a container for documents and team members. Everything in ContractAI Review (documents, files, chat, redlines) lives inside a workspace. You can create multiple workspaces, add members with different roles, and switch between them from the sidebar.
+A workspace is a container for documents and team members. Everything in ContractAI Review (documents, files, chat) lives inside a workspace. You can create multiple workspaces, add members with different roles, and switch between them from the sidebar.
 
 ## When to Use
 
@@ -47,8 +47,8 @@ A workspace is a container for documents and team members. Everything in Contrac
 |------|-------------|
 | **OWNER** | Full control. Can manage billing (future), delete the workspace, change retention settings, and perform all ADMIN actions. |
 | **ADMIN** | Can add/remove members, manage documents, delete files, and view everything. Cannot delete the workspace or change certain billing/retention settings. |
-| **MEMBER** | Can upload files, use chat, create redlines, and download documents. Can work with shared documents. |
-| **VIEWER** | Can view and download documents only. Cannot edit, redline, or chat. |
+| **MEMBER** | Can upload files, use chat, and download documents. Can work with shared documents. |
+| **VIEWER** | Can view and download documents only. Cannot edit or chat. |
 
 ## Options / Variations
 

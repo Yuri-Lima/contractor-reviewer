@@ -100,7 +100,6 @@ export class AuditComponent implements OnInit {
     { label: 'Open/View', value: 'open_view' },
     { label: 'Download', value: 'download' },
     { label: 'Chat Query', value: 'chat_query' },
-    { label: 'Redline Generate', value: 'redline_generate' },
     { label: 'Delete', value: 'delete' },
     { label: 'Export Privacy', value: 'export_privacy' },
     { label: 'Upload', value: 'upload' },
@@ -328,7 +327,6 @@ export class AuditComponent implements OnInit {
       'download': 'warn',
       'upload': 'info',
       'chat_query': 'info',
-      'redline_generate': 'success',
     };
     return severityMap[action] || 'secondary';
   }

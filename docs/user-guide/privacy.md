@@ -29,7 +29,6 @@ The Privacy page lets you control how your data is stored and for how long. You 
 3. Configure which data to skip persisting:
    - **Do not persist document content**: After processing, document content is not stored long-term.
    - **Do not persist chat messages**: Questions and answers from chat are not stored.
-   - **Do not persist versions**: Version history and redlines are not stored.
 4. Optionally set **Accelerated Purge**: When enabled, data is deleted after a short period (1–30 days).
 5. Click **Save Settings**.
 

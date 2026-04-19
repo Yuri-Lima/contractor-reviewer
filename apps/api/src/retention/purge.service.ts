@@ -5,7 +5,6 @@ import { DocumentFile } from '../entities/document-file.entity';
 import { Document } from '../entities/document.entity';
 import { ChatThread } from '../entities/chat-thread.entity';
 import { ChatMessage } from '../entities/chat-message.entity';
-import { DocumentVersion } from '../entities/document-version.entity';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
 import { Memory } from '../entities/memory.entity';
 import { CHUNK_REPOSITORY, IChunkRepository } from '../chunks/chunk-repository.interface';
@@ -28,8 +27,6 @@ export class PurgeService {
     private chatThreadRepository: Repository<ChatThread>,
     @InjectRepository(ChatMessage)
     private chatMessageRepository: Repository<ChatMessage>,
-    @InjectRepository(DocumentVersion)
-    private versionRepository: Repository<DocumentVersion>,
     @InjectRepository(WorkspaceSettings)
     private settingsRepository: Repository<WorkspaceSettings>,
     @InjectRepository(Memory)
@@ -134,20 +131,18 @@ export class PurgeService {
   }
 
   /**
-   * Purge expired chat messages and versions.
-   * 1) No-logs accelerated purge (when skipChatMessages/skipVersions enabled)
+   * Purge expired chat messages.
+   * 1) No-logs accelerated purge (when skipChatMessages enabled)
    * 2) Retention-based purge for all workspaces (messages older than text retention)
    * 3) Purge empty threads after message purge
    */
-  async purgeExpiredChatAndVersions(): Promise<{
+  async purgeExpiredChatMessages(): Promise<{
     chatMessages: number;
-    versions: number;
     emptyThreads: number;
     errors: number;
   }> {
-    this.logger.log('Starting purge of expired chat messages and versions...');
+    this.logger.log('Starting purge of expired chat messages...');
     let chatMessagesDeleted = 0;
-    let versionsDeleted = 0;
     let emptyThreadsDeleted = 0;
     let errors = 0;
 
@@ -180,26 +175,10 @@ export class PurgeService {
               );
             }
           }
-
-          if (settings.noLogsConfig?.skipVersions) {
-            const versions = await this.versionRepository.find({
-              where: { workspaceId: settings.workspaceId },
-            });
-
-            const expiredVersions = versions.filter((v) => v.createdAt < cutoffDate);
-
-            if (expiredVersions.length > 0) {
-              await this.versionRepository.remove(expiredVersions);
-              versionsDeleted += expiredVersions.length;
-              this.logger.debug(
-                `Purged ${expiredVersions.length} versions for workspace ${settings.workspaceId}`,
-              );
-            }
-          }
         } catch (error) {
           errors++;
           this.logger.error(
-            `Error purging chat/versions for workspace ${settings.workspaceId}:`,
+            `Error purging chat for workspace ${settings.workspaceId}:`,
             error,
           );
         }
@@ -258,16 +237,15 @@ export class PurgeService {
       }
 
       this.logger.log(
-        `Purge completed: ${chatMessagesDeleted} chat messages, ${versionsDeleted} versions, ${emptyThreadsDeleted} empty threads, ${errors} errors`,
+        `Purge completed: ${chatMessagesDeleted} chat messages, ${emptyThreadsDeleted} empty threads, ${errors} errors`,
       );
       return {
         chatMessages: chatMessagesDeleted,
-        versions: versionsDeleted,
         emptyThreads: emptyThreadsDeleted,
         errors,
       };
     } catch (error) {
-      this.logger.error('Error during chat/versions purge:', error);
+      this.logger.error('Error during chat purge:', error);
       throw error;
     }
   }
@@ -334,14 +312,13 @@ export class PurgeService {
   }
 
   /**
-   * Run full purge (files + text/embeddings + chat/versions + memory)
+   * Run full purge (files + text/embeddings + chat + memory)
    */
   async runFullPurge(): Promise<{
     files: { deleted: number; errors: number };
     textEmbeddings: { deleted: number; errors: number };
-    chatAndVersions: {
+    chat: {
       chatMessages: number;
-      versions: number;
       emptyThreads: number;
       errors: number;
     };
@@ -352,18 +329,18 @@ export class PurgeService {
 
     const filesResult = await this.purgeExpiredFiles();
     const textEmbeddingsResult = await this.purgeExpiredTextAndEmbeddings();
-    const chatAndVersionsResult = await this.purgeExpiredChatAndVersions();
+    const chatResult = await this.purgeExpiredChatMessages();
     const memoryResult = await this.purgeExpiredMemory();
 
     const duration = Date.now() - startTime;
     this.logger.log(
-      `Full purge completed in ${duration}ms: ${filesResult.deleted} files, ${textEmbeddingsResult.deleted} chunks, ${chatAndVersionsResult.chatMessages} chat messages, ${chatAndVersionsResult.versions} versions, ${chatAndVersionsResult.emptyThreads} empty threads, ${memoryResult.deleted} memories deleted`,
+      `Full purge completed in ${duration}ms: ${filesResult.deleted} files, ${textEmbeddingsResult.deleted} chunks, ${chatResult.chatMessages} chat messages, ${chatResult.emptyThreads} empty threads, ${memoryResult.deleted} memories deleted`,
     );
 
     return {
       files: filesResult,
       textEmbeddings: textEmbeddingsResult,
-      chatAndVersions: chatAndVersionsResult,
+      chat: chatResult,
       memory: memoryResult,
     };
   }

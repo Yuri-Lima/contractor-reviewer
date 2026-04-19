@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script de teste para Fase 8 — Privacy e Audit
-# Testa: Chat messages, Versions, DSAR export completo, No-logs configurável, Download, Audit logs
+# Testa: Chat messages, DSAR export completo, No-logs configurável, Download, Audit logs
 #
 # Execute a partir da raiz do projeto (test-contract-naira.txt deve estar disponível para upload opcional).
 
@@ -166,23 +166,8 @@ else
   echo -e "${COLOR_YELLOW}⚠️  Chat retornou resposta vazia (pode ser normal se documento não foi processado)${COLOR_RESET}"
 fi
 
-# 6. Testar Redline (cria version automaticamente)
-echo -e "\n${COLOR_BLUE}6. Testar Redline (cria version)${COLOR_RESET}"
-REDLINE_RESPONSE=$(curl -s -X POST "$API_URL/workspaces/$WORKSPACE_ID/documents/$DOCUMENT_ID/redline" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"playbook":"balanced"}')
-
-REDLINE_VERSION_ID=$(echo $REDLINE_RESPONSE | jq -r '.versionId // empty')
-
-if [ ! -z "$REDLINE_VERSION_ID" ] && [ "$REDLINE_VERSION_ID" != "null" ]; then
-  echo -e "${COLOR_GREEN}✅ Redline gerado (Version ID: $REDLINE_VERSION_ID)${COLOR_RESET}"
-else
-  echo -e "${COLOR_YELLOW}⚠️  Redline pode não ter criado version${COLOR_RESET}"
-fi
-
-# 7. Testar No-Logs - Obter configuração atual via GET /privacy/no-logs
-echo -e "\n${COLOR_BLUE}7. Testar No-Logs - Obter configuração via GET /privacy/no-logs${COLOR_RESET}"
+# 6. Testar No-Logs - Obter configuração atual via GET /privacy/no-logs
+echo -e "\n${COLOR_BLUE}6. Testar No-Logs - Obter configuração via GET /privacy/no-logs${COLOR_RESET}"
 NO_LOGS_GET_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$API_URL/workspaces/$WORKSPACE_ID/privacy/no-logs" \
   -H "Authorization: Bearer $TOKEN" 2>&1)
 NO_LOGS_GET_HTTP=$(echo "$NO_LOGS_GET_RESPONSE" | tail -n1)
@@ -198,8 +183,8 @@ else
   echo "   Resposta: $NO_LOGS_GET"
 fi
 
-# 8. Testar No-Logs - Habilitar com configuração granular
-echo -e "\n${COLOR_BLUE}8. Testar No-Logs - Habilitar com configuração granular${COLOR_RESET}"
+# 7. Testar No-Logs - Habilitar com configuração granular
+echo -e "\n${COLOR_BLUE}7. Testar No-Logs - Habilitar com configuração granular${COLOR_RESET}"
 NO_LOGS_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_URL/workspaces/$WORKSPACE_ID/privacy/no-logs" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
@@ -207,7 +192,6 @@ NO_LOGS_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_URL/workspaces/$WOR
     "enabled": true,
     "config": {
       "skipChatMessages": true,
-      "skipVersions": true,
       "acceleratedPurgeDays": 1
     }
   }' 2>&1)
@@ -226,8 +210,8 @@ else
   echo -e "${COLOR_RED}❌ Falha ao habilitar no-logs (HTTP $NO_LOGS_HTTP_CODE)${COLOR_RESET}"
 fi
 
-# 9. Testar Chat novamente (deve salvar com [REDACTED] se no-logs habilitado)
-echo -e "\n${COLOR_BLUE}9. Testar Chat com No-Logs habilitado${COLOR_RESET}"
+# 8. Testar Chat novamente (deve salvar com [REDACTED] se no-logs habilitado)
+echo -e "\n${COLOR_BLUE}8. Testar Chat com No-Logs habilitado${COLOR_RESET}"
 CHAT_RESPONSE2=$(curl -s -X POST "$API_URL/workspaces/$WORKSPACE_ID/documents/$DOCUMENT_ID/chat" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
@@ -242,8 +226,8 @@ else
   echo -e "${COLOR_YELLOW}⚠️  Chat retornou resposta vazia${COLOR_RESET}"
 fi
 
-# 10. Testar DSAR Export Completo
-echo -e "\n${COLOR_BLUE}10. Testar DSAR Export Completo${COLOR_RESET}"
+# 9. Testar DSAR Export Completo
+echo -e "\n${COLOR_BLUE}9. Testar DSAR Export Completo${COLOR_RESET}"
 EXPORT_FILE="privacy-export-fase8-$(date +%s).json"
 EXPORT_RESPONSE=$(curl -s -X GET "$API_URL/workspaces/$WORKSPACE_ID/privacy/export" \
   -H "Authorization: Bearer $TOKEN" \
@@ -259,14 +243,11 @@ if [ -f "$EXPORT_FILE" ] && [ -s "$EXPORT_FILE" ]; then
     workspaceId,
     exportedAt,
     chatMessages: (.chatMessages | length),
-    versions: (.versions | length),
-    redlinePrompts: (.redlinePrompts | length),
     auditLogs: (.auditLogs | length)
   }'
   
   # Verificar se chat messages estão no export
   CHAT_MESSAGES_COUNT=$(cat "$EXPORT_FILE" | jq '.chatMessages | length')
-  VERSIONS_COUNT=$(cat "$EXPORT_FILE" | jq '.versions | length')
   
   if [ "$CHAT_MESSAGES_COUNT" -gt 0 ]; then
     echo -e "${COLOR_GREEN}✅ Export inclui $CHAT_MESSAGES_COUNT chat messages${COLOR_RESET}"
@@ -289,20 +270,12 @@ if [ -f "$EXPORT_FILE" ] && [ -s "$EXPORT_FILE" ]; then
   else
     echo -e "${COLOR_YELLOW}⚠️  Export não inclui chat messages (pode ser normal se no-logs habilitado)${COLOR_RESET}"
   fi
-  
-  if [ "$VERSIONS_COUNT" -gt 0 ]; then
-    echo -e "${COLOR_GREEN}✅ Export inclui $VERSIONS_COUNT versions${COLOR_RESET}"
-    echo "   Primeira version:"
-    cat "$EXPORT_FILE" | jq '.versions[0] | {versionNumber, playbook, changes: (.changes != null)}'
-  else
-    echo -e "${COLOR_YELLOW}⚠️  Export não inclui versions (pode ser normal se no-logs habilitado)${COLOR_RESET}"
-  fi
 else
   echo -e "${COLOR_RED}❌ Falha ao exportar dados${COLOR_RESET}"
 fi
 
-# 11. Testar Download (se arquivo foi enviado)
-echo -e "\n${COLOR_BLUE}11. Testar Download${COLOR_RESET}"
+# 10. Testar Download (se arquivo foi enviado)
+echo -e "\n${COLOR_BLUE}10. Testar Download${COLOR_RESET}"
 if [ ! -z "$FILE_ID" ] && [ "$FILE_ID" != "null" ]; then
   DOWNLOAD_RESPONSE=$(curl -s -w "\n%{http_code}" -L "$API_URL/workspaces/$WORKSPACE_ID/documents/$DOCUMENT_ID/files/$FILE_ID/download" \
     -H "Authorization: Bearer $TOKEN" \
@@ -321,8 +294,8 @@ else
   echo -e "${COLOR_YELLOW}⚠️  Pulando teste de download (arquivo não foi enviado)${COLOR_RESET}"
 fi
 
-# 12. Verificar Audit Logs Completos
-echo -e "\n${COLOR_BLUE}12. Verificar Audit Logs Completos${COLOR_RESET}"
+# 11. Verificar Audit Logs Completos
+echo -e "\n${COLOR_BLUE}11. Verificar Audit Logs Completos${COLOR_RESET}"
 sleep 2
 AUDIT_RESPONSE=$(curl -s -X GET "$API_URL/workspaces/$WORKSPACE_ID/audit?limit=20" \
   -H "Authorization: Bearer $TOKEN")
@@ -342,14 +315,12 @@ if [ "$AUDIT_TOTAL" -gt 0 ] || [ "$AUDIT_LOGS_COUNT" -gt 0 ]; then
   DOWNLOAD_COUNT=$(echo $AUDIT_RESPONSE | jq '[.logs[] | select(.action == "download")] | length')
   UPLOAD_COUNT=$(echo $AUDIT_RESPONSE | jq '[.logs[] | select(.action == "upload")] | length')
   CHAT_QUERY_COUNT=$(echo $AUDIT_RESPONSE | jq '[.logs[] | select(.action == "chat_query")] | length')
-  REDLINE_COUNT=$(echo $AUDIT_RESPONSE | jq '[.logs[] | select(.action == "redline_generate")] | length')
   EXPORT_COUNT=$(echo $AUDIT_RESPONSE | jq '[.logs[] | select(.action == "export_privacy")] | length')
   
   echo "   - Open/View: $OPEN_VIEW_COUNT"
   echo "   - Download: $DOWNLOAD_COUNT"
   echo "   - Upload: $UPLOAD_COUNT"
   echo "   - Chat Query: $CHAT_QUERY_COUNT"
-  echo "   - Redline Generate: $REDLINE_COUNT"
   echo "   - Export Privacy: $EXPORT_COUNT"
   
   echo ""
@@ -359,7 +330,7 @@ else
   echo -e "${COLOR_YELLOW}⚠️  Nenhum audit log encontrado${COLOR_RESET}"
 fi
 
-# 13. Resumo
+# 12. Resumo
 echo -e "\n${COLOR_BLUE}=== Resumo dos Testes ===${COLOR_RESET}"
 echo "Workspace ID: $WORKSPACE_ID"
 echo "Document ID: $DOCUMENT_ID"
@@ -371,11 +342,10 @@ echo -e "${COLOR_GREEN}✅ Testes concluídos!${COLOR_RESET}"
 echo ""
 echo "Funcionalidades testadas:"
 echo "  ✅ Chat messages (salvamento automático)"
-echo "  ✅ Versions (criação via redline)"
-echo "  ✅ DSAR export completo (chat + versions + audit logs)"
-echo "  ✅ No-logs configurável (skipChatMessages, skipVersions, acceleratedPurgeDays)"
+echo "  ✅ DSAR export completo (chat + audit logs)"
+echo "  ✅ No-logs configurável (skipChatMessages, acceleratedPurgeDays)"
 echo "  ✅ Download endpoint com audit log"
-echo "  ✅ Audit logs completos (open_view, download, upload, chat_query, redline_generate, export_privacy)"
+echo "  ✅ Audit logs completos (open_view, download, upload, chat_query, export_privacy)"
 echo ""
 echo "Arquivos gerados:"
 if [ -f "$EXPORT_FILE" ]; then
@@ -384,6 +354,5 @@ fi
 echo ""
 echo "Notas:"
 echo "  - Chat messages são salvos automaticamente após cada pergunta"
-echo "  - Versions são criadas automaticamente após cada redline"
 echo "  - No-logs redacta dados conforme configuração"
 echo "  - Purge acelerado roda automaticamente no purge job diário"

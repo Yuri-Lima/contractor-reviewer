@@ -18,7 +18,7 @@ This document describes the architecture for future migration from a single Post
 
 | Group | Entities | Database |
 |-------|----------|----------|
-| Relational | User, Workspace, WorkspaceMember, Document, DocumentFile, DocumentJob, ChatMessage, DocumentVersion, AuditLog, WorkspaceSettings, LegalSource, UserOnboarding, UserStorageSettings, Prompt, ImageAsset | Relational |
+| Relational | User, Workspace, WorkspaceMember, Document, DocumentFile, DocumentJob, ChatMessage, AuditLog, WorkspaceSettings, LegalSource, UserOnboarding, UserStorageSettings, Prompt, ImageAsset | Relational |
 | Vector | Chunk, Embedding | Vector (pgvector) |
 
 See `apps/api/src/entities/entity-boundaries.ts` for the constants.

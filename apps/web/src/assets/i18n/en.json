@@ -118,7 +118,6 @@
     "jurisdictionUpdated": "Jurisdiction updated",
     "jurisdictionReEvaluateQueued": "Jurisdiction re-evaluation queued",
     "files": "Files",
-    "redline": "Redline",
     "chat": "Chat",
     "fileName": "File Name",
     "fileType": "File Type",
@@ -303,7 +302,12 @@
     "title": "Chat",
     "language": "Language",
     "documents": "Documents",
-    "auto": "Auto"
+    "auto": "Auto",
+    "confidence": {
+      "high": "High Confidence",
+      "medium": "Medium Confidence",
+      "low": "Low Confidence"
+    }
   },
   "parsers": {
     "title": "Document Parsers",
@@ -331,87 +335,14 @@
     "unstructured": "Unstructured.io",
     "pdfplumber": "PDFPlumber"
   },
-  "redline": {
-    "title": "Generate Redline",
-    "description": "Select text from the document and generate suggested changes based on different strategies (playbooks).",
-    "configuration": "Redline Configuration",
-    "selectedText": "Selected Text",
-    "selectTextPlaceholder": "Select text from the document or paste it here...",
-    "selectedTextHint": "Select text from the document viewer or paste the clause you want to revise",
-    "addToSelections": "Add to selections",
-    "selectionsForRedline": "Selections for Redline",
-    "selectionsEmpty": "Select text in the document and click Add to build your selection list.",
-    "selectionsAdded": "Selections added to Redline. You can now configure and generate.",
-    "selectedTextRequired": "Selected text is required",
-    "objective": "Objective (Optional)",
-    "objectivePlaceholder": "Describe the intent of the change...",
-    "playbook": "Playbook",
-    "selectPlaybook": "Select a playbook",
-    "playbookRequired": "Playbook required",
-    "customInstructions": "Custom Instructions (Optional)",
-    "addInstructions": "Add specific instructions for the redline...",
-    "instructionsDescription": "Additional instructions that will be considered when generating the redline",
-    "generate": "Generate Redline",
-    "cancelGenerate": "Cancel",
-    "generated": "Redline Generated",
-    "proposal": "Redline Proposal",
-    "proposedBy": "Proposed by",
-    "changes": "change(s) suggested",
-    "change": "Change",
-    "original": "Original",
-    "suggested": "Suggested",
-    "explanation": "Explanation",
-    "reason": "Reason",
-    "diffBlocks": "Changes",
-    "accept": "Accept",
-    "reject": "Reject",
-    "apply": "Apply Changes",
-    "noChanges": "No changes suggested for this document.",
-    "notFound": "NOT FOUND: Insufficient evidence found for this suggestion.",
-    "citations": "Contract Citations",
-    "legalCitations": "Legal Citations",
-    "viewSource": "View Source",
-    "generateSuccess": "Redline generated successfully with {{count}} change(s)",
-    "generateError": "Error generating redline",
-    "applySuccess": "New version {{version}} created by {{user}}",
-    "applyError": "Error applying changes",
-    "confidence": {
-      "high": "High Confidence",
-      "medium": "Medium Confidence",
-      "low": "Low Confidence"
-    },
-    "playbooks": {
-      "balanced": "Balances protections for both parties",
-      "conservative": "Minimizes changes, maintains neutral language",
-      "clientFriendly": "Favors the client, suggests more favorable changes"
-    },
-    "rejectProposal": "Reject Proposal",
-    "editText": "Edit Text",
-    "editBlocks": "Edit Blocks",
-    "cancelEdit": "Cancel Edit",
-    "saveEdit": "Save Edit",
-    "editingMode": "Editing Mode",
-    "editSuggestedText": "Edit Suggested Text",
-    "editBlockText": "Edit Block Text",
-    "rejectProposalConfirm": "Are you sure you want to reject this proposal? All changes will be discarded.",
-    "rejectProposalSuccess": "Proposal rejected. You can generate a new proposal.",
-    "confirmRegion": "Confirm Region",
-    "fuzzyMatchFound": "Fuzzy match found",
-    "matchedRegion": "Matched Region",
-    "useSuggestedRegion": "Use Suggested Region",
-    "selectManually": "Select Manually",
-    "manualSelectionNotImplemented": "Manual region selection is not yet implemented. Using suggested region."
-  },
   "documentContent": {
     "title": "Document Content",
-    "currentVersion": "Current Version",
     "lastUpdated": "Last Updated",
     "loading": "Loading content...",
     "error": "Error loading content",
     "noContent": "No content available",
     "notProcessed": "File not yet processed. Content will be available after parsing completes.",
-    "refresh": "Refresh Content",
-    "selectTextHint": "Select text to create redline"
+    "refresh": "Refresh Content"
   },
   "documentViewer": {
     "loading": "Loading...",
@@ -429,17 +360,14 @@
     "skipDocumentContentDesc": "After processing, document content will not be stored",
     "skipChatMessages": "Do not persist chat messages",
     "skipChatMessagesDesc": "Questions and answers from chat will not be stored",
-    "skipVersions": "Do not persist versions",
-    "skipVersionsDesc": "Version history and redlines will not be stored",
     "acceleratedPurge": "Accelerated Purge (days)",
     "acceleratedPurgeDesc": "When enabled, data will be deleted after this period (1-30 days)",
     "saveSettings": "Save Settings",
     "exportData": "Export Data (DSAR-lite)",
-    "exportDescription": "Download all your data related to this workspace in JSON format. This includes chat messages, document versions, and audit logs.",
+    "exportDescription": "Download all your data related to this workspace in JSON format. This includes chat messages and audit logs.",
     "whatWillBeExported": "What will be exported:",
     "exportItems": {
       "chatMessages": "Chat messages (according to no-logs configuration)",
-      "versionMetadata": "Document version metadata",
       "auditLogs": "Audit logs related to your user",
       "privacySettings": "Privacy settings"
     },
@@ -478,7 +406,6 @@
       "download": "Download",
       "upload": "Upload",
       "chatQuery": "Chat Query",
-      "redlineGenerate": "Generate Redline",
       "view": "View",
       "create": "Create"
     },
@@ -503,7 +430,7 @@
       "userAccount": "Your user account",
       "ownedWorkspaces": "All workspaces where you are OWNER",
       "documents": "All documents and associated files",
-      "chatHistory": "Chat history and versions",
+      "chatHistory": "Chat history",
       "auditLogs": "Related audit logs"
     },
     "cannotBeUndone": "This action cannot be undone!",
@@ -581,7 +508,6 @@
       "createWorkspace": "Create your first workspace",
       "uploadContract": "Upload a contract document",
       "runFirstReview": "Run your first AI review (chat)",
-      "applyFirstRedline": "Apply your first redline change",
       "exportDocument": "Export a document"
     },
     "tour": {
@@ -600,20 +526,17 @@
       "documentsText": "Upload contracts (PDF, DOCX) and the AI will parse and index them for retrieval and analysis.",
       "chat": "Chat",
       "chatText": "Ask questions about your contract. The AI uses RAG to cite specific clauses and provide evidence-based answers.",
-      "redline": "Redline",
-      "redlineText": "Select text and generate suggested changes using different playbooks (Balanced, Conservative, Client-friendly).",
       "settings": "Settings",
       "settingsText": "Configure retention, parsers, and AI prompts per workspace.",
       "done": "You're all set!",
       "doneText": "Use the checklist to track your progress. You can reset onboarding anytime from Account Settings.",
       "documentsNoWorkspace": "Create your first workspace to see documents here.",
       "chatNoDocument": "Create a document and upload a file to use the AI chat.",
-      "redlineNoDocument": "Create a document to use the redline feature.",
       "ctx": {
         "documentsListTitle": "Create documents",
         "documentsListText": "Create documents to organize your contract files.",
         "documentsListCardsTitle": "Document cards",
-        "documentsListCardsText": "Click any document to view, chat, and apply redlines.",
+        "documentsListCardsText": "Click any document to view and chat.",
         "wsSettingsTitle": "Workspace settings",
         "wsSettingsText": "Configure your workspace here.",
         "wsSettingsRetentionTitle": "Retention policies",
@@ -621,13 +544,13 @@
         "wsSettingsRetentionTextEmbeddingsTitle": "Text and Embeddings Retention",
         "wsSettingsRetentionTextEmbeddingsText": "How long extracted text and RAG vectors are kept (1–730 days). After OCR/parsing, this controls retention of the indexed content used for search and chat.",
         "wsSettingsRetentionFuzzyMatchTitle": "Fuzzy Match Settings",
-        "wsSettingsRetentionFuzzyMatchText": "Threshold (0–100%) for matching contract text when applying redlines. Higher values require more exact matches; lower values allow fuzzier suggestions.",
+        "wsSettingsRetentionFuzzyMatchText": "Threshold (0–100%) for matching contract text. Higher values require more exact matches; lower values allow fuzzier suggestions.",
         "wsSettingsChunkingTitle": "Document processing",
         "wsSettingsChunkingText": "Configure chunking strategy for how documents are split for RAG.",
         "wsSettingsParsersTitle": "Parsers",
         "wsSettingsParsersText": "Enable and configure parsers (PDF, DOCX, etc.) and API keys.",
         "wsSettingsPromptsTitle": "Prompts",
-        "wsSettingsPromptsText": "Customize AI prompts for chat and redline by workspace.",
+        "wsSettingsPromptsText": "Customize AI prompts for chat by workspace.",
         "membersAddTitle": "Add members",
         "membersAddText": "Invite team members to collaborate.",
         "membersTableTitle": "Members table",
@@ -688,7 +611,7 @@
     "saveError": "Error saving retention settings",
     "fuzzyMatchSettings": "Fuzzy Match Settings",
     "fuzzyMatchThreshold": "Fuzzy Match Threshold (%)",
-    "fuzzyMatchThresholdDescription": "Minimum match percentage (0-100) for fuzzy text matching when applying redlines. Higher values require more exact matches.",
+    "fuzzyMatchThresholdDescription": "Minimum match percentage (0-100) for fuzzy text matching. Higher values require more exact matches.",
     "mustBeBetween0And100": "Value must be between 0 and 100"
   },
   "transcription": {
@@ -763,7 +686,7 @@
   },
   "prompts": {
     "tabTitle": "AI Prompts",
-    "description": "Customize system prompts for chat and redline generation. Override global defaults per workspace.",
+    "description": "Customize system prompts for chat. Override global defaults per workspace.",
     "globalDescription": "Edit global AI prompts that apply to all workspaces and documents. These defaults are used when workspace or document overrides are not set.",
     "workspaceDescription": "Edit workspace-level AI prompts. These apply to all documents in this workspace when combined with global prompts.",
     "globalSystemPrompt": "Global system prompt",
@@ -771,15 +694,10 @@
     "includeGlobal": "Include global prompts",
     "includeWorkspace": "Include workspace prompts",
     "includeDocument": "Include document prompts",
-    "documentDescription": "Customize AI prompts for this document. Document prompts are combined with workspace and global. Applies only to this document's chat and redline.",
+    "documentDescription": "Customize AI prompts for this document. Document prompts are combined with workspace and global. Applies only to this document's chat.",
     "sourceDocument": "Document override",
     "chatSystem": "Chat system prompt",
     "chatUser": "Chat user prompt",
-    "redlineSystem": "Redline system prompt",
-    "redlineUser": "Redline user prompt",
-    "playbookBalanced": "Redline playbook: Balanced",
-    "playbookConservative": "Redline playbook: Conservative",
-    "playbookClientFriendly": "Redline playbook: Client-friendly",
     "sourceWorkspace": "Workspace override",
     "sourceGlobal": "Global default",
     "save": "Save",
@@ -834,18 +752,6 @@
     "registerAndAdd": "Register and Add",
     "userNotFoundRegister": "User not found. Complete registration (email, name, password) to add them."
   },
-  "versions": {
-    "title": "Document Versions",
-    "loading": "Loading versions...",
-    "noVersions": "No versions found for this document.",
-    "version": "Version",
-    "createdBy": "Created by",
-    "view": "View",
-    "hide": "Hide",
-    "decisions": "Decisions",
-    "noChanges": "No changes in this version",
-    "loadError": "Error loading versions"
-  },
   "tooltip": {
     "workspaces": "Workspaces",
     "documents": "Documents",
@@ -866,7 +772,6 @@
     "removeMember": "Remove member",
     "uploadFile": "Upload a file",
     "deleteDocument": "Delete document",
-    "generateRedline": "Generate redline suggestions",
     "exportData": "Export your data",
     "resetOnboarding": "Reset onboarding state and show checklist again",
     "startTour": "Start the guided tour",
@@ -878,8 +783,7 @@
     "nextPage": "Next page",
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",
-    "zoomReset": "Reset zoom",
-    "viewVersion": "View version"
+    "zoomReset": "Reset zoom"
   },
   "errors": {
     "generic": "An error occurred",
@@ -963,7 +867,6 @@
     "documents": {
       "open": "Open",
       "chat": "Open Chat",
-      "redline": "Open Redline",
       "delete": "Delete document"
     },
     "files": {
@@ -979,9 +882,6 @@
     "members": {
       "changeRole": "Change role",
       "remove": "Remove from workspace"
-    },
-    "versions": {
-      "view": "View / Hide"
     }
   }
 }

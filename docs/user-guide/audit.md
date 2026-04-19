@@ -7,7 +7,7 @@ The Audit Log records actions performed in the workspace: who did what, when, an
 ## When to Use
 
 - You need to check who viewed, downloaded, or modified a document
-- You want to trace chat queries, redline generation, or deletions
+- You want to trace chat queries or deletions
 - You need to export logs for compliance or investigation
 
 ## Prerequisites
@@ -26,7 +26,7 @@ The Audit Log records actions performed in the workspace: who did what, when, an
 ### Filter Logs
 
 1. Use the filter controls above or beside the table:
-   - **Action**: Select an action (e.g., delete, download, upload, chat_query, redline_generate, view, create) or "All actions."
+   - **Action**: Select an action (e.g., delete, download, upload, chat_query, view, create) or "All actions."
    - **Target Type**: Filter by type of resource (e.g., document, file).
    - **User**: Filter by user (if a user selector is available).
    - **Start Date** and **End Date**: Limit the date range.
@@ -51,7 +51,6 @@ The Audit Log records actions performed in the workspace: who did what, when, an
 | **download** | File or document download |
 | **upload** | File upload |
 | **chat_query** | Chat question submitted |
-| **redline_generate** | Redline generation requested |
 | **view** | Document or file viewed |
 | **create** | Document or workspace created |
 

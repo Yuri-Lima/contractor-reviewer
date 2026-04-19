@@ -2,8 +2,6 @@ export enum AuditAction {
   OPEN_VIEW = 'open_view',
   DOWNLOAD = 'download',
   CHAT_QUERY = 'chat_query',
-  REDLINE_GENERATE = 'redline_generate',
-  REDLINE_APPLY = 'redline_apply',
   DELETE = 'delete',
   EXPORT_PRIVACY = 'export_privacy',
   UPLOAD = 'upload',
@@ -24,5 +22,4 @@ export enum TargetType {
   USER = 'user',
   CHAT = 'chat',
   CHAT_THREAD = 'chat_thread',
-  VERSION = 'version',
 }

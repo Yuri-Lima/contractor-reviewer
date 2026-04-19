@@ -6,7 +6,32 @@
  */
 export type CitationType = 'contract' | 'document' | 'legal';
 
-// Common citation interface (unified for both document and legal citations)
+/**
+ * Narrow shape for citations from the user's contract or uploaded document.
+ * Use with `satisfies DocumentCitation` when building RAG citations so `type` and fields stay aligned.
+ */
+export interface DocumentCitation {
+  type: 'document' | 'contract';
+  fileName?: string;
+  pageNumber?: number;
+  paragraph?: string;
+  paragraphId?: string;
+  quoteSnippet?: string;
+}
+
+/**
+ * Narrow shape for citations from legal/regulatory sources.
+ * Use with `satisfies LegalSourceCitation` when building RAG citations.
+ */
+export interface LegalSourceCitation {
+  type: 'legal';
+  sourceName?: string;
+  section?: string;
+  url?: string;
+  quoteSnippet?: string;
+}
+
+// Common citation interface (unified wire/API shape for both document and legal citations)
 export interface Citation {
   type: CitationType;
   fileName?: string;

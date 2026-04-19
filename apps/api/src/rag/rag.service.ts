@@ -9,6 +9,8 @@ import {
   ChatPrepareResponse,
   Citation,
   ChatResponse,
+  DocumentCitation,
+  LegalSourceCitation,
   type StreamEvent,
 } from '@contractai-review/shared';
 import { EmbeddingsService } from './embeddings.service';
@@ -199,7 +201,7 @@ export class RagService {
           pageNumber: result.item.pageNumber || undefined,
           paragraphId: result.item.paragraphId || undefined,
           quoteSnippet: result.item.text.substring(0, 200) + '...',
-        });
+        } satisfies DocumentCitation);
       }
     }
 
@@ -213,7 +215,7 @@ export class RagService {
           section: result.item.section || result.section || undefined,
           url: result.url || undefined,
           quoteSnippet: result.item.text.substring(0, 200) + '...',
-        });
+        } satisfies LegalSourceCitation);
       }
     }
 
@@ -429,11 +431,11 @@ export class RagService {
       if (result.similarity > 0.4 || documentChunks.length <= 3) {
         citations.push({
           type: 'document',
-          fileName: document?.title || 'Document',
+          fileName: document?.title,
           pageNumber: result.pageNumber,
           paragraphId: result.paragraphId,
           quoteSnippet: result.text.substring(0, 200) + '...',
-        });
+        } satisfies DocumentCitation);
       }
     }
 
@@ -441,11 +443,11 @@ export class RagService {
       if (result.similarity > 0.4 || legalChunks.length <= 2) {
         citations.push({
           type: 'legal',
-          sourceName: result.sourceName || 'Legal Source',
+          sourceName: result.sourceName,
           section: result.section,
           url: result.url,
           quoteSnippet: result.text.substring(0, 200) + '...',
-        });
+        } satisfies LegalSourceCitation);
       }
     }
 
@@ -591,20 +593,20 @@ export class RagService {
         if (result.distance > 0.4 || documentChunks.length <= 3) {
           citations.push({
             type: 'document',
-            fileName: doc?.title || 'Document',
-            pageNumber: result.item.pageNumber || undefined,
-            paragraphId: result.item.paragraphId || undefined,
+            fileName: doc?.title,
+            pageNumber: result.item.pageNumber,
+            paragraphId: result.item.paragraphId,
             quoteSnippet: result.item.text.substring(0, 200) + '...',
-          });
+          } satisfies DocumentCitation);
         }
       }
       for (const result of legalChunks.slice(0, 2)) {
         if (result.distance > 0.4 || legalChunks.length <= 2) {
           citations.push({
             type: 'legal',
-            sourceName: result.sourceName || 'Legal Source',
-            section: result.item.section || result.section || undefined,
-            url: result.url || undefined,
+            sourceName: result.sourceName,
+            section: result.item.section || result.section,
+            url: result.url,
             quoteSnippet: result.item.text.substring(0, 200) + '...',
           });
         }

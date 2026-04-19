@@ -98,6 +98,10 @@ export class RagCacheService {
   ) {
     this.enabled = this.configService.get<string>('RAG_CACHE_ENABLED') !== 'false';
     this.ttlSeconds = this.configService.get<number>('RAG_CACHE_TTL_SECONDS') ?? 86400;
+    // NOTE: This threshold compares QUESTION embeddings (cache-key matching).
+    // Distinct from RAG_SIMILARITY_FLOOR which gates DOCUMENT CHUNK retrieval
+    // in RagService. The two thresholds are mathematically independent —
+    // changing one does not affect the other.
     this.defaultThreshold =
       this.configService.get<number>('RAG_CACHE_SIMILARITY_THRESHOLD') ?? 0.95;
     this.maxEntriesPerDoc =

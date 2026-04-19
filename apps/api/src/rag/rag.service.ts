@@ -26,6 +26,7 @@ import {
 } from '../vector-store/vector-store.interface';
 import { LlmProviderRegistry } from '../llm/llm-provider.registry';
 import { MemoryService } from '../memory/memory.service';
+import { parseEnvFloat, parseEnvInt } from '../common/utils/config-utils';
 
 // Re-export for backward compatibility
 export type { Citation };
@@ -33,11 +34,29 @@ export type RagResponse = ChatResponse;
 
 const DEFAULT_LLM_MAX_TOKENS = 2000;
 
+/**
+ * Minimum similarity score to surface a chunk as a citation in the UI.
+ * Distinct from RAG_SIMILARITY_FLOOR (which gates what reaches the LLM).
+ *
+ * Rationale: the floor controls *retrieval quality* (what we ask the LLM to
+ * reason over); MIN_CITATION_SCORE controls *citation quality shown to users*.
+ * With the default floor (0.5) > MIN_CITATION_SCORE (0.4), this gate is
+ * dead-code by default — it only matters if an operator intentionally lowers
+ * RAG_SIMILARITY_FLOOR below 0.4. Kept as a defensive minimum so a misconfigured
+ * floor can't cause us to surface obviously irrelevant snippets to the user.
+ */
+const MIN_CITATION_SCORE = 0.4;
+
 @Injectable()
 export class RagService {
   private readonly logger = new Logger(RagService.name);
   private readonly chatModel: string;
   private readonly maxTokens: number;
+  private readonly topKDocument: number;
+  private readonly topKLegal: number;
+  private readonly similarityFloor: number;
+  private readonly citationCapDocument: number;
+  private readonly citationCapLegal: number;
 
   constructor(
     @Inject(VECTOR_STORE)
@@ -57,27 +76,84 @@ export class RagService {
     const raw = this.configService.get<string>('LLM_MAX_TOKENS');
     const parsed = raw ? parseInt(raw, 10) : DEFAULT_LLM_MAX_TOKENS;
     this.maxTokens = parsed > 0 ? parsed : DEFAULT_LLM_MAX_TOKENS;
+
+    this.topKDocument = parseEnvInt(
+      'RAG_TOP_K_DOCUMENT',
+      this.configService.get<string>('RAG_TOP_K_DOCUMENT'),
+      8,
+      { max: 50 },
+    );
+    this.topKLegal = parseEnvInt(
+      'RAG_TOP_K_LEGAL',
+      this.configService.get<string>('RAG_TOP_K_LEGAL'),
+      3,
+      { max: 20 },
+    );
+    this.similarityFloor = parseEnvFloat(
+      'RAG_SIMILARITY_FLOOR',
+      this.configService.get<string>('RAG_SIMILARITY_FLOOR'),
+      0.5,
+    );
+    this.citationCapDocument = parseEnvInt(
+      'RAG_CITATION_CAP_DOCUMENT',
+      this.configService.get<string>('RAG_CITATION_CAP_DOCUMENT'),
+      5,
+      { max: 20 },
+    );
+    this.citationCapLegal = parseEnvInt(
+      'RAG_CITATION_CAP_LEGAL',
+      this.configService.get<string>('RAG_CITATION_CAP_LEGAL'),
+      2,
+      { max: 20 },
+    );
+
+    this.logger.log(
+      `[RagConfig] topKDocument=${this.topKDocument} topKLegal=${this.topKLegal} ` +
+        `similarityFloor=${this.similarityFloor} ` +
+        `citationCapDocument=${this.citationCapDocument} citationCapLegal=${this.citationCapLegal}`,
+    );
   }
 
   /**
-   * Search for similar document chunks using vector similarity
+   * Filter retrieved results by configured similarity floor.
+   *
+   * NOTE: The `distance` field on VectorSearchResult is a misnomer — it actually
+   * contains cosine SIMILARITY (1 - cosine_distance), where higher = more similar.
+   * See pgvector-store.service.ts: `1 - (embedding <=> query) AS distance`.
+   * Renaming the field is tracked as a follow-up; for now, every comparison in
+   * this file uses `> threshold` because the field is similarity, not distance.
+   *
+   * Strict `>` (not `>=`) so RAG_SIMILARITY_FLOOR=0 means "keep all chunks".
+   */
+  private applySimilarityFloor<T extends { distance: number }>(
+    results: T[],
+  ): T[] {
+    return results.filter((r) => r.distance > this.similarityFloor);
+  }
+
+  /**
+   * Search for similar document chunks using vector similarity.
+   * `limit` is intentionally required (no default) — every caller must pass
+   * `this.topKDocument` so future callers can't silently inherit a magic number.
    */
   async searchDocumentChunks(
     queryEmbedding: number[],
     documentId: string,
-    limit: number = 5,
+    limit: number,
   ): Promise<VectorSearchResult<Chunk>[]> {
     return this.vectorStore.searchDocumentChunks(queryEmbedding, documentId, limit);
   }
 
   /**
-   * Search for similar legal source chunks
+   * Search for similar legal source chunks.
+   * `limit` is intentionally required (no default) — every caller must pass
+   * `this.topKLegal` so future callers can't silently inherit a magic number.
    */
   async searchLegalChunks(
     queryEmbedding: number[],
-    country?: string,
-    jurisdiction?: string,
-    limit: number = 5,
+    country: string | undefined,
+    jurisdiction: string | undefined,
+    limit: number,
   ): Promise<LegalChunkSearchResult[]> {
     return this.vectorStore.searchLegalChunks(
       queryEmbedding,
@@ -103,15 +179,32 @@ export class RagService {
       options,
     );
 
-    const documentChunks = await this.searchDocumentChunks(
+    const rawDocumentChunks = await this.searchDocumentChunks(
       questionEmbedding,
       documentId,
-      5,
+      this.topKDocument,
+    );
+    const documentChunks = this.applySimilarityFloor(rawDocumentChunks);
+    this.logger.log(
+      `[prepareForChat] documentChunks retrieved=${rawDocumentChunks.length} kept=${documentChunks.length} ` +
+        `floor=${this.similarityFloor} topK=${this.topKDocument}`,
     );
 
-    const legalChunks = jurisdiction
-      ? await this.searchLegalChunks(questionEmbedding, undefined, jurisdiction, 3)
+    const rawLegalChunks = jurisdiction
+      ? await this.searchLegalChunks(
+          questionEmbedding,
+          undefined,
+          jurisdiction,
+          this.topKLegal,
+        )
       : [];
+    const legalChunks = this.applySimilarityFloor(rawLegalChunks);
+    if (jurisdiction) {
+      this.logger.log(
+        `[prepareForChat] legalChunks retrieved=${rawLegalChunks.length} kept=${legalChunks.length} ` +
+          `floor=${this.similarityFloor} topK=${this.topKLegal}`,
+      );
+    }
 
     const documentContext = documentChunks
       .map((c, i) => `[Document Excerpt ${i + 1}]: ${c.item.text}`)
@@ -238,8 +331,8 @@ export class RagService {
     });
     const citations: Citation[] = [];
 
-    for (const result of documentChunks.slice(0, 3)) {
-      if (result.similarity > 0.4 || documentChunks.length <= 3) {
+    for (const result of documentChunks.slice(0, this.citationCapDocument)) {
+      if (result.similarity > MIN_CITATION_SCORE) {
         citations.push({
           type: 'document',
           fileName: document?.title,
@@ -250,8 +343,8 @@ export class RagService {
       }
     }
 
-    for (const result of legalChunks.slice(0, 2)) {
-      if (result.similarity > 0.4 || legalChunks.length <= 2) {
+    for (const result of legalChunks.slice(0, this.citationCapLegal)) {
+      if (result.similarity > MIN_CITATION_SCORE) {
         citations.push({
           type: 'legal',
           sourceName: result.sourceName,
@@ -364,23 +457,34 @@ export class RagService {
       this.logger.log(
         `[generateAnswerStream] Search document chunks (vector store): documentId=${documentId}`,
       );
-      const documentChunks = await this.searchDocumentChunks(
+      const rawDocumentChunks = await this.searchDocumentChunks(
         questionEmbedding,
         documentId,
-        5,
+        this.topKDocument,
       );
+      const documentChunks = this.applySimilarityFloor(rawDocumentChunks);
       this.logger.log(
-        `[generateAnswerStream] Search document chunks result: documentId=${documentId} count=${documentChunks.length}`,
+        `[generateAnswerStream] documentChunks documentId=${documentId} retrieved=${rawDocumentChunks.length} kept=${documentChunks.length} ` +
+          `floor=${this.similarityFloor} topK=${this.topKDocument}`,
       );
       this.logger.log(
         `[generateAnswerStream] Search legal chunks (vector store): documentId=${documentId} jurisdiction=${jurisdiction ?? 'none'}`,
       );
-      const legalChunks = jurisdiction
-        ? await this.searchLegalChunks(questionEmbedding, undefined, jurisdiction, 3)
+      const rawLegalChunks = jurisdiction
+        ? await this.searchLegalChunks(
+            questionEmbedding,
+            undefined,
+            jurisdiction,
+            this.topKLegal,
+          )
         : [];
-      this.logger.log(
-        `[generateAnswerStream] Search legal chunks result: documentId=${documentId} count=${legalChunks.length}`,
-      );
+      const legalChunks = this.applySimilarityFloor(rawLegalChunks);
+      if (jurisdiction) {
+        this.logger.log(
+          `[generateAnswerStream] legalChunks documentId=${documentId} retrieved=${rawLegalChunks.length} kept=${legalChunks.length} ` +
+            `floor=${this.similarityFloor} topK=${this.topKLegal}`,
+        );
+      }
 
       const hasGoodMatches =
         documentChunks.length > 0 && documentChunks[0].distance > 0.7;
@@ -401,8 +505,8 @@ export class RagService {
         where: { id: documentId },
       });
       const citations: Citation[] = [];
-      for (const result of documentChunks.slice(0, 3)) {
-        if (result.distance > 0.4 || documentChunks.length <= 3) {
+      for (const result of documentChunks.slice(0, this.citationCapDocument)) {
+        if (result.distance > MIN_CITATION_SCORE) {
           citations.push({
             type: 'document',
             fileName: doc?.title,
@@ -412,8 +516,8 @@ export class RagService {
           } satisfies DocumentCitation);
         }
       }
-      for (const result of legalChunks.slice(0, 2)) {
-        if (result.distance > 0.4 || legalChunks.length <= 2) {
+      for (const result of legalChunks.slice(0, this.citationCapLegal)) {
+        if (result.distance > MIN_CITATION_SCORE) {
           citations.push({
             type: 'legal',
             sourceName: result.sourceName,
@@ -509,13 +613,28 @@ export class RagService {
         fromCache: false,
       };
 
-      await this.ragCacheService.set(
-        documentId,
-        jurisdiction,
-        questionEmbedding,
-        language,
-        { answerText, confidence, citations, notFound },
-      );
+      // Cache key is independent of RAG_TOP_K_* / RAG_SIMILARITY_FLOOR.
+      // Tuning changes take effect for cache misses only; existing entries
+      // age out via RAG_CACHE_TTL_SECONDS (default 24h). For immediate
+      // effect, operators can call ragCacheService.invalidateDocument or
+      // flush the rag:cache:* keyspace.
+      //
+      // Skip caching notFound responses: they're cheap to recompute and
+      // caching them creates a poor-UX feedback loop where a one-off bad
+      // query poisons the cache.
+      if (!notFound) {
+        await this.ragCacheService.set(
+          documentId,
+          jurisdiction,
+          questionEmbedding,
+          language,
+          { answerText, confidence, citations, notFound },
+        );
+      } else {
+        this.logger.log(
+          `[generateAnswerStream] Skipping cache write: notFound result documentId=${documentId}`,
+        );
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       yield { type: 'error', message: errorMessage };

@@ -36,19 +36,38 @@ services:
     image: pgvector/pgvector:pg16
     platform: linux/amd64
     container_name: contractai-postgres
+    restart: unless-stopped
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - max_connections=100
+      - -c
+      - log_connections=on
+      - -c
+      - log_disconnections=on
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-contractai}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-contractai}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_BIND:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres:/mnt/postgres-config:ro
+      - ./postgres/init/01-apply-pg_hba.sh:/docker-entrypoint-initdb.d/01-apply-pg_hba.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-contractai} -d ${POSTGRES_DB:-contractai}"]
+      test: ["CMD-SHELL", "pg_isready -U contractai -d contractai"]
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 256M
     networks:
       - contractai
 
@@ -56,8 +75,9 @@ services:
     image: redis:7-alpine
     platform: linux/amd64
     container_name: contractai-redis
+    restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_BIND:-127.0.0.1}:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:

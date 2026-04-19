@@ -45,7 +45,7 @@ export class WorkspaceSettings {
   @Column({ type: 'varchar', default: 'docling' })
   defaultDocumentParser: string;
 
-  /** Default LLM provider for chat (openai | anthropic) */
+  /** Default LLM provider for chat (openai | anthropic | xai) */
   @Column({ type: 'varchar', nullable: true })
   defaultLlmProvider: string | null;
 

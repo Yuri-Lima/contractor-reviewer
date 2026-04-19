@@ -17,6 +17,7 @@ import {
   isChatResponseMode,
   ChatResponseMode,
   isLlmProviderId,
+  LLM_PROVIDER_IDS,
 } from '@contractai-review/shared';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
 import { EncryptionService } from '../common/encryption.service';
@@ -393,10 +394,12 @@ export class WorkspaceSettingsService {
         settings.defaultDocumentParser = defaultDocumentParser;
       }
       if (defaultLlmProvider !== undefined) {
-        const allowed = ['openai', 'anthropic'];
-        if (defaultLlmProvider !== null && !allowed.includes(defaultLlmProvider)) {
+        if (
+          defaultLlmProvider !== null &&
+          !isLlmProviderId(defaultLlmProvider)
+        ) {
           throw new BadRequestException(
-            `Default LLM provider must be one of: ${allowed.join(', ')}`,
+            `Default LLM provider must be one of: ${LLM_PROVIDER_IDS.join(', ')}`,
           );
         }
         settings.defaultLlmProvider = defaultLlmProvider ?? null;

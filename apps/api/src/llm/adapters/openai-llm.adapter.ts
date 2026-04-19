@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OpenAI } from 'openai';
 import type { LlmMessage, LlmCompleteOptions } from '@contractai-review/shared';
-import { LlmProviderId } from '@contractai-review/shared';
+import { LLM_PROVIDER_ID } from '@contractai-review/shared';
 import type { ILlmProvider } from '../interfaces/llm-provider.interface';
 
 const DEFAULT_LLM_MAX_TOKENS = 2000;
@@ -10,7 +10,7 @@ const DEFAULT_LLM_MAX_TOKENS = 2000;
 @Injectable()
 export class OpenAILlmAdapter implements ILlmProvider {
   private readonly logger = new Logger(OpenAILlmAdapter.name);
-  readonly id = LlmProviderId.OpenAI;
+  readonly id = LLM_PROVIDER_ID.OpenAI;
   private readonly client: OpenAI;
   private readonly defaultModel: string;
   private readonly defaultMaxTokens: number;

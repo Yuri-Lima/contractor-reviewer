@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { ILlmProvider } from './interfaces/llm-provider.interface';
-import { LlmProviderId } from '@contractai-review/shared';
+import { LLM_PROVIDER_ID, type LlmProviderId } from '@contractai-review/shared';
 import { OpenAILlmAdapter } from './adapters/openai-llm.adapter';
 import { AnthropicLlmAdapter } from './adapters/anthropic-llm.adapter';
+import { XaiLlmAdapter } from './adapters/xai-llm.adapter';
 import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
 
 @Injectable()
@@ -13,10 +14,12 @@ export class LlmProviderRegistry {
   constructor(
     private openaiAdapter: OpenAILlmAdapter,
     private anthropicAdapter: AnthropicLlmAdapter,
+    private xaiAdapter: XaiLlmAdapter,
     private workspaceSettingsService: WorkspaceSettingsService,
   ) {
-    this.providers.set(LlmProviderId.OpenAI, this.openaiAdapter);
-    this.providers.set(LlmProviderId.Anthropic, this.anthropicAdapter);
+    this.providers.set(LLM_PROVIDER_ID.OpenAI, this.openaiAdapter);
+    this.providers.set(LLM_PROVIDER_ID.Anthropic, this.anthropicAdapter);
+    this.providers.set(LLM_PROVIDER_ID.XAI, this.xaiAdapter);
   }
 
   get(providerId: string): ILlmProvider | undefined {
@@ -24,7 +27,7 @@ export class LlmProviderRegistry {
   }
 
   getDefaultProviderId(): LlmProviderId {
-    return LlmProviderId.OpenAI;
+    return LLM_PROVIDER_ID.OpenAI;
   }
 
   /**

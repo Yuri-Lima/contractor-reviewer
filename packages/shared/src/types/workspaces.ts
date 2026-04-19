@@ -11,7 +11,7 @@ export interface WorkspaceSettingsConfig {
     chunkingStrategy: string;
     defaultDocumentParser?: string;
     parserApiKeys?: Record<string, boolean>;
-    /** Default LLM provider for chat (openai | anthropic) */
+    /** Default LLM provider for chat (openai | anthropic | xai) */
     defaultLlmProvider?: LlmProviderId;
   };
   /** Transcription provider API keys (masked: configured/not) */

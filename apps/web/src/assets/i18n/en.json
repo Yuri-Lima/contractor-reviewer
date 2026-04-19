@@ -44,7 +44,8 @@
     "showing": "Showing",
     "notAvailable": "N/A",
     "days": "days",
-    "clearSearch": "Clear search"
+    "clearSearch": "Clear search",
+    "retry": "Retry"
   },
   "auth": {
     "email": "Email",
@@ -348,7 +349,9 @@
     "loading": "Loading...",
     "error": "Error loading document",
     "previewNotAvailable": "Preview not available for this format.",
-    "downloadToView": "Download the file to view it."
+    "downloadToView": "Download the file to view it.",
+    "docxFetchError": "Could not load the .docx file. Please retry.",
+    "docxParseError": "Could not render the .docx file. The file may be corrupted."
   },
   "privacy": {
     "title": "Privacy Settings",

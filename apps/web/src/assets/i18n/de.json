@@ -44,7 +44,8 @@
     "showing": "Zeigt",
     "notAvailable": "N/A",
     "days": "Tage",
-    "clearSearch": "Suche löschen"
+    "clearSearch": "Suche löschen",
+    "retry": "Erneut versuchen"
   },
   "auth": {
     "email": "E-Mail",
@@ -346,7 +347,9 @@
     "loading": "Laden...",
     "error": "Fehler beim Laden des Dokuments",
     "previewNotAvailable": "Vorschau für dieses Format nicht verfügbar.",
-    "downloadToView": "Datei herunterladen, um sie anzuzeigen."
+    "downloadToView": "Datei herunterladen, um sie anzuzeigen.",
+    "docxFetchError": "Die .docx-Datei konnte nicht geladen werden. Bitte erneut versuchen.",
+    "docxParseError": "Die .docx-Datei konnte nicht angezeigt werden. Die Datei ist möglicherweise beschädigt."
   },
   "privacy": {
     "title": "Datenschutzeinstellungen",

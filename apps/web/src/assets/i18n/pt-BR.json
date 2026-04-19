@@ -46,7 +46,8 @@
     "showing": "Mostrando",
     "notAvailable": "N/A",
     "days": "dias",
-    "clearSearch": "Limpar busca"
+    "clearSearch": "Limpar busca",
+    "retry": "Tentar novamente"
   },
   "auth": {
     "email": "Email",
@@ -348,7 +349,9 @@
     "loading": "Carregando...",
     "error": "Erro ao carregar documento",
     "previewNotAvailable": "Visualização não disponível para este formato.",
-    "downloadToView": "Baixe o arquivo para visualizá-lo."
+    "downloadToView": "Baixe o arquivo para visualizá-lo.",
+    "docxFetchError": "Não foi possível carregar o arquivo .docx. Tente novamente.",
+    "docxParseError": "Não foi possível renderizar o arquivo .docx. O arquivo pode estar corrompido."
   },
   "privacy": {
     "title": "Configurações de Privacidade",

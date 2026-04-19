@@ -12,7 +12,7 @@ This document describes the architecture for future migration from a single Post
 1. **Centralized vector access**: All chunk CRUD and vector search go through `IChunkRepository` and `IVectorStore`
 2. **ID-based flow**: Vector search returns IDs/chunk rows; document metadata is fetched from relational by ID
 3. **No cross-DB JOINs**: Legal embeddings have denormalized metadata (sourceName, country, jurisdiction, url)
-4. **Orchestrated deletes**: `DocumentDeletionOrchestrator` enforces order: chunks → storage → document
+4. **Orchestrated deletes**: `DocumentDeletionOrchestrator` enforces order: RAG cache invalidation → chunks → memories → storage → document
 
 ## Entity Boundaries
 
@@ -36,7 +36,7 @@ All chunk access is funneled through this abstraction. When separating DBs, swap
 
 ### VectorStore (`IVectorStore`)
 
-- `searchContractChunks` - similarity search within a document (returns Chunk rows)
+- `searchDocumentChunks` - similarity search within a document (returns Chunk rows)
 - `searchLegalChunks` - similarity search with filters (returns Embedding rows + denormalized metadata)
 
 Legal search uses denormalized columns on `embeddings` table (no JOIN with `legal_sources`).
@@ -45,9 +45,11 @@ Legal search uses denormalized columns on `embeddings` table (no JOIN with `lega
 
 Centralizes document deletion order:
 
-1. Delete chunks (vector DB when separated)
-2. Delete files from storage
-3. Delete document (relational - cascade removes files, jobs, etc.)
+1. Invalidate RAG cache for the document
+2. Delete chunks (vector DB when separated)
+3. Delete document-scoped memories (no FK cascade; `MemoryService.deleteByDocument`)
+4. Delete files from storage
+5. Delete document (relational - cascade removes files, jobs, chat threads, versions, etc.)
 
 ## Configuration
 

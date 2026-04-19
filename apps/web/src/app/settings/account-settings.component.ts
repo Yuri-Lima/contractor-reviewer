@@ -20,6 +20,7 @@ import { FileUploadComponent } from '../core/components/file-upload';
 import { GlobalPromptsEditorComponent } from './global-prompts-editor/global-prompts-editor.component';
 import { ApiService } from '../core/services/api.service';
 import { AuthService } from '../core/services/auth.service';
+import { WebSocketService } from '../core/services/websocket.service';
 import { DevVisualizationsService } from '../core/services/dev-visualizations.service';
 import { AvatarService } from '../core/services/avatar.service';
 import { OnboardingService } from '../onboarding/onboarding.service';
@@ -70,6 +71,7 @@ export class AccountSettingsComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private apiService = inject(ApiService);
   private authService = inject(AuthService);
+  private webSocketService = inject(WebSocketService);
   private avatarService = inject(AvatarService);
   private fb = inject(FormBuilder);
   private confirmationService = inject(ConfirmationService);
@@ -457,6 +459,7 @@ export class AccountSettingsComponent implements OnInit, OnDestroy {
           detail: this.translateService.instant(_('settings.accountDeletedSuccess')),
         });
         // Logout and redirect to login
+        this.webSocketService.disconnect();
         this.authService.logout();
         setTimeout(() => {
           this.router.navigate(['/login']);

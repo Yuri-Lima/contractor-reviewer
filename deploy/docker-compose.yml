@@ -133,6 +133,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      WS_PORT: 3200
       DATABASE_URL: postgresql://${POSTGRES_USER:-contractai}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-contractai}
       REDIS_URL: redis://redis:6379
       DOCLING_URL: http://docling:8000
@@ -153,6 +154,7 @@ services:
       S3_BUCKET: ${S3_BUCKET:-contractai}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       - api_storage:/app/apps/api/storage
     healthcheck:
@@ -196,6 +198,7 @@ services:
       S3_BUCKET: ${S3_BUCKET:-contractai}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       - api_storage:/app/apps/api/storage
     networks:

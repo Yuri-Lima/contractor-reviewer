@@ -10,6 +10,7 @@ import { QueueModule } from './queue/queue.module';
 import { DocumentsModule } from './documents/documents.module';
 import { WorkersModule } from './workers/workers.module';
 import { RagModule } from './rag/rag.module';
+import { MemoryModule } from './memory/memory.module';
 import { PrivacyModule } from './privacy/privacy.module';
 import { AuditModule } from './audit/audit.module';
 import { RetentionModule } from './retention/retention.module';
@@ -19,6 +20,7 @@ import { AssetManagerModule } from './asset-manager/asset-manager.module';
 import { FileTypeModule } from './file-type/file-type.module';
 import { HealthModule } from './health/health.module';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
+import { WebSocketModule } from './websocket/websocket.module';
 import { typeOrmModuleOptions } from './typeorm.options';
 
 // Conditionally import AppController - only for API server, not worker
@@ -56,6 +58,7 @@ if (!isWorker) {
     StorageModule,
     QueueModule,
     RagModule,
+    MemoryModule,
     DocumentsModule,
     WorkersModule,
     PrivacyModule,
@@ -67,6 +70,7 @@ if (!isWorker) {
     FileTypeModule,
     HealthModule,
     RateLimitModule,
+    ...(isWorker ? [] : [WebSocketModule]),
   ],
   controllers: AppController ? [AppController] : [],
 })

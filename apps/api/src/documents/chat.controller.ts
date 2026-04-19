@@ -1,8 +1,12 @@
 import {
   Controller,
+  Get,
   Post,
+  Delete,
   Body,
   Param,
+  Query,
+  Req,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -13,6 +17,8 @@ import {
   Res,
   Logger,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
@@ -24,10 +30,17 @@ import { WorkspaceId, CurrentUser } from '../workspace/decorators';
 import { RagService, RagResponse } from '../rag/rag.service';
 import { DocumentsService } from './documents.service';
 import { AuditService } from '../audit/audit.service';
-import { AuditAction, ChatPrepareResponse, TargetType, TtsProviderId } from '@contractai-review/shared';
+import {
+  AuditAction,
+  ChatPrepareResponse,
+  LEGAL_RAG_CATEGORY_ID,
+  TargetType,
+  TtsProviderId,
+} from '@contractai-review/shared';
 import { RequestInfo } from '../common/decorators/request-info.decorator';
 import { ReqAbortSignal } from '../common/decorators/req-abort-signal.decorator';
 import { ChatMessageService } from './chat-message.service';
+import { ChatThreadService } from './chat-thread.service';
 import { TranscriptionService } from '../transcription/transcription.service';
 import { TtsService } from '../tts/tts.service';
 import { AuthService } from '../auth/auth.service';
@@ -35,6 +48,7 @@ import { AudioValidationService } from '../transcription/audio-validation.servic
 import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
+import type { StreamEvent, Citation } from '@contractai-review/shared';
 import { TranscribeBodyDto } from './dto/transcribe-body.dto';
 import { ChatExecuteBodyDto } from './dto/chat-execute-body.dto';
 
@@ -48,6 +62,7 @@ export class ChatController {
     private ragService: RagService,
     private documentsService: DocumentsService,
     private auditService: AuditService,
+    private chatThreadService: ChatThreadService,
     private chatMessageService: ChatMessageService,
     private transcriptionService: TranscriptionService,
     private ttsService: TtsService,
@@ -55,10 +70,142 @@ export class ChatController {
     private authService: AuthService,
     private audioValidationService: AudioValidationService,
     private configService: ConfigService,
+    @InjectQueue('memory') private memoryQueue: Queue,
   ) {}
 
   private isPrepareEnabled(): boolean {
     return this.configService.get<string>('CHAT_PREPARE_ENABLED') !== 'false';
+  }
+
+  @Get('threads')
+  async listThreads(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+    @CurrentUser() user: { id: string },
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    const result = await this.chatThreadService.listThreads(
+      documentId,
+      workspaceId,
+      user.id,
+      { page, limit },
+    );
+    return result;
+  }
+
+  @Post('threads')
+  @HttpCode(HttpStatus.CREATED)
+  async createThread(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+    @CurrentUser() user: { id: string },
+    @Body() body: { title?: string },
+  ) {
+    return this.chatThreadService.createThread(
+      documentId,
+      workspaceId,
+      user.id,
+      body.title ?? null,
+    );
+  }
+
+  @Get('threads/:threadId/messages')
+  async getMessages(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+    @Param('threadId') threadId: string,
+    @CurrentUser() user: { id: string },
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.chatMessageService.getMessages(threadId, workspaceId, user.id, {
+      page,
+      limit,
+    });
+  }
+
+  @Get('threads/:threadId/export')
+  async exportThread(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+    @Param('threadId') threadId: string,
+    @CurrentUser() user: { id: string },
+    @Res() res: Response,
+  ): Promise<void> {
+    const thread = await this.chatThreadService.findById(
+      threadId,
+      documentId,
+      workspaceId,
+      user.id,
+    );
+    const messages = await this.chatMessageService.getAllMessagesForExport(
+      threadId,
+      workspaceId,
+      user.id,
+    );
+
+    const title = thread.title || messages[0]?.question?.slice(0, 60) || 'Conversation';
+    const lines: string[] = [
+      `# ${title}`,
+      '',
+      `*Exported ${new Date().toISOString()}*`,
+      '',
+      '---',
+      '',
+    ];
+
+    for (const m of messages) {
+      if (m.question) {
+        lines.push('## User', '', m.question, '');
+      }
+      if (m.answerText) {
+        lines.push('## Assistant', '', m.answerText, '');
+      }
+      lines.push('---', '');
+    }
+
+    const markdown = lines.join('\n');
+    const safeTitle = title.replace(/[^a-zA-Z0-9-_]/g, '_').slice(0, 50);
+    const filename = `chat-${safeTitle}-${threadId.slice(0, 8)}.md`;
+
+    res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(markdown);
+  }
+
+  @Delete('threads/:threadId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteThread(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+    @Param('threadId') threadId: string,
+    @CurrentUser() user: { id: string },
+    @RequestInfo() requestInfo: { ip: string; userAgent: string },
+    @Req() req: { workspaceMembership?: { role: WorkspaceRole } },
+  ): Promise<void> {
+    const role = req.workspaceMembership?.role ?? WorkspaceRole.VIEWER;
+    const canDeleteAny =
+      role === WorkspaceRole.ADMIN || role === WorkspaceRole.OWNER;
+
+    const { messageCount } = await this.chatThreadService.deleteThread(
+      threadId,
+      documentId,
+      workspaceId,
+      user.id,
+      canDeleteAny,
+    );
+
+    await this.auditService.createAuditLog(
+      workspaceId,
+      user.id,
+      AuditAction.DELETE,
+      TargetType.CHAT_THREAD,
+      threadId,
+      requestInfo.ip,
+      requestInfo.userAgent,
+      { documentId, messageCount },
+    );
   }
 
   /** Log real error details (name, message, stack, cause, HTTP response when present). */
@@ -101,32 +248,92 @@ export class ChatController {
     }
   }
 
-  @Post()
-  @HttpCode(HttpStatus.OK)
-  async chat(
+  @Post('stream')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ requestsPerMinute: 30 })
+  async chatStream(
     @WorkspaceId() workspaceId: string,
     @Param('documentId') documentId: string,
     @CurrentUser() user: { id: string },
     @RequestInfo() requestInfo: { ip: string; userAgent: string },
     @ReqAbortSignal() signal: AbortSignal,
-    @Body() chatDto: { question: string; language?: string; forceFresh?: boolean },
-  ): Promise<RagResponse> {
+    @Res() res: Response,
+    @Body() chatDto: {
+      question: string;
+      language?: string;
+      forceFresh?: boolean;
+      threadId?: string;
+    },
+  ): Promise<void> {
     try {
-      // Verify document exists and belongs to workspace
       const document = await this.documentsService.findById(documentId, workspaceId);
 
-      if (!chatDto.question || !chatDto.question.trim()) {
-        throw new Error('Question is required');
+      if (!chatDto.question?.trim()) {
+        res.status(400).json({ message: 'Question is required' });
+        return;
       }
 
-      // Use resolved jurisdiction if available
-      const jurisdiction = document.resolvedJurisdiction || undefined;
+      const question = chatDto.question.trim();
+      let threadId = chatDto.threadId;
+      if (!threadId) {
+        const thread = await this.chatThreadService.getOrCreateThread(
+          documentId,
+          workspaceId,
+          user.id,
+          question,
+        );
+        threadId = thread.id;
+      } else {
+        await this.chatThreadService.findById(
+          threadId,
+          documentId,
+          workspaceId,
+          user.id,
+        );
+      }
 
+      // Use jurisdiction for Legal RAG only when category is Legal/Law and resolvedJurisdiction is set
+      const jurisdiction =
+        document.promptCategoryId === LEGAL_RAG_CATEGORY_ID && document.resolvedJurisdiction
+          ? document.resolvedJurisdiction
+          : undefined;
       const similarityThreshold = await this.authService.getRagCacheSimilarityThreshold(user.id);
 
-      // Generate answer with RAG
-      const response = await this.ragService.generateAnswer(
-        chatDto.question.trim(),
+      let conversationHistory: string | undefined;
+      if (threadId) {
+        const recent = await this.chatMessageService.getRecentMessages(
+          threadId,
+          workspaceId,
+          user.id,
+          5,
+        );
+        this.logger.log(
+          `[ChatStream] Get recent messages for context: threadId=${threadId} count=${recent.length}`,
+        );
+        conversationHistory = recent
+          .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+          .join('\n');
+        if (!conversationHistory) conversationHistory = undefined;
+      }
+
+      this.logger.log(
+        `[ChatStream] Calling ragService.generateAnswerStream: documentId=${documentId} workspaceId=${workspaceId}`,
+      );
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.flushHeaders();
+
+      let finalAnswerText = '';
+      let finalConfidence: 'high' | 'medium' | 'low' = 'low';
+      let finalCitations: Citation[] = [];
+      let finalNotFound = false;
+      let finalFromCache = false;
+      let doneReceived = false;
+
+      for await (const event of this.ragService.generateAnswerStream(
+        question,
         documentId,
         workspaceId,
         jurisdiction,
@@ -135,20 +342,58 @@ export class ChatController {
           signal,
           forceFresh: chatDto.forceFresh,
           similarityThreshold,
+          conversationHistory,
+          threadId,
         },
+      )) {
+        if (event.type === 'chunk') {
+          res.write(`data: ${JSON.stringify(event)}\n\n`);
+        } else if (event.type === 'done') {
+          finalAnswerText = event.answerText;
+          finalConfidence = event.confidence;
+          finalCitations = event.citations;
+          finalNotFound = event.notFound;
+          finalFromCache = event.fromCache;
+          doneReceived = true;
+          res.write(`data: ${JSON.stringify(event)}\n\n`);
+        } else if (event.type === 'error') {
+          res.write(`data: ${JSON.stringify(event)}\n\n`);
+          res.end();
+          return;
+        }
+      }
+
+      // Skip persist + audit if the client aborted mid-stream or no done event was emitted
+      if (signal?.aborted || !doneReceived) {
+        this.logger.log(
+          `[ChatStream] Skip persist (aborted=${signal?.aborted ?? false} doneReceived=${doneReceived}): documentId=${documentId} threadId=${threadId}`,
+        );
+        res.end();
+        return;
+      }
+
+      this.logger.log(
+        `[ChatStream] Calling chatMessageService.saveChatMessage: documentId=${documentId} threadId=${threadId} fromCache=${finalFromCache}`,
       );
-      
-      // Save chat message (respects no-logs configuration)
-      await this.chatMessageService.saveChatMessage(
+      const savedStream = await this.chatMessageService.saveChatMessage(
         documentId,
         workspaceId,
         user.id,
-        chatDto.question.trim(),
-        response,
+        question,
+        {
+          answerText: finalAnswerText,
+          confidence: finalConfidence,
+          citations: finalCitations,
+          notFound: finalNotFound,
+          fromCache: finalFromCache,
+        },
         jurisdiction,
+        threadId,
       );
-      
-      // Log chat query (don't log the question content for privacy)
+      if (savedStream) {
+        this.memoryQueue.add('summarize', { threadId, documentId, workspaceId }).catch(() => {});
+      }
+
       await this.auditService.createAuditLog(
         workspaceId,
         user.id,
@@ -157,20 +402,28 @@ export class ChatController {
         documentId,
         requestInfo.ip,
         requestInfo.userAgent,
-        { 
-          questionLength: chatDto.question.trim().length,
-          hasAnswer: !!response.answerText,
-          confidence: response.confidence,
-          citationsCount: response.citations?.length || 0,
-          fromCache: response.fromCache,
+        {
+          questionLength: question.length,
+          threadId,
+          hasAnswer: !!finalAnswerText,
+          confidence: finalConfidence,
+          citationsCount: finalCitations.length,
+          fromCache: finalFromCache,
         },
       );
-      
-      return response;
+
+      res.end();
     } catch (error) {
-      // Never log question content or answer text
-      this.logError('Chat', { documentId, workspaceId }, error);
-      throw error;
+      if (signal?.aborted) return;
+      this.logError('ChatStream', { documentId, workspaceId }, error);
+      try {
+        res.write(
+          `data: ${JSON.stringify({ type: 'error', message: error instanceof Error ? error.message : String(error) })}\n\n`,
+        );
+      } catch {
+        /* ignore */
+      }
+      res.end();
     }
   }
 
@@ -188,15 +441,25 @@ export class ChatController {
       throw new NotFoundException();
     }
     try {
+      this.logger.log('[ChatPrepare] Request', {
+        documentId,
+        workspaceId,
+        questionLength: chatDto.question?.length ?? 0,
+        language: chatDto.language ?? 'en',
+      });
       const document = await this.documentsService.findById(documentId, workspaceId);
 
       if (!chatDto.question || !chatDto.question.trim()) {
         throw new Error('Question is required');
       }
 
-      const jurisdiction = document.resolvedJurisdiction || undefined;
+      // Use jurisdiction for Legal RAG only when category is Legal/Law and resolvedJurisdiction is set
+      const jurisdiction =
+        document.promptCategoryId === LEGAL_RAG_CATEGORY_ID && document.resolvedJurisdiction
+          ? document.resolvedJurisdiction
+          : undefined;
 
-      return await this.ragService.prepareForChat(
+      const result = await this.ragService.prepareForChat(
         chatDto.question.trim(),
         documentId,
         workspaceId,
@@ -204,6 +467,12 @@ export class ChatController {
         chatDto.language || 'en',
         { signal },
       );
+      this.logger.log('[ChatPrepare] Completed', {
+        documentId,
+        workspaceId,
+        requestId: result.requestId,
+      });
+      return result;
     } catch (error) {
       this.logError('ChatPrepare', { documentId, workspaceId }, error);
       throw error;
@@ -226,8 +495,36 @@ export class ChatController {
       throw new NotFoundException();
     }
     try {
+      this.logger.log('[ChatExecute] Request', {
+        documentId,
+        workspaceId,
+        requestId: body.requestId,
+        threadId: body.threadId,
+      });
       const document = await this.documentsService.findById(documentId, workspaceId);
-      const jurisdiction = document.resolvedJurisdiction || undefined;
+      // Use jurisdiction for Legal RAG only when category is Legal/Law and resolvedJurisdiction is set
+      const jurisdiction =
+        document.promptCategoryId === LEGAL_RAG_CATEGORY_ID && document.resolvedJurisdiction
+          ? document.resolvedJurisdiction
+          : undefined;
+
+      // Get or create thread (execute may provide threadId from prepare flow)
+      let threadId = body.threadId;
+      if (!threadId) {
+        const thread = await this.chatThreadService.getOrCreateThread(
+          documentId,
+          workspaceId,
+          user.id,
+        );
+        threadId = thread.id;
+      } else {
+        await this.chatThreadService.findById(
+          threadId,
+          documentId,
+          workspaceId,
+          user.id,
+        );
+      }
 
       const { response, question } = await this.ragService.executePreparedChat(
         workspaceId,
@@ -236,14 +533,18 @@ export class ChatController {
         { signal },
       );
 
-      await this.chatMessageService.saveChatMessage(
+      const savedExecute = await this.chatMessageService.saveChatMessage(
         documentId,
         workspaceId,
         user.id,
         question,
         response,
         jurisdiction,
+        threadId,
       );
+      if (savedExecute) {
+        this.memoryQueue.add('summarize', { threadId, documentId, workspaceId }).catch(() => {});
+      }
 
       await this.auditService.createAuditLog(
         workspaceId,

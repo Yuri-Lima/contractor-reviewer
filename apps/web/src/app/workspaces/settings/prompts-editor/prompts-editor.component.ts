@@ -4,14 +4,23 @@ import { FormsModule } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { Message } from 'primeng/message';
 import { TooltipModule } from 'primeng/tooltip';
-import { AccordionModule } from 'primeng/accordion';
 import { TextareaModule } from 'primeng/textarea';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { MessageService } from 'primeng/api';
 import { ApiService } from '../../../core/services/api.service';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
-import type { PromptListItem } from '@contractai-review/shared';
+import { WORKSPACE_PROMPT_KEY } from '@contractai-review/shared';
 import { PROMPT_LABEL_KEYS } from '@contractai-review/shared/constants';
+
+/** Workspace prompt item from API */
+interface WorkspacePromptItem {
+  key: string;
+  content: string;
+  source: string;
+  hasOverride?: boolean;
+  description?: string;
+  updatedAt?: string;
+}
 
 @Component({
   selector: 'app-prompts-editor',
@@ -22,7 +31,6 @@ import { PROMPT_LABEL_KEYS } from '@contractai-review/shared/constants';
     Button,
     Message,
     TooltipModule,
-    AccordionModule,
     TextareaModule,
     ToggleSwitchModule,
     TranslatePipe,
@@ -36,18 +44,17 @@ export class PromptsEditorComponent implements OnInit {
   private messageService = inject(MessageService);
   private translateService = inject(TranslateService);
 
-  prompts = signal<PromptListItem[]>([]);
+  prompt = signal<WorkspacePromptItem | null>(null);
   loading = signal(false);
-  savingKey = signal<string | null>(null);
+  saving = signal(false);
   savingScope = signal(false);
-  editedContent = signal<Record<string, string>>({});
+  editedContent = signal('');
   /** Scope toggles from workspace settings (default true when not loaded) */
   includeGlobal = signal(true);
   includeWorkspace = signal(true);
 
-  getLabelKey(key: string): string {
-    return PROMPT_LABEL_KEYS[key] ?? key;
-  }
+  readonly key = WORKSPACE_PROMPT_KEY;
+  readonly labelKey = PROMPT_LABEL_KEYS[WORKSPACE_PROMPT_KEY] ?? WORKSPACE_PROMPT_KEY;
 
   ngOnInit(): void {
     this.loadPrompts();
@@ -106,12 +113,10 @@ export class PromptsEditorComponent implements OnInit {
     this.loading.set(true);
     this.apiService.getPrompts(this.workspaceId).subscribe({
       next: (res) => {
-        this.prompts.set(res.prompts);
-        const initial: Record<string, string> = {};
-        for (const p of res.prompts) {
-          initial[p.key] = p.content;
-        }
-        this.editedContent.set(initial);
+        const items = res.prompts ?? [];
+        const item = items[0] ?? null;
+        this.prompt.set(item as WorkspacePromptItem | null);
+        this.editedContent.set(item?.content ?? '');
         this.loading.set(false);
       },
       error: (err) => {
@@ -125,21 +130,17 @@ export class PromptsEditorComponent implements OnInit {
     });
   }
 
-  onContentChange(key: string, value: string): void {
-    this.editedContent.update((prev) => ({ ...prev, [key]: value }));
+  onContentChange(value: string): void {
+    this.editedContent.set(value);
   }
 
-  getContent(key: string): string {
-    return this.editedContent()[key] ?? this.prompts().find((p) => p.key === key)?.content ?? '';
+  hasChanges(): boolean {
+    const original = this.prompt()?.content ?? '';
+    return this.editedContent() !== original;
   }
 
-  hasChanges(key: string): boolean {
-    const original = this.prompts().find((p) => p.key === key)?.content ?? '';
-    return this.getContent(key) !== original;
-  }
-
-  onSave(key: string): void {
-    const content = this.getContent(key).trim();
+  onSave(): void {
+    const content = this.editedContent().trim();
     if (!content) {
       this.messageService.add({
         severity: 'warn',
@@ -148,19 +149,17 @@ export class PromptsEditorComponent implements OnInit {
       });
       return;
     }
-    this.savingKey.set(key);
-    this.apiService.updatePrompt(this.workspaceId, key, content).subscribe({
+    this.saving.set(true);
+    this.apiService.updatePrompt(this.workspaceId, this.key, content).subscribe({
       next: (res) => {
-        this.prompts.update((list) =>
-          list.map((p) => (p.key === key ? { ...p, content: res.content, source: 'workspace' as const } : p)),
-        );
-        this.editedContent.update((prev) => ({ ...prev, [key]: res.content }));
+        this.prompt.update((p) => (p ? { ...p, content: res.content, source: 'workspace' } : p));
+        this.editedContent.set(res.content);
         this.messageService.add({
           severity: 'success',
           summary: this.translateService.instant('common.success'),
           detail: this.translateService.instant('prompts.saveSuccess'),
         });
-        this.savingKey.set(null);
+        this.saving.set(false);
       },
       error: (err) => {
         this.messageService.add({
@@ -168,17 +167,15 @@ export class PromptsEditorComponent implements OnInit {
           summary: this.translateService.instant('common.error'),
           detail: err?.error?.message || this.translateService.instant('prompts.saveError'),
         });
-        this.savingKey.set(null);
+        this.saving.set(false);
       },
     });
   }
 
-  onReset(key: string): void {
-    const item = this.prompts().find((p) => p.key === key);
-    if (item?.source !== 'workspace') return;
-
-    this.savingKey.set(key);
-    this.apiService.resetPrompt(this.workspaceId, key).subscribe({
+  onReset(): void {
+    if (this.prompt()?.source !== 'workspace') return;
+    this.saving.set(true);
+    this.apiService.resetPrompt(this.workspaceId, this.key).subscribe({
       next: () => {
         this.loadPrompts();
         this.messageService.add({
@@ -186,7 +183,7 @@ export class PromptsEditorComponent implements OnInit {
           summary: this.translateService.instant('common.success'),
           detail: this.translateService.instant('prompts.resetSuccess'),
         });
-        this.savingKey.set(null);
+        this.saving.set(false);
       },
       error: (err) => {
         this.messageService.add({
@@ -194,7 +191,7 @@ export class PromptsEditorComponent implements OnInit {
           summary: this.translateService.instant('common.error'),
           detail: err?.error?.message || this.translateService.instant('prompts.resetError'),
         });
-        this.savingKey.set(null);
+        this.saving.set(false);
       },
     });
   }

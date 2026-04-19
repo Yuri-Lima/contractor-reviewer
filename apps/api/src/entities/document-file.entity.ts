@@ -7,7 +7,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { FileStatus } from '@contractai-review/shared';
+import { FileStatus, ParsingContext } from '@contractai-review/shared';
 import { Document } from './document.entity';
 
 // Re-export for backward compatibility
@@ -53,6 +53,9 @@ export class DocumentFile {
 
   @Column({ type: 'varchar', nullable: true })
   parsedBy: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  parsingContext: ParsingContext | null;
 
   @CreateDateColumn()
   createdAt: Date;

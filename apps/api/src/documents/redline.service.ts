@@ -1,20 +1,24 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { OpenAI } from 'openai';
 import { Document } from '../entities/document.entity';
 import { EmbeddingsService } from '../rag/embeddings.service';
-import { RedlineChange, RedlinePlaybook } from '@contractai-review/shared';
+import { LEGAL_RAG_CATEGORY_ID, RedlineChange, RedlinePlaybook } from '@contractai-review/shared';
 import { DiffService } from './diff.service';
 import { PromptService } from '../prompts/prompt.service';
 import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
 import { IVectorStore, VECTOR_STORE } from '../vector-store/vector-store.interface';
 
+const DEFAULT_LLM_MAX_TOKENS = 2000;
+
 @Injectable()
 export class RedlineService {
+  private readonly logger = new Logger(RedlineService.name);
   private readonly openaiClient: OpenAI;
   private readonly chatModel: string;
+  private readonly maxTokens: number;
 
   constructor(
     @Inject(VECTOR_STORE)
@@ -33,6 +37,9 @@ export class RedlineService {
     }
     this.openaiClient = new OpenAI({ apiKey: apiKey || 'dummy-key' });
     this.chatModel = this.configService.get<string>('OPENAI_CHAT_MODEL') || 'gpt-4o-mini';
+    const raw = this.configService.get<string>('LLM_MAX_TOKENS');
+    const parsed = raw ? parseInt(raw, 10) : DEFAULT_LLM_MAX_TOKENS;
+    this.maxTokens = parsed > 0 ? parsed : DEFAULT_LLM_MAX_TOKENS;
   }
 
   /**
@@ -50,16 +57,21 @@ export class RedlineService {
     language: string = 'en',
     options?: { signal?: AbortSignal },
   ): Promise<RedlineChange> {
+    this.logger.log('[Redline] Generation start', {
+      documentId,
+      playbook,
+      pageNumber,
+    });
     // Validate that selectedText exists in the document
     const selectedTextEmbedding = await this.embeddingsService.generateEmbedding(selectedText, {
       signal: options?.signal,
     });
     
-    // Search contract chunks using vector similarity
-    const contractChunks = await this.vectorStore.searchContractChunks(selectedTextEmbedding, documentId, 5);
+    // Search document chunks using vector similarity
+    const documentChunks = await this.vectorStore.searchDocumentChunks(selectedTextEmbedding, documentId, 5);
 
     // Check if we found the text
-    if (contractChunks.length === 0) {
+    if (documentChunks.length === 0) {
       return {
         section: 'Unknown',
         originalText: selectedText,
@@ -78,8 +90,11 @@ export class RedlineService {
       where: { id: documentId },
     });
 
-    // Get jurisdiction if available
-    const jurisdiction = document?.resolvedJurisdiction;
+    // Use jurisdiction for Legal RAG only when category is Legal/Law and resolvedJurisdiction is set
+    const jurisdiction =
+      document?.promptCategoryId === LEGAL_RAG_CATEGORY_ID && document?.resolvedJurisdiction
+        ? document.resolvedJurisdiction
+        : undefined;
 
     // Search legal chunks if jurisdiction available
     const legalChunks = jurisdiction
@@ -87,15 +102,15 @@ export class RedlineService {
       : [];
 
     // Build context from chunks
-    const contractContext = contractChunks
-      .map((c, i) => `[Contract Excerpt ${i + 1}]: ${c.item.text}`)
+    const documentContext = documentChunks
+      .map((c, i) => `[Document Excerpt ${i + 1}]: ${c.item.text}`)
       .join('\n\n');
 
     const legalContext = legalChunks
       .map((c, i) => `[Legal Source ${i + 1}]: ${c.item.text}`)
       .join('\n\n');
 
-    const context = [contractContext, legalContext].filter(Boolean).join('\n\n');
+    const context = [documentContext, legalContext].filter(Boolean).join('\n\n');
 
     const [workspaceSettings, doc] = await Promise.all([
       this.workspaceSettingsService.getSettings(workspaceId),
@@ -135,7 +150,7 @@ export class RedlineService {
             { role: 'user', content: user },
           ],
           temperature: 0.3,
-          max_tokens: 1000,
+          max_tokens: this.maxTokens,
           response_format: { type: 'json_object' },
         },
         options?.signal ? { signal: options.signal } : undefined,
@@ -173,14 +188,14 @@ export class RedlineService {
 
       // Determine confidence
       const hasGoodMatches =
-        contractChunks.length > 0 && contractChunks[0].distance > 0.7;
+        documentChunks.length > 0 && documentChunks[0].distance > 0.7;
       const hasLegalMatches = legalChunks.length > 0 && legalChunks[0].distance > 0.7;
       let confidence: 'high' | 'medium' | 'low' = 'low';
       if (hasGoodMatches && hasLegalMatches) {
         confidence = 'high';
       } else if (hasGoodMatches || hasLegalMatches) {
         confidence = 'high';
-      } else if (contractChunks.length >= 2 || legalChunks.length >= 1) {
+      } else if (documentChunks.length >= 2 || legalChunks.length >= 1) {
         confidence = 'medium';
       }
 

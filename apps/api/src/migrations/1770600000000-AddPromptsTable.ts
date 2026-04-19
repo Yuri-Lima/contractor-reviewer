@@ -33,7 +33,7 @@ export class AddPromptsTable1770600000000 implements MigrationInterface {
       {
         key: 'chat.system',
         content:
-          'You are a legal assistant. Provide accurate, evidence-based answers. Always cite your sources. IMPORTANT: When a language is specified, provide all answers in that language.',
+          'You are a legal assistant. Provide accurate, evidence-based answers. Always cite your sources. Cite sources using **Document Excerpt N** or `Document Excerpt N`, not link syntax. IMPORTANT: When a language is specified, provide all answers in that language.',
         metadata: JSON.stringify({ description: 'System prompt for RAG chat', requiredVariables: ['languageName'] }),
       },
       {
@@ -47,7 +47,7 @@ Context:
 
 Question: {{question}}
 
-Answer (be concise and cite specific excerpts, respond in {{languageName}}):`,
+Answer (be concise and cite specific excerpts, respond in {{languageName}}). When citing excerpts, use **Document Excerpt N** (bold) or \`Document Excerpt N\` (inline code). Do NOT use markdown link syntax like [Document Excerpt N][document excerpt n].`,
         metadata: JSON.stringify({ description: 'User prompt template for RAG chat', requiredVariables: ['languageName', 'context', 'question'] }),
       },
       {

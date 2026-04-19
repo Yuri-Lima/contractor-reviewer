@@ -11,6 +11,9 @@ import { LlamaParseAdapter } from './adapters/llamaparse.adapter';
 import { UnstructuredAdapter } from './adapters/unstructured.adapter';
 import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
 
+/** Docling is the primary parser; used as fallback when preferred parser is unavailable. */
+export const PRIMARY_PARSER = DocumentParser.DOCLING;
+
 const PARSERS_REQUIRING_API_KEY = new Set<DocumentParser>([
   DocumentParser.DPT2,
   DocumentParser.LLAMAPARSE,
@@ -28,8 +31,8 @@ const PARSER_REGISTRY: Record<
   },
   [DocumentParser.DOCLING]: {
     name: 'Docling',
-    description: 'IBM Docling. Self-hosted, no API key. PDF, DOCX, images.',
-    supportedFormats: ['pdf', 'docx', 'png', 'jpg'],
+    description: 'IBM Docling. Self-hosted, no API key. PDF, DOC, DOCX, PPTX, XLSX, images.',
+    supportedFormats: ['pdf', 'doc', 'docx', 'pptx', 'xlsx', 'png', 'jpg', 'tiff', 'bmp', 'webp'],
   },
   [DocumentParser.LLAMAPARSE]: {
     name: 'LlamaParse',
@@ -58,6 +61,10 @@ export class ParserFactoryService {
     private unstructuredAdapter: UnstructuredAdapter,
     private workspaceSettingsService: WorkspaceSettingsService,
   ) {}
+
+  getPrimaryParser(): DocumentParserAdapter {
+    return this.getParser(PRIMARY_PARSER);
+  }
 
   getParser(parserId: DocumentParser): DocumentParserAdapter {
     const map: Record<DocumentParser, DocumentParserAdapter> = {
@@ -102,6 +109,40 @@ export class ParserFactoryService {
     }
 
     return { adapter, options };
+  }
+
+  /**
+   * Get parser with fallback to primary (Docling) when preferred is unavailable.
+   * Use when preferred parser may lack API key or not support the mime type.
+   */
+  async getParserWithFallback(
+    mimeType: string,
+    preferredId: DocumentParser | undefined,
+    workspaceId: string,
+  ): Promise<{ adapter: DocumentParserAdapter; options: ParserOptions; parserId: DocumentParser }> {
+    const parserId = preferredId ?? (await this.getDefaultParser(workspaceId));
+    try {
+      const { adapter, options } = await this.getParserWithApiKey(parserId, workspaceId);
+      if (adapter.isSupported(mimeType)) {
+        return { adapter, options, parserId };
+      }
+    } catch {
+      // Preferred unavailable or unsupported - fall through to primary
+    }
+    const primaryAdapter = this.getPrimaryParser();
+    if (primaryAdapter.isSupported(mimeType)) {
+      const { adapter, options } = await this.getParserWithApiKey(PRIMARY_PARSER, workspaceId);
+      return { adapter, options, parserId: PRIMARY_PARSER };
+    }
+    throw new Error(
+      `Parser ${parserId} is unavailable and primary parser (Docling) does not support mime type: ${mimeType}`,
+    );
+  }
+
+  private async getDefaultParser(workspaceId: string): Promise<DocumentParser> {
+    const settings = await this.workspaceSettingsService.getSettings(workspaceId);
+    const parser = settings.documentProcessing?.defaultDocumentParser ?? PRIMARY_PARSER;
+    return parser as DocumentParser;
   }
 
   async listParsers(workspaceId: string): Promise<ParserInfo[]> {

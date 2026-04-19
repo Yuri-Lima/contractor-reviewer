@@ -2,13 +2,13 @@
 
 ## Summary
 
-Developer Mode is a feature for workspace owners that lets you inspect the full LLM payload before it is sent to the AI. When enabled, chat uses a two-step flow: **Prepare** → **Approve** → **Execute**. You see the system prompt, user prompt, contract chunks, legal chunks, and model parameters in a preview dialog, then approve to send or cancel to discard.
+Developer Mode is a feature for workspace owners that lets you inspect the full LLM payload before it is sent to the AI. When enabled, chat uses a two-step flow: **Prepare** → **Approve** → **Execute**. You see the system prompt, user prompt, document chunks, legal chunks, and model parameters in a preview dialog, then approve to send or cancel to discard.
 
 ## When to Use
 
 - You want to verify RAG context and retrieval quality during development
 - You need to debug why the AI gave a particular answer
-- You want to understand what contract and legal chunks are being sent
+- You want to understand what document and legal chunks are being sent
 - You are building or tuning AI prompts
 
 ## Prerequisites
@@ -36,7 +36,7 @@ Developer Mode is a feature for workspace owners that lets you inspect the full 
    - **Question**: Your question
    - **System Prompt**: Instructions sent to the model
    - **User Prompt**: Formatted user message including context
-   - **Contract Chunks**: Retrieved contract passages (text, page, paragraph, similarity)
+   - **Document Chunks**: Retrieved contract passages (text, page, paragraph, similarity)
    - **Legal Chunks**: Retrieved legal sources (text, source name, section, URL, similarity)
    - **Model Params**: Model name, temperature, max tokens
 6. Click **Approve and Send** to execute. The request is sent to the LLM and you receive the response.

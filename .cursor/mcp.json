@@ -1,5 +1,12 @@
 {
     "mcpServers": {
+      "docling": {
+        "command": "uvx",
+        "args": [
+          "--from=docling-mcp",
+          "docling-mcp-server"
+        ]
+      },
       "redis": {
         "command": "bash",
         "args": ["./scripts/redis-mcp.sh"]

@@ -11,14 +11,12 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { PromptService, PROMPT_KEYS } from './prompt.service';
-
-const VALID_KEYS = new Set(PROMPT_KEYS);
+import { PromptService, GLOBAL_PROMPT_KEY } from './prompt.service';
 
 function validateKey(key: string): void {
-  if (!VALID_KEYS.has(key as (typeof PROMPT_KEYS)[number])) {
+  if (key !== GLOBAL_PROMPT_KEY) {
     throw new BadRequestException(
-      `Invalid prompt key: ${key}. Valid keys: ${PROMPT_KEYS.join(', ')}`,
+      `Invalid prompt key: ${key}. Valid key: ${GLOBAL_PROMPT_KEY}`,
     );
   }
 }
@@ -49,7 +47,9 @@ export class GlobalPromptsController {
     const item = list.find((p) => p.key === key);
     const content =
       item?.content ??
-      (await this.promptService.getPrompt(key, { variant: 'default' }));
+      (await this.promptService.getPrompt(GLOBAL_PROMPT_KEY, {
+        variant: 'default',
+      }));
     return {
       key,
       content,
@@ -68,7 +68,7 @@ export class GlobalPromptsController {
       throw new BadRequestException('Prompt content cannot be empty');
     }
     const prompt = await this.promptService.upsertGlobalPrompt(
-      key,
+      GLOBAL_PROMPT_KEY,
       content,
     );
     return {
@@ -84,6 +84,6 @@ export class GlobalPromptsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async resetPrompt(@Param('key') key: string) {
     validateKey(key);
-    await this.promptService.resetGlobalPrompt(key);
+    await this.promptService.resetGlobalPrompt(GLOBAL_PROMPT_KEY);
   }
 }

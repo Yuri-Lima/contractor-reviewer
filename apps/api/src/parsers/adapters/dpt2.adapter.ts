@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   DocumentParser,
+  ParsingContext,
   ParseResult,
 } from '@contractai-review/shared';
 import { DocumentParserAdapter, ParserOptions } from '../parser.interface';
@@ -87,10 +88,18 @@ export class Dpt2Adapter implements DocumentParserAdapter {
         metadata?: { page_count?: number };
       };
 
+      const pageCount = data.metadata?.page_count ?? null;
+      const parserContext: ParsingContext = {
+        parserId: 'dpt2',
+        pageCount: pageCount ?? undefined,
+        exportFormat: 'markdown',
+      };
+
       return {
         markdown: data.markdown ?? '',
-        pageCount: data.metadata?.page_count ?? null,
+        pageCount,
         metadata: data.metadata ?? undefined,
+        parserContext,
       };
     } catch (err) {
       if (err instanceof Error) {

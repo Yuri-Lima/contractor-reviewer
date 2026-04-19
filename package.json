@@ -21,6 +21,11 @@
     "docker:push": "./scripts/build-and-push.sh",
     "verify:deploy": "./scripts/verify-deployment.sh",
     "verify:parsers": "./scripts/verify-parsers.sh",
+    "deploy:up": "cd deploy && docker compose pull && docker compose up -d",
+    "deploy:down": "cd deploy && docker compose down",
+    "deploy:restart": "cd deploy && docker compose restart api web",
+    "deploy:logs": "cd deploy && docker compose logs -f",
+    "deploy:ps": "cd deploy && docker compose ps",
     "lint": "nx run-many -t lint --all",
     "test": "nx run-many -t test --all",
     "docker:build": "./scripts/docker-build.sh"

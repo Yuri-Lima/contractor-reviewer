@@ -41,6 +41,7 @@ export interface StreamDoneChunk {
   confidence: 'high' | 'medium' | 'low';
   citations: Citation[];
   notFound: boolean;
+  fromCache: boolean;
 }
 
 export interface StreamErrorChunk {

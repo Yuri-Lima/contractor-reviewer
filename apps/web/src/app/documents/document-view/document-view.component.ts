@@ -31,6 +31,7 @@ import {
   DocumentFile,
   DocumentJob,
   ChatResponse,
+  ChatRequest,
   Citation,
   ParserInfo,
   FILE_INPUT_ACCEPT,
@@ -1973,44 +1974,6 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     const workspaceId = this.workspaceId();
     const documentId = this.documentId();
 
-    const handleChatResponse = (response: ChatResponse) => {
-      const wasFirstMessage = this.chatMessages().length === 0 && replaceAtIndex == null;
-      const needsAudio =
-        mode === (ChatResponseModeValues ?? CHAT_MODE).AudioOnly || mode === (ChatResponseModeValues ?? CHAT_MODE).AudioAndText;
-      const newMessage: ChatMessageWithAudio = {
-        question: questionText,
-        answerText: response.answerText,
-        confidence: response.confidence,
-        citations: response.citations,
-        audioState: needsAudio ? 'synthesizing' : 'none',
-        fromCache: response.fromCache,
-      };
-      if (replaceAtIndex != null) {
-        this.chatMessages.update((messages) => {
-          const next = [...messages];
-          if (next[replaceAtIndex]) {
-            next[replaceAtIndex] = { ...newMessage };
-          }
-          return next;
-        });
-      } else {
-        this.chatMessages.update((messages) => [...messages, newMessage]);
-      }
-      if (wasFirstMessage) {
-        this.onboardingService.markChecklistItem('run_first_review');
-      }
-      this.loading.set(false);
-
-      if (needsAudio && response.answerText?.trim()) {
-        const targetIndex = replaceAtIndex ?? this.chatMessages().length - 1;
-        this.synthesizeAndPlayForMessage(
-          targetIndex,
-          response.answerText,
-          currentLang,
-        );
-      }
-    };
-
     const showError = (detailKey: string) => {
       this.messageService.add({
         severity: 'error',
@@ -2025,34 +1988,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       showError(detailKey);
     };
 
-    let resolvedThreadId: string | null = this.activeThreadId();
-    const runChat = () => {
-      const tid = resolvedThreadId!;
-      const chatRequest = { question: questionText, language: currentLang, forceFresh, threadId: tid };
-
-    if (this.devVisualizationsService.enabled()) {
-      this.apiService
-        .chatPrepare(workspaceId, documentId, chatRequest, { signal: this.chatAbortController!.signal })
-        .subscribe({
-          next: (prepareRes) => {
-            this.llmPayloadToShow.set(prepareRes.payload);
-            this.llmPayloadRequestId.set(prepareRes.requestId);
-            this.loading.set(false);
-          },
-          error: (err: { status?: number; name?: string }) => {
-            if (err?.status === 404) {
-              this.apiService
-                .chat(workspaceId, documentId, chatRequest, { signal: this.chatAbortController!.signal })
-                .subscribe({
-                  next: handleChatResponse,
-                  error: (e: { name?: string }) => handleChatError(e, 'chat.sendError'),
-                });
-            } else {
-              handleChatError(err, 'chat.prepareError');
-            }
-          },
-        });
-    } else {
+    const runStreamingChat = (chatRequest: ChatRequest) => {
       const wasFirstMessage = this.chatMessages().length === 0 && replaceAtIndex == null;
       const needsAudio =
         mode === (ChatResponseModeValues ?? CHAT_MODE).AudioOnly || mode === (ChatResponseModeValues ?? CHAT_MODE).AudioAndText;
@@ -2102,6 +2038,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
                 `targetIndex=${targetIndex}`,
                 `answerLength=${event.answerText?.length ?? 0}`,
                 `citationsCount=${event.citations?.length ?? 0}`,
+                `fromCache=${event.fromCache}`,
               );
               const finalMessage: ChatMessageWithAudio = {
                 question: questionText,
@@ -2109,7 +2046,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
                 confidence: event.confidence,
                 citations: event.citations,
                 audioState: needsAudio ? 'synthesizing' : 'none',
-                fromCache: false,
+                fromCache: event.fromCache,
                 streaming: false,
               };
               this.chatMessages.update((messages) => {
@@ -2145,7 +2082,34 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
           },
           error: handleChatError,
         });
-    }
+    };
+
+    let resolvedThreadId: string | null = this.activeThreadId();
+    const runChat = () => {
+      const tid = resolvedThreadId!;
+      const chatRequest: ChatRequest = { question: questionText, language: currentLang, forceFresh, threadId: tid };
+
+      if (this.devVisualizationsService.enabled()) {
+        this.apiService
+          .chatPrepare(workspaceId, documentId, chatRequest, { signal: this.chatAbortController!.signal })
+          .subscribe({
+            next: (prepareRes) => {
+              this.llmPayloadToShow.set(prepareRes.payload);
+              this.llmPayloadRequestId.set(prepareRes.requestId);
+              this.loading.set(false);
+            },
+            error: (err: { status?: number; name?: string }) => {
+              if (err?.status === 404) {
+                // Prepare endpoint disabled - fall back to streaming flow
+                runStreamingChat(chatRequest);
+              } else {
+                handleChatError(err, 'chat.prepareError');
+              }
+            },
+          });
+      } else {
+        runStreamingChat(chatRequest);
+      }
     };
     if (!resolvedThreadId) {
       this.apiService

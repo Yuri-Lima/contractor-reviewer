@@ -248,134 +248,6 @@ export class ChatController {
     }
   }
 
-  @Post()
-  @HttpCode(HttpStatus.OK)
-  async chat(
-    @WorkspaceId() workspaceId: string,
-    @Param('documentId') documentId: string,
-    @CurrentUser() user: { id: string },
-    @RequestInfo() requestInfo: { ip: string; userAgent: string },
-    @ReqAbortSignal() signal: AbortSignal,
-    @Body() chatDto: {
-      question: string;
-      language?: string;
-      forceFresh?: boolean;
-      threadId?: string;
-    },
-  ): Promise<RagResponse> {
-    try {
-      this.logger.log('[Chat] Request', {
-        documentId,
-        workspaceId,
-        questionLength: chatDto.question?.length ?? 0,
-        language: chatDto.language ?? 'en',
-        threadId: chatDto.threadId,
-      });
-      // Verify document exists and belongs to workspace
-      const document = await this.documentsService.findById(documentId, workspaceId);
-
-      if (!chatDto.question || !chatDto.question.trim()) {
-        throw new Error('Question is required');
-      }
-
-      const question = chatDto.question.trim();
-
-      // Get or create thread (auto-create if no threadId)
-      let threadId = chatDto.threadId;
-      if (!threadId) {
-        const thread = await this.chatThreadService.getOrCreateThread(
-          documentId,
-          workspaceId,
-          user.id,
-          question,
-        );
-        threadId = thread.id;
-      } else {
-        await this.chatThreadService.findById(
-          threadId,
-          documentId,
-          workspaceId,
-          user.id,
-        );
-      }
-
-      // Use jurisdiction for Legal RAG only when category is Legal/Law and resolvedJurisdiction is set
-      const jurisdiction =
-        document.promptCategoryId === LEGAL_RAG_CATEGORY_ID && document.resolvedJurisdiction
-          ? document.resolvedJurisdiction
-          : undefined;
-
-      const similarityThreshold = await this.authService.getRagCacheSimilarityThreshold(user.id);
-
-      let conversationHistory: string | undefined;
-      if (threadId) {
-        const recent = await this.chatMessageService.getRecentMessages(
-          threadId,
-          workspaceId,
-          user.id,
-          5,
-        );
-        conversationHistory = recent
-          .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
-          .join('\n');
-        if (!conversationHistory) conversationHistory = undefined;
-      }
-
-      const response = await this.ragService.generateAnswer(
-        question,
-        documentId,
-        workspaceId,
-        jurisdiction,
-        chatDto.language || 'en',
-        {
-          signal,
-          forceFresh: chatDto.forceFresh,
-          similarityThreshold,
-          conversationHistory,
-          threadId,
-        },
-      );
-
-      // Save chat message (respects no-logs configuration)
-      const saved = await this.chatMessageService.saveChatMessage(
-        documentId,
-        workspaceId,
-        user.id,
-        question,
-        response,
-        jurisdiction,
-        threadId,
-      );
-      if (saved) {
-        this.memoryQueue.add('summarize', { threadId, documentId, workspaceId }).catch(() => {});
-      }
-
-      // Log chat query (don't log the question content for privacy)
-      await this.auditService.createAuditLog(
-        workspaceId,
-        user.id,
-        AuditAction.CHAT_QUERY,
-        TargetType.DOCUMENT,
-        documentId,
-        requestInfo.ip,
-        requestInfo.userAgent,
-        {
-          questionLength: question.length,
-          threadId,
-          hasAnswer: !!response.answerText,
-          confidence: response.confidence,
-          citationsCount: response.citations?.length || 0,
-          fromCache: response.fromCache,
-        },
-      );
-      
-      return response;
-    } catch (error) {
-      this.logError('Chat', { documentId, workspaceId }, error);
-      throw error;
-    }
-  }
-
   @Post('stream')
   @UseGuards(RateLimitGuard)
   @RateLimit({ requestsPerMinute: 30 })
@@ -457,6 +329,8 @@ export class ChatController {
       let finalConfidence: 'high' | 'medium' | 'low' = 'low';
       let finalCitations: Citation[] = [];
       let finalNotFound = false;
+      let finalFromCache = false;
+      let doneReceived = false;
 
       for await (const event of this.ragService.generateAnswerStream(
         question,
@@ -479,6 +353,8 @@ export class ChatController {
           finalConfidence = event.confidence;
           finalCitations = event.citations;
           finalNotFound = event.notFound;
+          finalFromCache = event.fromCache;
+          doneReceived = true;
           res.write(`data: ${JSON.stringify(event)}\n\n`);
         } else if (event.type === 'error') {
           res.write(`data: ${JSON.stringify(event)}\n\n`);
@@ -487,8 +363,17 @@ export class ChatController {
         }
       }
 
+      // Skip persist + audit if the client aborted mid-stream or no done event was emitted
+      if (signal?.aborted || !doneReceived) {
+        this.logger.log(
+          `[ChatStream] Skip persist (aborted=${signal?.aborted ?? false} doneReceived=${doneReceived}): documentId=${documentId} threadId=${threadId}`,
+        );
+        res.end();
+        return;
+      }
+
       this.logger.log(
-        `[ChatStream] Calling chatMessageService.saveChatMessage: documentId=${documentId} threadId=${threadId}`,
+        `[ChatStream] Calling chatMessageService.saveChatMessage: documentId=${documentId} threadId=${threadId} fromCache=${finalFromCache}`,
       );
       const savedStream = await this.chatMessageService.saveChatMessage(
         documentId,
@@ -500,7 +385,7 @@ export class ChatController {
           confidence: finalConfidence,
           citations: finalCitations,
           notFound: finalNotFound,
-          fromCache: false,
+          fromCache: finalFromCache,
         },
         jurisdiction,
         threadId,
@@ -523,7 +408,7 @@ export class ChatController {
           hasAnswer: !!finalAnswerText,
           confidence: finalConfidence,
           citationsCount: finalCitations.length,
-          fromCache: false,
+          fromCache: finalFromCache,
         },
       );
 

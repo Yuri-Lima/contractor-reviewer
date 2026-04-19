@@ -38,7 +38,7 @@ Logs use consistent prefixes for filtering:
 | `[UploadFile]` | Document upload pipeline |
 | `[CreateDocument]`, `[GetDocument]`, `[DeleteDocument]` | Document CRUD |
 | `[Chat]`, `[ChatStream]`, `[ChatPrepare]`, `[ChatExecute]` | Chat/RAG |
-| `[RAG]` | RAG service (generateAnswer, cache, vector search, execute) |
+| `[RAG]` | RAG service (cache, vector search, execute payloads) |
 | `[GenerateRedline]`, `[ApplyRedline]` | Redline flow |
 | `[Redline]` | RedlineService generation |
 | `[Version]` | Version creation |
@@ -74,10 +74,12 @@ ChatController → RagService → embeddings → vector search → LLM → cache
 
 | Step | File | Log |
 |------|------|-----|
-| Chat request | chat.controller.ts | `[Chat] Request` (documentId, workspaceId, threadId, questionLength, language) |
-| RAG start | rag.service.ts | `[RAG] generateAnswer start` |
-| Cache hit | rag.service.ts | `[RAG] Cache hit` |
-| Vector search | rag.service.ts | `[RAG] Vector search results` (documentChunksCount, legalChunksCount) |
+| Stream chat request | chat.controller.ts | `[ChatStream] Calling ragService.generateAnswerStream` |
+| RAG stream start | rag.service.ts | `[generateAnswerStream] Generate question embedding` |
+| Cache hit | rag.service.ts | `[generateAnswerStream] Cache hit` |
+| Vector search | rag.service.ts | `[generateAnswerStream] Search document/legal chunks result` |
+| Stream complete | rag.service.ts | `[generateAnswerStream] LLM provider.completeStream done` |
+| Stream persist | chat.controller.ts | `[ChatStream] Calling chatMessageService.saveChatMessage` (includes `fromCache`) |
 | Execute payload | rag.service.ts | `[RAG] Execute payload consumed` or `expired or invalid` |
 | Prepare cache | chat-prepare-cache.service.ts | `[ChatPrepare] Payload stored` |
 | Vector store | pgvector-store.service.ts | `[VectorSearch]` (resultCount, queryTimeMs) — debug level |

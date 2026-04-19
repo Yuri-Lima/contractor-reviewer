@@ -40,8 +40,11 @@ export class EmbeddingsService {
 
       return response.data[0].embedding;
     } catch (error) {
-      throw new Error(
-        `Failed to generate embedding: ${error instanceof Error ? error.message : String(error)}`,
+      throw Object.assign(
+        new Error(
+          `Failed to generate embedding: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+        { cause: error },
       );
     }
   }
@@ -75,7 +78,12 @@ export class EmbeddingsService {
         const batchEmbeddings = response.data.map((item: { embedding: number[] }) => item.embedding);
         embeddings.push(...batchEmbeddings);
       } catch (error) {
-        throw new Error(`Failed to generate embeddings batch: ${error instanceof Error ? error.message : String(error)}`);
+        throw Object.assign(
+          new Error(
+            `Failed to generate embeddings batch: ${error instanceof Error ? error.message : String(error)}`,
+          ),
+          { cause: error },
+        );
       }
     }
 

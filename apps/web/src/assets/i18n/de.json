@@ -63,7 +63,9 @@
     "register": "Registrieren",
     "loginError": "Ungültige E-Mail oder Passwort",
     "emailPlaceholder": "ihre@email.com",
-    "passwordPlaceholder": "••••••••"
+    "passwordPlaceholder": "••••••••",
+    "emailAlreadyExists": "Diese E-Mail-Adresse ist bereits registriert.",
+    "signInInstead": "Anmelden"
   },
   "workspaces": {
     "title": "Arbeitsbereiche",

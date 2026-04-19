@@ -63,7 +63,9 @@
     "register": "Registrarse",
     "loginError": "Correo electrónico o contraseña inválidos",
     "emailPlaceholder": "tu@email.com",
-    "passwordPlaceholder": "••••••••"
+    "passwordPlaceholder": "••••••••",
+    "emailAlreadyExists": "Este correo electrónico ya está registrado.",
+    "signInInstead": "Iniciar sesión"
   },
   "workspaces": {
     "title": "Espacios de trabajo",

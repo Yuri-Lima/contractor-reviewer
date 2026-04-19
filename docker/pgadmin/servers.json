@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "ContractAI Postgres",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "contractai",
+      "Username": "contractai",
+      "PassFile": "/var/lib/pgadmin/pgpass",
+      "SSLMode": "prefer"
+    }
+  }
+}

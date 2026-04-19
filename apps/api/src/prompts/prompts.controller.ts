@@ -15,14 +15,12 @@ import { WorkspaceGuard, RolesGuard } from '../workspace/guards';
 import { Roles } from '../workspace/decorators/roles.decorator';
 import { WorkspaceRole } from '../entities/workspace-member.entity';
 import { WorkspaceId } from '../workspace/decorators';
-import { PromptService, PROMPT_KEYS } from './prompt.service';
-
-const VALID_KEYS = new Set(PROMPT_KEYS);
+import { PromptService, WORKSPACE_PROMPT_KEY } from './prompt.service';
 
 function validateKey(key: string): void {
-  if (!VALID_KEYS.has(key as (typeof PROMPT_KEYS)[number])) {
+  if (key !== WORKSPACE_PROMPT_KEY) {
     throw new BadRequestException(
-      `Invalid prompt key: ${key}. Valid keys: ${PROMPT_KEYS.join(', ')}`,
+      `Invalid prompt key: ${key}. Valid key: ${WORKSPACE_PROMPT_KEY}`,
     );
   }
 }
@@ -50,18 +48,13 @@ export class PromptsController {
   @HttpCode(HttpStatus.OK)
   async getPrompt(@WorkspaceId() workspaceId: string, @Param('key') key: string) {
     validateKey(key);
-    const content = await this.promptService.getPrompt(key, {
-      workspaceId,
-      variant: 'default',
-    });
-    const list = await this.promptService.listPromptsForWorkspace(workspaceId);
-    const item = list.find((p) => p.key === key);
+    const [item] = await this.promptService.listPromptsForWorkspace(workspaceId);
     return {
-      key,
-      content,
-      source: item?.source ?? 'global',
-      description: item?.description,
-      updatedAt: item?.updatedAt,
+      key: item.key,
+      content: item.content,
+      source: item.source,
+      description: item.description,
+      updatedAt: item.updatedAt,
     };
   }
 
@@ -77,10 +70,14 @@ export class PromptsController {
     if (!content) {
       throw new BadRequestException('Prompt content cannot be empty');
     }
-    const prompt = await this.promptService.upsertPrompt(key, content, {
-      workspaceId,
-      variant: dto?.variant ?? 'default',
-    });
+    const prompt = await this.promptService.upsertPrompt(
+      WORKSPACE_PROMPT_KEY,
+      content,
+      {
+        workspaceId,
+        variant: dto?.variant ?? 'default',
+      },
+    );
     return {
       key: prompt.key,
       content: prompt.content,
@@ -94,6 +91,6 @@ export class PromptsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async resetPrompt(@WorkspaceId() workspaceId: string, @Param('key') key: string) {
     validateKey(key);
-    await this.promptService.resetPrompt(workspaceId, key);
+    await this.promptService.resetPrompt(workspaceId, WORKSPACE_PROMPT_KEY);
   }
 }

@@ -41,7 +41,7 @@ Account Settings let you manage your profile (name, email, avatar), chat prefere
 ### Configure Global AI Prompts
 
 1. Go to the **AI Prompts** tab.
-2. Add or edit global prompts. These are merged into the AI context for chat and redline across workspaces.
+2. Edit the **global system prompt** (`global.system`). This prompt is merged into the AI context for chat and redline across all workspaces and documents. Workspace and document prompts supplement or override it.
 3. Save.
 
 ### Enable Developer Mode

@@ -358,37 +358,28 @@
 
   <!-- Region Confirmation Dialog -->
   @if (showRegionConfirmation() && fuzzyMatchInfo()) {
-    <p-dialog
+    <app-base-dialog
       [visible]="true"
-      [modal]="true"
       [header]="'redline.confirmRegion' | translate"
-      [style]="{ width: '600px' }"
-      (onHide)="showRegionConfirmation.set(false)"
+      [width]="'600px'"
+      [footerButtons]="regionConfirmFooterButtons()"
+      (closed)="showRegionConfirmation.set(false)"
+      (buttonClicked)="onRegionConfirmButton($event)"
     >
-      <div class="region-confirmation space-y-4">
-        <p class="text-gray-700 dark:text-gray-300">
-          {{ 'redline.fuzzyMatchFound' | translate }}: <strong>{{ fuzzyMatchInfo()?.matchScore }}%</strong>
-        </p>
-        @if (fuzzyMatchInfo()?.matchedText) {
-          <div class="region-preview p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{{ 'redline.matchedRegion' | translate }}:</p>
-            <pre class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{{ fuzzyMatchInfo()?.matchedText }}</pre>
-          </div>
-        }
-        <div class="flex gap-2 justify-end">
-          <p-button 
-            [label]="'redline.selectManually' | translate"
-            severity="secondary"
-            [outlined]="true"
-            (onClick)="selectRegionManually()"
-          ></p-button>
-          <p-button 
-            [label]="'redline.useSuggestedRegion' | translate"
-            (onClick)="confirmSuggestedRegion()"
-          ></p-button>
+      <ng-template #bodyTemplate>
+        <div class="region-confirmation space-y-4">
+          <p class="text-gray-700 dark:text-gray-300">
+            {{ 'redline.fuzzyMatchFound' | translate }}: <strong>{{ fuzzyMatchInfo()?.matchScore }}%</strong>
+          </p>
+          @if (fuzzyMatchInfo()?.matchedText) {
+            <div class="region-preview p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{{ 'redline.matchedRegion' | translate }}:</p>
+              <pre class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{{ fuzzyMatchInfo()?.matchedText }}</pre>
+            </div>
+          }
         </div>
-      </div>
-    </p-dialog>
+      </ng-template>
+    </app-base-dialog>
   }
 
   <p-confirmDialog></p-confirmDialog>

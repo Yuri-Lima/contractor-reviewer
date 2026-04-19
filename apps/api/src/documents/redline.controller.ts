@@ -6,6 +6,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { WorkspaceGuard, RolesGuard } from '../workspace/guards';
@@ -30,6 +31,8 @@ import { DiffService } from './diff.service';
 @UseGuards(JwtAuthGuard, WorkspaceGuard, RolesGuard)
 @Roles(WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
 export class RedlineController {
+  private readonly logger = new Logger(RedlineController.name);
+
   constructor(
     private documentsService: DocumentsService,
     private auditService: AuditService,
@@ -50,6 +53,14 @@ export class RedlineController {
   ): Promise<RedlineResponse> {
     // Verify document exists and belongs to workspace
     await this.documentsService.findById(documentId, workspaceId);
+
+    this.logger.log('[GenerateRedline] Request', {
+      documentId,
+      workspaceId,
+      playbook: redlineDto.playbook || RedlinePlaybook.BALANCED,
+      selectedTextLength: redlineDto.selectedText?.length ?? 0,
+      pageNumber: redlineDto.pageNumber,
+    });
 
     if (!redlineDto.selectedText || !redlineDto.selectedText.trim()) {
       throw new Error('selectedText is required');
@@ -125,6 +136,13 @@ export class RedlineController {
     if (!body.decisions && !body.finalText) {
       throw new Error('Either decisions or finalText must be provided');
     }
+
+    this.logger.log('[ApplyRedline] Request', {
+      documentId,
+      versionId,
+      decisionsCount: body.decisions?.length ?? 0,
+      manuallyEdited: !!body.finalText && !body.decisions,
+    });
 
     // Verify document exists
     await this.documentsService.findById(documentId, workspaceId);

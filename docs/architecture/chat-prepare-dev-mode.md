@@ -4,7 +4,7 @@ Reference for the two-phase chat flow used when Developer Mode is enabled. Allow
 
 ## Purpose
 
-- Inspect system prompt, user prompt, contract chunks, legal chunks, and model params before the LLM is called
+- Inspect system prompt, user prompt, document chunks, legal chunks, and model params before the LLM is called
 - Verify RAG context and retrieval quality during development
 - Only active when both Developer Mode (frontend) and `CHAT_PREPARE_ENABLED` (backend) are enabled
 
@@ -53,7 +53,7 @@ Same body as main chat:
   "payload": {
     "systemPrompt": "string",
     "userPrompt": "string",
-    "contractChunks": [
+    "documentChunks": [
       { "text": "string", "pageNumber": 1, "paragraphId": "p1", "similarity": 0.85 }
     ],
     "legalChunks": [
@@ -62,7 +62,7 @@ Same body as main chat:
     "question": "string",
     "model": "gpt-4o-mini",
     "temperature": 0.3,
-    "maxTokens": 500
+    "maxTokens": 2000
   }
 }
 ```
@@ -92,6 +92,8 @@ Same body as main chat:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CHAT_PREPARE_ENABLED` | `true` | Set to `false` to disable prepare/execute endpoints (returns 404). Use in production to hide the feature. |
+| `LLM_MAX_TOKENS` | `2000` | Max output tokens for the LLM call (shared with the streaming chat path). Reflected as `maxTokens` in the prepare payload. |
+| `OPENAI_CHAT_MODEL` / `ANTHROPIC_CHAT_MODEL` | `gpt-4o-mini` / `claude-sonnet-4-20250514` | Chat model used by the resolved LLM provider. Reflected as `model` in the prepare payload. |
 
 ## Related
 

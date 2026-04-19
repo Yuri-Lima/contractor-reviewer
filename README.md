@@ -27,6 +27,7 @@ A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que 
   - **LlamaParse** (LlamaIndex) — Requer API key. PDF, DOCX.
   - **Unstructured.io** — Requer API key. Muitos formatos.
 - Processamento assíncrono com filas (parsing, chunking, embeddings)
+- **Progresso em tempo real** via WebSocket (porta 3200) — substitui polling agressivo
 - Visualização de documentos com suporte a PDF, imagens e texto
 - Mensagens amigáveis quando o parser está indisponível (ex.: "Docling service is unavailable. Start it with docker-compose up docling")
 
@@ -75,8 +76,13 @@ A plataforma utiliza **RAG (Retrieval-Augmented Generation)** para garantir que 
   - Define como o texto é dividido para RAG; paragraph-based recomendado para contratos
 - **Document Parsers**: parser padrão + API keys por workspace (DPT-2, LlamaParse, Unstructured)
   - API keys criptografadas com AES-256-GCM
-- **AI Prompts**: override de prompts de chat/redline por workspace (DB-backed, runtime tuning)
-- **Generate AI prompt from description**: Durante a criação de documento, gere instruções específicas a partir do título e descrição (contexto .md opcional). Aprove para salvar no documento, rejeite para criar sem, ou recrie para regenerar.
+- **AI Prompts**: prompts globais (Account Settings → `global.system`) + overrides por workspace e por documento (DB-backed, runtime tuning)
+- **Prompt categories**: Durante a criação de documento, selecione uma categoria (ex.: Geral, Imobiliário, NDA) para aplicar prompts pré-definidos aos 7 campos do documento, ou **gere** instruções via IA a partir do título e descrição (contexto .md opcional). Aprove para salvar, rejeite para criar sem, ou recrie para regenerar. Ver [docs/architecture/prompt-generator.md](docs/architecture/prompt-generator.md).
+
+### 🛡️ Rate Limiting e Token Budget
+- Limites configuráveis por usuário e por workspace (req/min, req/hora, req/dia)
+- Budget de tokens diário para API OpenAI (evita abuso)
+- Mensagem clara quando limites são excedidos (retry-after)
 
 ### 📊 Auditoria Completa
 - Trilha de auditoria para todas as ações importantes:
@@ -290,6 +296,7 @@ Para **Nx Cloud** (cache remoto e distribuição de tarefas em CI), execute `npx
 - ✅ Políticas de retenção e purge automático
 - ✅ Trilha de auditoria completa
 - ✅ Página de Workspace Settings (Retention, Document Processing, Document Parsers, AI Prompts)
+- ✅ Rate limiting e token budget por usuário/workspace
 - ✅ Suporte multilíngue
 - ✅ Onboarding (tour guiado, checklist, info icons, reset em Account Settings)
 

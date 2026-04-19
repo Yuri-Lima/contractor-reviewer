@@ -14,6 +14,7 @@ import {
   HttpStatus,
   BadRequestException,
   Res,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MAX_FILE_SIZE_BYTES } from '@contractai-review/shared';
@@ -39,10 +40,15 @@ import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { PromptGeneratorService } from '../prompts/prompt-generator.service';
 import { PromptService } from '../prompts/prompt.service';
 import { GeneratePromptRequestDto } from './dto/generate-prompt-request.dto';
+import { CreateDocumentDto } from './dto/create-document.dto';
+import { getPromptCategoryById } from '@contractai-review/shared';
+import { PROMPT_KEYS } from '../prompts/prompt.service';
 
 @Controller('workspaces/:workspaceId/documents')
 @UseGuards(JwtAuthGuard, WorkspaceGuard)
 export class DocumentsController {
+  private readonly logger = new Logger(DocumentsController.name);
+
   constructor(
     private documentsService: DocumentsService,
     private versionService: VersionService,
@@ -93,28 +99,59 @@ export class DocumentsController {
   @HttpCode(HttpStatus.CREATED)
   async createDocument(
     @WorkspaceId() workspaceId: string,
-    @Body() createDto: {
-      title: string;
-      description?: string;
-      documentChatSystemPrompt?: string;
-    },
+    @Body() createDto: CreateDocumentDto,
   ): Promise<Document> {
+    this.logger.log('[CreateDocument] Entry', {
+      workspaceId,
+      promptCategoryId: createDto.promptCategoryId,
+    });
     const document = await this.documentsService.create(
       workspaceId,
       createDto.title,
       createDto.description,
+      createDto.promptCategoryId,
     );
-    const promptContent = createDto.documentChatSystemPrompt?.trim();
-    if (promptContent) {
-      try {
-        await this.promptService.upsertPrompt('chat.system', promptContent, {
-          workspaceId,
-          documentId: document.id,
-          variant: 'default',
-        });
-      } catch (err) {
-        console.error('[DocumentsController] Failed to upsert document prompt:', err);
-        // Document created; prompt can be added later in Settings
+    this.logger.log('[CreateDocument] Created', {
+      workspaceId,
+      documentId: document.id,
+      promptCategoryId: createDto.promptCategoryId,
+    });
+
+    const category = getPromptCategoryById(createDto.promptCategoryId);
+    if (category) {
+      for (const key of PROMPT_KEYS) {
+        const content = category.prompts[key];
+        if (content) {
+          try {
+            await this.promptService.upsertPrompt(key, content, {
+              workspaceId,
+              documentId: document.id,
+              variant: 'default',
+            });
+          } catch (err) {
+            // Best-effort: log metadata only, do not block creation
+            this.logger.error(
+              '[CreateDocument] Failed to upsert document prompt from category',
+              { promptCategoryId: createDto.promptCategoryId, documentId: document.id, key },
+            );
+          }
+        }
+      }
+    } else {
+      const promptContent = createDto.documentChatSystemPrompt?.trim();
+      if (promptContent) {
+        try {
+          await this.promptService.upsertPrompt('chat.system', promptContent, {
+            workspaceId,
+            documentId: document.id,
+            variant: 'default',
+          });
+        } catch (err) {
+          this.logger.error(
+            '[CreateDocument] Failed to upsert document prompt',
+            { documentId: document.id },
+          );
+        }
       }
     }
     return document;
@@ -133,9 +170,31 @@ export class DocumentsController {
   async updateDocument(
     @WorkspaceId() workspaceId: string,
     @Param('documentId') documentId: string,
-    @Body() updateDto: { title?: string; description?: string; promptScopeIncludeDocument?: boolean },
+    @CurrentUser() user: { id: string },
+    @RequestInfo() requestInfo: { ip: string; userAgent: string },
+    @Body()
+    updateDto: {
+      title?: string;
+      description?: string;
+      promptScopeIncludeDocument?: boolean;
+      promptCategoryId?: string | null;
+      resolvedJurisdiction?: string | null;
+    },
   ): Promise<Document> {
-    return this.documentsService.update(documentId, workspaceId, updateDto);
+    const document = await this.documentsService.update(documentId, workspaceId, updateDto);
+    if (updateDto.resolvedJurisdiction !== undefined) {
+      await this.auditService.createAuditLog(
+        workspaceId,
+        user.id,
+        AuditAction.JURISDICTION_OVERRIDE,
+        TargetType.DOCUMENT,
+        documentId,
+        requestInfo.ip,
+        requestInfo.userAgent,
+        { resolvedJurisdiction: document.resolvedJurisdiction ?? null },
+      );
+    }
+    return document;
   }
 
   @Get(':documentId')
@@ -145,6 +204,7 @@ export class DocumentsController {
     @CurrentUser() user: { id: string },
     @RequestInfo() requestInfo: { ip: string; userAgent: string },
   ): Promise<Document> {
+    this.logger.log('[GetDocument] Entry', { workspaceId, documentId });
     const document = await this.documentsService.findById(documentId, workspaceId);
     
     // Log open/view action
@@ -183,6 +243,15 @@ export class DocumentsController {
       throw new BadRequestException('File is required');
     }
 
+    this.logger.log('[UploadFile] Entry', {
+      workspaceId,
+      documentId,
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      sizeBytes: file.size,
+      parser: body?.parser,
+    });
+
     const options = { signal };
 
     // Validate file
@@ -216,7 +285,13 @@ export class DocumentsController {
       parser,
       options,
     );
-    
+    this.logger.log('[UploadFile] Completed', {
+      workspaceId,
+      documentId,
+      fileId: uploadedFile.id,
+      fileName: file.originalname,
+    });
+
     // Log upload action
     await this.auditService.createAuditLog(
       workspaceId,
@@ -390,6 +465,20 @@ export class DocumentsController {
     return this.versionService.getVersionContent(versionId, documentId, workspaceId);
   }
 
+  @Post(':documentId/re-evaluate-jurisdiction')
+  @UseGuards(RolesGuard, RateLimitGuard)
+  @Roles(WorkspaceRole.MEMBER, WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
+  @RateLimit({ requestsPerMinute: 5 })
+  @HttpCode(HttpStatus.ACCEPTED)
+  async reEvaluateJurisdiction(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+  ): Promise<{ message: string }> {
+    await this.documentsService.findById(documentId, workspaceId);
+    await this.documentsService.reEvaluateJurisdiction(documentId, workspaceId);
+    return { message: 'Jurisdiction re-evaluation queued' };
+  }
+
   @Delete(':documentId')
   @UseGuards(RolesGuard)
   @Roles(WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
@@ -400,6 +489,7 @@ export class DocumentsController {
     @CurrentUser() user: { id: string },
     @RequestInfo() requestInfo: { ip: string; userAgent: string },
   ): Promise<void> {
+    this.logger.log('[DeleteDocument] Entry', { workspaceId, documentId });
     // Hard delete (idempotent - returns false if already deleted)
     const wasDeleted = await this.documentsService.delete(documentId, workspaceId);
     
@@ -416,6 +506,8 @@ export class DocumentsController {
         { hardDelete: true },
       );
     }
-    // If wasDeleted is false, document didn't exist (idempotent behavior)
+    if (wasDeleted) {
+      this.logger.log('[DeleteDocument] Document deleted', { workspaceId, documentId });
+    }
   }
 }

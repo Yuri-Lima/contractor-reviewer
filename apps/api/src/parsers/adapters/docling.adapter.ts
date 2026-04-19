@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   DocumentParser,
+  ParsingContext,
   ParseResult,
 } from '@contractai-review/shared';
 import { DocumentParserAdapter, ParserOptions } from '../parser.interface';
@@ -13,9 +14,15 @@ import { combineAbortSignals } from '../../common/utils/combine-abort-signals';
 
 const SUPPORTED_MIMES = new Set([
   'application/pdf',
+  'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'image/png',
   'image/jpeg',
+  'image/tiff',
+  'image/bmp',
+  'image/webp',
 ]);
 
 @Injectable()
@@ -78,10 +85,21 @@ export class DoclingAdapter implements DocumentParserAdapter {
         metadata?: Record<string, unknown>;
       };
 
+      const meta = data.metadata ?? {};
+      const parserContext: ParsingContext = {
+        parserId: 'docling',
+        parserVersion: typeof meta.parser_version === 'string' ? meta.parser_version : undefined,
+        pipelineMode: typeof meta.pipeline_mode === 'string' ? meta.pipeline_mode : undefined,
+        usedOcr: typeof meta.used_ocr === 'boolean' ? meta.used_ocr : undefined,
+        pageCount: data.page_count ?? (typeof meta.page_count === 'number' ? meta.page_count : undefined),
+        exportFormat: 'markdown',
+      };
+
       return {
         markdown: data.markdown ?? '',
         pageCount: data.page_count ?? null,
         metadata: data.metadata ?? undefined,
+        parserContext,
       };
     } catch (err) {
       if (err instanceof Error) {
@@ -113,10 +131,18 @@ export class DoclingAdapter implements DocumentParserAdapter {
   private getExtension(mimeType: string): string {
     const map: Record<string, string> = {
       'application/pdf': '.pdf',
+      'application/msword': '.doc',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
         '.docx',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+        '.pptx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+        '.xlsx',
       'image/png': '.png',
       'image/jpeg': '.jpg',
+      'image/tiff': '.tiff',
+      'image/bmp': '.bmp',
+      'image/webp': '.webp',
     };
     return map[mimeType] ?? '.bin';
   }

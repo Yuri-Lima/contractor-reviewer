@@ -15,23 +15,27 @@ ARQUITETURA (OBRIGATÓRIA)
    - Sempre retornar citations[] (fileName, pageNumber, paragraph/span ids, quoteSnippet) para contrato.
    - Quando usar direito/lei/guidance: citations legais (sourceName, section/article, url).
    - Se não encontrar evidência suficiente: responder "NOT FOUND" e sugerir onde procurar/perguntar.
-3) Multilíngue (EN/ES/PT):
+3) Multilíngue (EN/ES/PT-BR/DE — implementado):
    - Detectar idioma do contrato e do usuário; responder no idioma do usuário.
    - Redlines no idioma original do contrato.
    - Citações legais mantêm idioma original + breve explicação traduzida.
+   - i18n keys em `apps/web/src/assets/i18n/{en,es,pt-BR,de}.json`.
 
 
 
-STACK (monorepo: apps/api, apps/web)
-- Frontend: Angular (última LTS) + Capacitor (web + iOS/Android)
-- Backend: NestJS (API REST + workers BullMQ)
-- DB: Postgres + TypeORM + pgvector (extensão ou typeorm-pgvector)
+STACK (monorepo: apps/api, apps/web, packages/shared, services/{docling,pdfplumber})
+- Frontend: Angular 21 + PrimeNG + Tailwind + Capacitor (web + iOS/Android)
+- Backend: NestJS (API REST + workers BullMQ); WebSocket gateway (Socket.IO + Redis adapter + Redis Streams) para progresso de jobs
+- DB: Postgres + TypeORM + pgvector. Suporte futuro a vector DB separado via `VECTOR_DATABASE_URL` (ver `docs/architecture/vector-db-separation.md`)
 - Storage: S3/R2 compatível (dev pode usar local, mas com interface)
-- Queue/Worker: BullMQ + Redis (OCR/embeddings/parsing pesado)
-- OCR: Tesseract (em worker)
-- PDF: pdf.js
-- IA: OpenAI Responses API (RAG + tools)
-- API: REST como principal; GraphQL opcional para mobile e subscriptions (detalhar em backlog).
+- Queue/Worker: BullMQ + Redis (parsing, chunking, embeddings, jurisdiction-evaluation, summarize-memory)
+- Document parsers (microserviços Python via docker-compose): Docling (default — PDF, DOC, DOCX, PPTX, XLSX, imagens, OCR interno) + PDFPlumber (PDF nativo). Cloud opcional: DPT-2 (LandingAI), LlamaParse, Unstructured.
+- OCR: feito internamente pelo Docling. O worker standalone Tesseract (`ocr.processor.ts`) foi removido.
+- IA (embeddings): OpenAI `text-embedding-3-small`.
+- IA (chat/redline LLM): provider-agnóstico via `LlmProviderRegistry`. Adapters: OpenAI (default), Anthropic. Selecionado por workspace em `WorkspaceSettings.documentProcessing.defaultLlmProvider`. `LLM_MAX_TOKENS` (default 2000) controla o limite compartilhado.
+- Markdown rendering no chat: Incremark (parsing incremental durante streaming) com toggle "raw view".
+- Cache RAG semântico: Redis (chave por embedding + jurisdiction + language), threshold configurável por usuário/servidor; flags `forceFresh` (request) e `fromCache` (response).
+- API: REST como principal; SSE para chat streaming. GraphQL opcional para mobile e subscriptions (backlog).
 MULTI-TENANT / WORKSPACE ISOLATION (OBRIGATÓRIO)
 - Modelos:
   - Workspace(id, name, createdAt)
@@ -83,31 +87,36 @@ SEGURANÇA (OBRIGATÓRIO)
   - AuditLog(workspaceId, actorUserId, action, targetType, targetId, ip, userAgent, createdAt, metadata safe)
   - UI simples para filtrar por ação/usuário/data.
 UPLOAD PIPELINE SEGURO (OBRIGATÓRIO)
-- Validações:
-  - limite de tamanho (ex.: 25MB por arquivo, configurável)
-  - mime sniffing (não confiar em Content-Type)
-  - extensão permitida (pdf, docx, txt, png, jpg)
+- Validações (constants em `packages/shared/src/constants/upload.ts`):
+  - 50MB por arquivo (`MAX_FILE_SIZE_BYTES`), 100MB por batch (`MAX_BATCH_SIZE_BYTES`), até 20 arquivos por batch (`MAX_BATCH_FILE_COUNT`).
+  - mime sniffing por magic numbers (não confiar em Content-Type)
+  - extensões permitidas: pdf, doc, docx, pptx, xlsx, txt, md, png, jpg, jpeg, tiff, tif, bmp, webp.
 - Parser isolation:
-  - parsing/OCR em worker separado (process isolado)
-  - timeouts e limites de memória
+  - parsing em microserviços Python isolados (Docling, PDFPlumber) via HTTP; OCR ocorre dentro do Docling.
+  - timeouts e limites de memória configurados por serviço; healthchecks expostos em `GET /health`.
 - Future-ready malware scan:
-  - criar interface "scanFile(file)" com noop no MVP (flag) para plugar ClamAV depois.
+  - interface `scanFile(file)` com noop no MVP (flag `MALWARE_SCAN_ENABLED`) para plugar ClamAV depois.
 - Quarentena:
   - arquivos só ficam "available" após validação e processamento.
 EVIDENCE-BASED ANSWERS + CONFIDENCE + JURISDICTION RESOLVER (OBRIGATÓRIO)
-- Todas as respostas devem retornar:
+- Todas as respostas devem retornar (`ChatResponse` em `@contractai-review/shared`):
   - answerText (no idioma do usuário)
   - confidence: {high|medium|low} com regra:
     - High: múltiplas citações diretas e claras
     - Medium: evidência parcial / cláusula ambígua
     - Low: inferência, falta de jurisdição, ou ausência de base legal/contratual direta
-  - citations[] conforme acima
-  - "notFound": boolean quando aplicável
+  - citations[] (tipos narrow: `DocumentCitation` | `LegalSourceCitation`; serializadas no wire como `Citation`).
+    - Tipo `'document'` para citações do contrato do usuário (`'contract'` mantido como alias deprecado para compat).
+    - Tipo `'legal'` para fontes legais.
+    - Helper `isDocumentCitation(c)` aceita ambos.
+  - notFound: boolean quando aplicável
+  - fromCache: boolean quando a resposta veio do cache semântico (`forceFresh: true` força bypass)
 - Jurisdiction auto-resolver:
   - 1) extrair governing law do contrato (heurística + pattern)
   - 2) se ausente, inferir por sinais (endereço, moeda, idioma, referências legais)
   - 3) se ainda incerto -> perguntar ao usuário antes de aplicar legal RAG
-  - Persistir "resolvedJurisdiction" no Document com status: explicit|inferred|unknown
+  - Persistir `resolvedJurisdiction` no Document com status: explicit|inferred|unknown
+  - Implementação: `JurisdictionResolverService` + `JurisdictionEvaluationService` + worker `jurisdiction-evaluation` (BullMQ). UI mostra dropdown de candidatos e botão "Re-evaluate". Ver `docs/architecture/jurisdiction-resolution.md`.
 REDLINES — PLAYBOOKS + DIFF UI (OBRIGATÓRIO)
 - Playbooks:
   - Balanced
@@ -118,43 +127,58 @@ REDLINES — PLAYBOOKS + DIFF UI (OBRIGATÓRIO)
   - aceitar/rejeitar mudanças (granular por bloco)
   - ao aplicar accept/reject, gerar nova versão (vN+1) mantendo histórico
 QUEUE HEAVY TASKS + PROGRESS + RETRIES + RATE LIMITS (OBRIGATÓRIO)
-- Colocar em fila:
-  - OCR
-  - parsing
-  - chunking + embeddings
+- Filas BullMQ (Redis):
+  - parsing (Docling/PDFPlumber via HTTP; OCR ocorre dentro do parser)
+  - chunking
+  - embeddings
+  - jurisdiction-evaluation (assíncrono, após o documento ficar disponível)
+  - memory (`summarize-memory`: resumo do thread após cada chat)
 - Job model:
   - DocumentJob(docId, type, status, progress, attempts, lastError, createdAt, updatedAt)
-- UI de progresso no documento
-- Retries com backoff e DLQ simples
-- Rate limits e token budgets:
-  - por usuário e por workspace (ex.: req/min e tokens/dia)
+- Progresso em tempo real:
+  - Worker publica em Redis Stream `job:progress`. API consome (XREADGROUP/XACK) e emite via Socket.IO no room `document:{workspaceId}:{documentId}` (porta 3200).
+  - Cliente Angular assina via `socket.emit('subscribe', { workspaceId, documentId })`. Substitui polling REST agressivo.
+- Retries com backoff e DLQ simples.
+- Rate limits e token budgets (`RateLimitGuard` + `@RateLimit({ requestsPerMinute })`):
+  - por usuário e por workspace (req/min, req/h, req/dia, tokens/dia configuráveis via `RATE_LIMIT_*`)
   - bloquear abuso com mensagem clara
-ENDPOINTS (mínimo)
+ENDPOINTS (estado atual da implementação)
 - Workspaces:
   - POST /api/workspaces
   - POST /api/workspaces/:id/members
 - Documents:
   - POST /api/workspaces/:id/documents
-  - POST /api/workspaces/:id/documents/:docId/files
+  - POST /api/workspaces/:id/documents/:docId/files (campo opcional `parser` no multipart)
   - GET  /api/workspaces/:id/documents/:docId
-  - DELETE /api/workspaces/:id/documents/:docId (hard delete)
-- Chat/Redline:
-  - POST /api/workspaces/:id/documents/:docId/chat
-  - POST /api/workspaces/:id/documents/:docId/redline (playbook param)
+  - DELETE /api/workspaces/:id/documents/:docId (hard delete via `DocumentDeletionOrchestrator`)
+  - GET  /api/workspaces/:id/document-parsers (parsers disponíveis + `hasApiKey`)
+  - GET  /api/health/parsers (health Docling/PDFPlumber)
+- Chat (streaming-only — endpoint não-streaming `POST .../chat` foi removido):
+  - POST /api/workspaces/:id/documents/:docId/chat/stream (SSE; eventos `chunk`, `done { answerText, confidence, citations, notFound, fromCache }`, `error`)
+  - POST /api/workspaces/:id/documents/:docId/chat/prepare (Dev Mode; retorna `{ requestId, payload }`, gated por `CHAT_PREPARE_ENABLED`)
+  - POST /api/workspaces/:id/documents/:docId/chat/execute (Dev Mode; consome `requestId` one-time)
+  - GET/POST/DELETE /api/workspaces/:id/documents/:docId/chat/threads[/...] (CRUD de threads, mensagens, export markdown)
+  - POST /api/workspaces/:id/documents/:docId/chat/transcribe (voz → texto, HuggingFace inference)
+  - POST /api/workspaces/:id/documents/:docId/chat/synthesize (TTS)
+- Redline:
+  - POST /api/workspaces/:id/documents/:docId/redline (playbook param: balanced | conservative | client-friendly)
+  - POST /api/workspaces/:id/documents/:docId/redline/apply (gera `vN+1` após accept/reject granular)
 - Privacy:
-  - GET /api/workspaces/:id/privacy/export (DSAR-lite)
+  - GET /api/workspaces/:id/privacy/export (DSAR-lite, inclui chat, versões, memórias)
   - POST /api/workspaces/:id/privacy/no-logs (toggle setting)
-  - DELETE /api/account (hard delete)
+  - DELETE /api/account (hard delete da conta)
 - Audit:
   - GET /api/workspaces/:id/audit
+- WebSocket:
+  - ws://host:3200 (Socket.IO; auth via JWT em `auth.token`; eventos `subscribe`, `unsubscribe`, `job:progress`)
 ENTREGÁVEIS
-1) Repo com README (setup local + env vars)
-2) docker-compose (app + postgres + redis)
+1) Repo com README + `docs/` (setup local em `docs/guides/setup.md`, arquitetura em `docs/architecture/`, user-guide em `docs/user-guide/`)
+2) docker-compose (app + postgres + redis + docling + pdfplumber); `deploy/docker-compose.yml` para produção com Traefik/TLS
 3) TypeORM entities + migrações
-4) UI completa: workspace switcher, upload/viewer, chat, versions diff accept/reject, privacy panel, audit log
-5) Worker BullMQ rodando e processando OCR/embeddings com progresso
+4) UI completa: workspace switcher, upload/viewer, chat (streaming + Markdown via Incremark), versions diff accept/reject, privacy panel, audit log, onboarding
+5) Worker BullMQ rodando e processando parsing/chunking/embeddings + jurisdiction-evaluation + summarize-memory com progresso via WebSocket
 6) Exemplos de Legal Sources indexados (pelo menos 1 país EU + 1 país nacional)
-7) Garantir "no plaintext content logging" (auditar console/loggers)
+7) Garantir "no plaintext content logging" (auditar console/loggers; `LOG_LLM_PROMPT_CONTEXT=true` apenas em debug local)
 PRIORIDADES DE IMPLEMENTAÇÃO
 1) Workspace/RBAC e isolamento por workspaceId
 2) Upload seguro + pipeline em fila
@@ -166,7 +190,26 @@ PRIORIDADES DE IMPLEMENTAÇÃO
 8) Redline playbooks + accept/reject diff
 Comandos para rodar no monorepo (raiz e apps):
 - pnpm install (na raiz)
-- Em apps/api: rodar migrações TypeORM (ex.: pnpm typeorm migration:run ou script NestJS) e subir API (pnpm start:api) e worker (pnpm start:worker)
-- Em apps/web: pnpm start ou pnpm dev (Angular)
-- docker-compose up para Postgres + Redis
-Fluxo de teste completo: workspace, upload, chat com citações, redline com playbook, versões, export privacidade e purge.
+- docker-compose up -d (Postgres + Redis + Docling + PDFPlumber)
+- pnpm migration:run (rodar migrações TypeORM)
+- pnpm start:api (API NestJS na porta 3000; WebSocket na 3200)
+- pnpm start:worker (worker BullMQ)
+- pnpm dev:web (Angular dev server na 4200)
+Variáveis de ambiente principais (ver `.env.example` e `docs/guides/setup.md`):
+- DATABASE_URL, REDIS_URL, JWT_SECRET, OPENAI_API_KEY (obrigatórias)
+- OPENAI_CHAT_MODEL, ANTHROPIC_API_KEY, ANTHROPIC_CHAT_MODEL, LLM_MAX_TOKENS (LLM)
+- DOCLING_URL, PDFPLUMBER_URL, PARSER_KEYS_ENCRYPTION_KEY (parsers)
+- RAG_CACHE_*, RATE_LIMIT_*, CHAT_PREPARE_ENABLED, LOG_LEVEL
+Fluxo de teste completo: workspace, upload (com seleção de parser), chat streaming com citações, redline com playbook, versões com accept/reject, export DSAR-lite, purge por retenção.
+
+REFERÊNCIA RÁPIDA (docs)
+- `docs/architecture/overview.md` — arquitetura geral (services diagram, data flow)
+- `docs/architecture/rag-pipeline.md` — RAG, citações, env vars, LLM provider selection
+- `docs/architecture/chat-prepare-dev-mode.md` — fluxo prepare/execute (Dev Mode)
+- `docs/architecture/chat-markdown-rendering.md` — rendering Incremark
+- `docs/architecture/rag-cache.md` — cache semântico Redis
+- `docs/architecture/document-parsers.md` — Docling/PDFPlumber + cloud parsers
+- `docs/architecture/jurisdiction-resolution.md` — resolver + UI override
+- `docs/architecture/websocket.md` — Redis Streams + Socket.IO
+- `docs/architecture/storage.md` — validações de upload (50MB / 100MB / 20 files)
+- `docs/architecture/vector-db-separation.md` — separação relacional × vector DB

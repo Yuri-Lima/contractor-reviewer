@@ -16,6 +16,7 @@ import {
   DocumentParser,
   isChatResponseMode,
   ChatResponseMode,
+  isLlmProviderId,
 } from '@contractai-review/shared';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
 import { EncryptionService } from '../common/encryption.service';
@@ -101,6 +102,9 @@ export class WorkspaceSettingsService {
       documentProcessing: {
         chunkingStrategy: settings.chunkingStrategy ?? 'paragraph',
         defaultDocumentParser: settings.defaultDocumentParser ?? 'docling',
+        defaultLlmProvider: isLlmProviderId(settings.defaultLlmProvider)
+          ? settings.defaultLlmProvider
+          : undefined,
         parserApiKeys: parserApiKeysMasked,
       },
       transcriptionProviderApiKeys,
@@ -366,8 +370,12 @@ export class WorkspaceSettingsService {
     }
 
     if (config.documentProcessing !== undefined) {
-      const { chunkingStrategy, defaultDocumentParser, parserApiKeys } =
-        config.documentProcessing;
+      const {
+        chunkingStrategy,
+        defaultDocumentParser,
+        defaultLlmProvider,
+        parserApiKeys,
+      } = config.documentProcessing;
       if (chunkingStrategy !== undefined) {
         if (!ALLOWED_CHUNKING_STRATEGIES.includes(chunkingStrategy as ChunkingStrategy)) {
           throw new BadRequestException(
@@ -383,6 +391,15 @@ export class WorkspaceSettingsService {
           );
         }
         settings.defaultDocumentParser = defaultDocumentParser;
+      }
+      if (defaultLlmProvider !== undefined) {
+        const allowed = ['openai', 'anthropic'];
+        if (defaultLlmProvider !== null && !allowed.includes(defaultLlmProvider)) {
+          throw new BadRequestException(
+            `Default LLM provider must be one of: ${allowed.join(', ')}`,
+          );
+        }
+        settings.defaultLlmProvider = defaultLlmProvider ?? null;
       }
       if (parserApiKeys !== undefined && typeof parserApiKeys === 'object') {
         const encrypted: Record<string, string> = settings.parserApiKeys ?? {};

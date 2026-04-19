@@ -178,23 +178,38 @@ Crie um arquivo `.env` na raiz do projeto ou configure:
 - ✅ Listagem de documentos
 - ✅ Upload de arquivos com **seleção de parser** (Docling, PDFPlumber, DPT-2, LlamaParse, Unstructured)
 - ✅ **Failed Jobs** — bloco no document view exibindo jobs falhos com `lastError` (mensagem amigável para o usuário)
-- ✅ Chat com citações
+- ✅ Chat com citações e **Markdown renderizado** (Incremark, parsing incremental durante streaming; toggle para ver Markdown bruto quando a resposta termina)
 - ✅ Privacy panel (DSAR export, no-logs toggle)
 - ✅ Audit logs
 - ✅ Workspace Settings:
   - **Retention** — política de retenção (arquivos, textos/embeddings)
   - **Document Processing** — chunking strategy (paragraph, sentence, fixed_size)
   - **Document Parsers** — parser padrão + API keys (DPT-2, LlamaParse, Unstructured)
-  - **AI Prompts** — override de prompts de chat e redline por workspace
+  - **AI Prompts** — Workspace system prompt único; inclui toggles para global/workspace
 - ✅ Viewer de PDF
 - ✅ Redline e versões (diff side-by-side)
 - ✅ Progresso de jobs (parsing, chunking, embeddings)
 - ✅ Suporte multilíngue (EN, ES, PT-BR, DE)
 - ✅ **Onboarding** — tour guiado (Shepherd.js), checklist flutuante, ícones de ajuda (confidence, citações), reset em Account Settings
 
+## Shared Package (Developer Note)
+
+When importing **constants** from `@contractai-review/shared` (e.g., `PROMPT_CATEGORIES`, `PROMPT_KEYS`, `PROMPT_LABEL_KEYS`, `getPromptCategoryById`), use the `/constants` subpath to avoid Vite pre-bundling issues:
+
+```typescript
+import { PROMPT_CATEGORIES, PROMPT_LABEL_KEYS } from '@contractai-review/shared/constants';
+```
+
+See [packages/shared/README.md](../../packages/shared/README.md) for details.
+
 ## Integração com API
 
 O frontend consome a API REST em `http://localhost:3000/api` (configurável via `VITE_API_URL` ou `NG_APP_API_URL`).
+
+**WebSocket** (progresso de jobs em tempo real):
+
+- Conecta em `wsUrl` (dev: `http://localhost:3200`, prod: mesma origem)
+- `WebSocketService.subscribeDocument(workspaceId, documentId)` — recebe eventos `job:progress`
 
 Endpoints principais:
 - `/api/auth/login` — Login

@@ -2,6 +2,16 @@ import { DocumentStatus, JurisdictionStatus } from '../enums/document.enum';
 import { FileStatus } from '../enums/file.enum';
 import { JobType, JobStatus } from '../enums/job.enum';
 
+/** Jurisdiction candidate with evidence for user override */
+export interface JurisdictionCandidate {
+  jurisdiction: string;
+  status: 'explicit' | 'inferred';
+  confidence: number;
+  evidenceCount: number;
+  fileNames: string[];
+  snippets: string[];
+}
+
 export interface Document {
   id: string;
   workspaceId: string;
@@ -10,10 +20,15 @@ export interface Document {
   status: DocumentStatus;
   resolvedJurisdiction?: string;
   jurisdictionStatus?: JurisdictionStatus;
+  /** List of jurisdiction candidates with evidence for user override */
+  jurisdictionCandidates?: JurisdictionCandidate[] | null;
+  jurisdictionReasoning?: string | null;
   createdAt: string;
   updatedAt: string;
   /** Include document prompts when building combined prompt (additive model) */
   promptScopeIncludeDocument?: boolean;
+  /** Prompt category (e.g. legal-law). When Legal/Law + resolvedJurisdiction, enables Legal RAG. */
+  promptCategoryId?: string | null;
   files?: DocumentFile[];
   jobs?: DocumentJob[];
 }
@@ -31,6 +46,8 @@ export interface DocumentFile {
   ocrText?: string;
   errorMessage?: string;
   pageCount?: number;
+  parsedBy?: string;
+  parsingContext?: ParsingContext;
   createdAt: string;
   updatedAt: string;
 }
@@ -53,6 +70,8 @@ export interface CreateDocumentRequest {
   description?: string;
   /** If provided, upserts chat.system document prompt after creation */
   documentChatSystemPrompt?: string;
+  /** If provided, upserts all 7 document prompts from the selected category */
+  promptCategoryId?: string;
 }
 
 export interface UpdateDocumentRequest {
@@ -60,6 +79,10 @@ export interface UpdateDocumentRequest {
   description?: string;
   /** Include document prompts when building combined prompt */
   promptScopeIncludeDocument?: boolean;
+  /** Prompt category (e.g. legal-law). Use null to clear. */
+  promptCategoryId?: string | null;
+  /** Override AI-chosen jurisdiction. Use null to clear. */
+  resolvedJurisdiction?: string | null;
 }
 
 export interface FileContentResponse {
@@ -73,3 +96,14 @@ export type FileSearchScope = 'all' | 'fileName' | 'mimeType' | 'status' | 'crea
 
 /** Search mode: fuzzy (pg_trgm) or contains (ILIKE) */
 export type SearchMode = 'fuzzy' | 'contains';
+
+/** Context about how a document was parsed, stored per file for frontend display. */
+export interface ParsingContext {
+  parserId: string;
+  parserVersion?: string;
+  pipelineMode?: string;
+  usedOcr?: boolean;
+  pageCount?: number;
+  exportFormat?: string;
+  detectedFeatures?: string[];
+}

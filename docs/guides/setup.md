@@ -79,7 +79,7 @@ pnpm start:api
 pnpm start:worker
 ```
 
-A API escuta em http://localhost:3000/api.
+A API escuta em http://localhost:3000/api. O WebSocket (progresso de jobs) escuta em http://localhost:3200.
 
 ### 6. Iniciar frontend
 
@@ -97,7 +97,12 @@ Abre em http://localhost:4200.
 | `DATABASE_URL` | Sim | URL do Postgres (ex: `postgresql://user:pass@host:5432/db`) |
 | `REDIS_URL` | Sim | URL do Redis (ex: `redis://localhost:6379`) |
 | `JWT_SECRET` | Sim | Segredo para tokens JWT (mín. 32 caracteres em produção) |
-| `OPENAI_API_KEY` | Sim* | Chave OpenAI para RAG (*obrigatório para chat/embeddings) |
+| `OPENAI_API_KEY` | Sim* | Chave OpenAI para RAG. *Obrigatório para embeddings (`text-embedding-3-small`) e para o adapter OpenAI de chat/redline. |
+| `OPENAI_CHAT_MODEL` | Não | Modelo de chat OpenAI (padrão: `gpt-4o-mini`). |
+| `ANTHROPIC_API_KEY` | Se usar Anthropic | Necessário quando o workspace seleciona o provider `anthropic` em Workspace Settings → AI Prompts/LLM. |
+| `ANTHROPIC_CHAT_MODEL` | Não | Modelo Anthropic (padrão: `claude-sonnet-4-20250514`). |
+| `LLM_MAX_TOKENS` | Não | Máx. tokens de saída para chat e redline (padrão: `2000`). Compartilhado por todos os providers (OpenAI, Anthropic). |
+| `LOG_LLM_PROMPT_CONTEXT` | Não | `true` para logar o prompt completo enviado ao LLM (apenas debug — nunca em produção). |
 | `PARSER_KEYS_ENCRYPTION_KEY` | Se usar parsers pagos | 32 bytes hex. Gerar: `openssl rand -hex 32`. Criptografa API keys de DPT-2, LlamaParse, Unstructured |
 | `DOCLING_URL` | Não | URL do Docling (padrão: `http://localhost:8000`) |
 | `PDFPLUMBER_URL` | Não | URL do PDFPlumber (padrão: `http://localhost:8001`) |
@@ -111,6 +116,13 @@ Abre em http://localhost:4200.
 | `RAG_CACHE_SIMILARITY_THRESHOLD` | Não | Limiar de similaridade padrão (0.80–1.0, padrão: `0.95`) |
 | `RAG_CACHE_MAX_ENTRIES_PER_DOCUMENT` | Não | Máx. entradas por documento no índice (padrão: `50`) |
 | `CHAT_PREPARE_ENABLED` | Não | Habilita endpoints prepare/execute para inspeção do payload LLM (modo dev). Padrão: `true`. Use `false` em produção para desabilitar. |
+| `RATE_LIMIT_REQUESTS_PER_MINUTE` | Não | Requisições máximas por minuto por usuário/workspace (padrão: `60`) |
+| `RATE_LIMIT_REQUESTS_PER_HOUR` | Não | Requisições máximas por hora (padrão: `1000`) |
+| `RATE_LIMIT_REQUESTS_PER_DAY` | Não | Requisições máximas por dia (padrão: `10000`) |
+| `RATE_LIMIT_TOKENS_PER_DAY` | Não | Budget diário de tokens OpenAI por usuário/workspace (padrão: `100000`). Bloqueia abuso. |
+| `WS_PORT` | Não | Porta do servidor WebSocket (padrão: `3200`) |
+| `WS_ENABLED` | Não | `false` para desabilitar WebSocket e consumer de stream |
+| `LOG_LEVEL` | Não | Verbosidade dos logs: `error`, `warn`, `log`, `info`, `debug`, `verbose`, `off`. Padrão: `debug` em dev, `log` em produção. Use `warn` ou `error` em produção para reduzir logs de fluxo. Ver [logging.md](../architecture/logging.md). |
 
 ## Estrutura do monorepo
 

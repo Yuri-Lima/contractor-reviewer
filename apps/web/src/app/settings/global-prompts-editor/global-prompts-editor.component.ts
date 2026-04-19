@@ -4,17 +4,21 @@ import { FormsModule } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { Message } from 'primeng/message';
 import { TooltipModule } from 'primeng/tooltip';
-import { AccordionModule } from 'primeng/accordion';
 import { TextareaModule } from 'primeng/textarea';
 import { MessageService } from 'primeng/api';
 import { ApiService } from '../../core/services/api.service';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
-import type { PromptListItem } from '@contractai-review/shared';
+import { GLOBAL_PROMPT_KEY } from '@contractai-review/shared';
 import { PROMPT_LABEL_KEYS } from '@contractai-review/shared/constants';
 
 /** Global prompt item with optional hasOverride from API */
-interface GlobalPromptItem extends PromptListItem {
+interface GlobalPromptItem {
+  key: string;
+  content: string;
+  source: string;
   hasOverride?: boolean;
+  description?: string;
+  updatedAt?: string;
 }
 
 @Component({
@@ -26,7 +30,6 @@ interface GlobalPromptItem extends PromptListItem {
     Button,
     Message,
     TooltipModule,
-    AccordionModule,
     TextareaModule,
     TranslatePipe,
   ],
@@ -37,14 +40,13 @@ export class GlobalPromptsEditorComponent implements OnInit {
   private messageService = inject(MessageService);
   private translateService = inject(TranslateService);
 
-  prompts = signal<GlobalPromptItem[]>([]);
+  prompt = signal<GlobalPromptItem | null>(null);
   loading = signal(false);
-  savingKey = signal<string | null>(null);
-  editedContent = signal<Record<string, string>>({});
+  saving = signal(false);
+  editedContent = signal('');
 
-  getLabelKey(key: string): string {
-    return PROMPT_LABEL_KEYS[key] ?? key;
-  }
+  readonly key = GLOBAL_PROMPT_KEY;
+  readonly labelKey = PROMPT_LABEL_KEYS[GLOBAL_PROMPT_KEY] ?? GLOBAL_PROMPT_KEY;
 
   ngOnInit(): void {
     this.loadPrompts();
@@ -54,12 +56,10 @@ export class GlobalPromptsEditorComponent implements OnInit {
     this.loading.set(true);
     this.apiService.getAccountPrompts().subscribe({
       next: (res) => {
-        this.prompts.set((res.prompts ?? []) as GlobalPromptItem[]);
-        const initial: Record<string, string> = {};
-        for (const p of res.prompts ?? []) {
-          initial[p.key] = p.content;
-        }
-        this.editedContent.set(initial);
+        const items = (res.prompts ?? []) as GlobalPromptItem[];
+        const item = items[0] ?? null;
+        this.prompt.set(item);
+        this.editedContent.set(item?.content ?? '');
         this.loading.set(false);
       },
       error: (err) => {
@@ -73,21 +73,17 @@ export class GlobalPromptsEditorComponent implements OnInit {
     });
   }
 
-  onContentChange(key: string, value: string): void {
-    this.editedContent.update((prev) => ({ ...prev, [key]: value }));
+  onContentChange(value: string): void {
+    this.editedContent.set(value);
   }
 
-  getContent(key: string): string {
-    return this.editedContent()[key] ?? this.prompts().find((p) => p.key === key)?.content ?? '';
+  hasChanges(): boolean {
+    const original = this.prompt()?.content ?? '';
+    return this.editedContent() !== original;
   }
 
-  hasChanges(key: string): boolean {
-    const original = this.prompts().find((p) => p.key === key)?.content ?? '';
-    return this.getContent(key) !== original;
-  }
-
-  onSave(key: string): void {
-    const content = this.getContent(key).trim();
+  onSave(): void {
+    const content = this.editedContent().trim();
     if (!content) {
       this.messageService.add({
         severity: 'warn',
@@ -96,23 +92,17 @@ export class GlobalPromptsEditorComponent implements OnInit {
       });
       return;
     }
-    this.savingKey.set(key);
-    this.apiService.updateAccountPrompt(key, content).subscribe({
+    this.saving.set(true);
+    this.apiService.updateAccountPrompt(this.key, content).subscribe({
       next: (res) => {
-        this.prompts.update((list) =>
-          list.map((p) =>
-            p.key === key
-              ? { ...p, content: res.content, hasOverride: true }
-              : p,
-          ),
-        );
-        this.editedContent.update((prev) => ({ ...prev, [key]: res.content }));
+        this.prompt.update((p) => (p ? { ...p, content: res.content, hasOverride: true } : p));
+        this.editedContent.set(res.content);
         this.messageService.add({
           severity: 'success',
           summary: this.translateService.instant('common.success'),
           detail: this.translateService.instant('prompts.saveSuccess'),
         });
-        this.savingKey.set(null);
+        this.saving.set(false);
       },
       error: (err) => {
         this.messageService.add({
@@ -120,17 +110,15 @@ export class GlobalPromptsEditorComponent implements OnInit {
           summary: this.translateService.instant('common.error'),
           detail: err?.error?.message || this.translateService.instant('prompts.saveError'),
         });
-        this.savingKey.set(null);
+        this.saving.set(false);
       },
     });
   }
 
-  onReset(key: string): void {
-    const item = this.prompts().find((p) => p.key === key) as GlobalPromptItem | undefined;
-    if (!item?.hasOverride) return;
-
-    this.savingKey.set(key);
-    this.apiService.resetAccountPrompt(key).subscribe({
+  onReset(): void {
+    if (!this.prompt()?.hasOverride) return;
+    this.saving.set(true);
+    this.apiService.resetAccountPrompt(this.key).subscribe({
       next: () => {
         this.loadPrompts();
         this.messageService.add({
@@ -138,7 +126,7 @@ export class GlobalPromptsEditorComponent implements OnInit {
           summary: this.translateService.instant('common.success'),
           detail: this.translateService.instant('prompts.resetSuccess'),
         });
-        this.savingKey.set(null);
+        this.saving.set(false);
       },
       error: (err) => {
         this.messageService.add({
@@ -146,7 +134,7 @@ export class GlobalPromptsEditorComponent implements OnInit {
           summary: this.translateService.instant('common.error'),
           detail: err?.error?.message || this.translateService.instant('prompts.resetError'),
         });
-        this.savingKey.set(null);
+        this.saving.set(false);
       },
     });
   }

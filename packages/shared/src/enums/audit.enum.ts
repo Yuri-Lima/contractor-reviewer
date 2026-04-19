@@ -14,6 +14,7 @@ export enum AuditAction {
   VOICE_TRANSCRIBE = 'voice_transcribe',
   TTS_SYNTHESIZE = 'tts_synthesize',
   PROMPT_GENERATE = 'prompt_generate',
+  JURISDICTION_OVERRIDE = 'jurisdiction_override',
 }
 
 export enum TargetType {
@@ -22,5 +23,6 @@ export enum TargetType {
   WORKSPACE = 'workspace',
   USER = 'user',
   CHAT = 'chat',
+  CHAT_THREAD = 'chat_thread',
   VERSION = 'version',
 }

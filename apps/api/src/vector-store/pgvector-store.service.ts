@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Chunk } from '../entities/chunk.entity';
@@ -13,6 +13,8 @@ import {
 
 @Injectable()
 export class PgVectorStore implements IVectorStore {
+  private readonly logger = new Logger(PgVectorStore.name);
+
   constructor(
     @InjectRepository(Chunk)
     private chunkRepository: Repository<Chunk>,
@@ -20,11 +22,12 @@ export class PgVectorStore implements IVectorStore {
     private embeddingRepository: Repository<Embedding>,
   ) {}
 
-  async searchContractChunks(
+  async searchDocumentChunks(
     queryEmbedding: number[],
     documentId: string,
     limit: number = 5,
   ): Promise<VectorSearchResult<Chunk>[]> {
+    const start = Date.now();
     const embeddingVector = arrayToVectorString(queryEmbedding);
 
     const results = await this.chunkRepository.query(
@@ -40,6 +43,13 @@ export class PgVectorStore implements IVectorStore {
     `,
       [embeddingVector, documentId, limit],
     );
+
+    const queryTimeMs = Date.now() - start;
+    this.logger.debug('[VectorSearch] searchDocumentChunks', {
+      documentId,
+      resultCount: results.length,
+      queryTimeMs,
+    });
 
     return results.map((r: Record<string, unknown>) => {
       const { distance, ...chunkFields } = r;
@@ -84,7 +94,14 @@ export class PgVectorStore implements IVectorStore {
     query += ` ORDER BY e.embedding::vector <=> $1::vector LIMIT $${paramIndex}`;
     params.push(limit);
 
+    const start = Date.now();
     const results = await this.embeddingRepository.query(query, params);
+    const queryTimeMs = Date.now() - start;
+    this.logger.debug('[VectorSearch] searchLegalChunks', {
+      resultCount: results.length,
+      queryTimeMs,
+      jurisdiction: filters?.jurisdiction,
+    });
 
     return results.map((r: Record<string, unknown>) => {
       const { distance, ...embeddingFields } = r;

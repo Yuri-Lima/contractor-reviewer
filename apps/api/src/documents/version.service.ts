@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not, IsNull } from 'typeorm';
 import { RedlineChange, RedlinePlaybook } from '@contractai-review/shared';
@@ -13,6 +13,8 @@ export type { RedlineChange };
 
 @Injectable()
 export class VersionService {
+  private readonly logger = new Logger(VersionService.name);
+
   constructor(
     @InjectRepository(DocumentVersion)
     private versionRepository: Repository<DocumentVersion>,
@@ -66,7 +68,14 @@ export class VersionService {
       parentVersionId: parentVersionId || null,
     });
 
-    return await this.versionRepository.save(version);
+    const saved = await this.versionRepository.save(version);
+    this.logger.log('[Version] Created', {
+      documentId,
+      versionId: saved.id,
+      versionNumber: saved.versionNumber,
+      changesCount: changes.length,
+    });
+    return saved;
   }
 
   /**

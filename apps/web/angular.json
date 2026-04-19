@@ -42,9 +42,31 @@
             "styles": [
               "node_modules/primeicons/primeicons.css",
               "node_modules/shepherd.js/dist/css/shepherd.css",
+              "node_modules/@incremark/theme/dist/incremark.css",
               "src/styles.scss"
             ],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "cytoscape-fcose",
+              "@braintree/sanitize-url",
+              "dayjs",
+              "cytoscape-cose-bilkent",
+              "vscode-jsonrpc",
+              "vscode-languageserver-protocol",
+              "@xmldom/xmldom",
+              "mammoth",
+              "underscore",
+              "lop",
+              "bluebird",
+              "base64-js",
+              "jszip",
+              "dingbat-to-unicode",
+              "xmlbuilder",
+              "react",
+              "react-dom",
+              "react/jsx-runtime",
+              "langium"
+            ]
           },
           "configurations": {
             "production": {
@@ -57,8 +79,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kb",
-                  "maximumError": "1.2mb"
+                  "maximumWarning": "1.2mb",
+                  "maximumError": "1.5mb"
                 },
                 {
                   "type": "anyComponentStyle",

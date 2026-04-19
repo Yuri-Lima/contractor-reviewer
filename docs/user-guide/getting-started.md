@@ -48,18 +48,19 @@ This topic covers the first-time setup for ContractAI Review: creating an accoun
 2. Click **Upload File** or **Upload Files**.
 3. Select one or more files from your computer. Supported formats include:
    - **PDF** — contracts, agreements, scanned documents
-   - **DOCX** — Microsoft Word documents
-   - **TXT** — plain text files
-   - **Images** — PNG, JPG (for OCR extraction)
-4. If prompted, choose a **parser** for the file(s) (e.g., PDF parser, DOCX parser).
-5. Confirm the upload. Files are processed in the background (parsing, OCR if needed, chunking).
+   - **DOC, DOCX** — Microsoft Word documents
+   - **PPTX, XLSX** — PowerPoint and Excel
+   - **TXT, MD** — plain text and Markdown
+   - **Images** — PNG, JPG, TIFF, BMP, WEBP (Docling extracts text via OCR)
+4. If prompted, choose a **parser** for the file(s). The default is Docling, which handles all of the above; you can override per upload.
+5. Confirm the upload. Files are processed in the background (parsing — including OCR for scans/images — then chunking and embeddings).
 6. Wait for processing to complete. The file status changes from "Processing" to "Available".
 7. Once available, you can view the file and use Chat or Redline.
 
 ## Options / Variations
 
 - **Multiple files per document**: You can upload several files to one document. The AI will use all files when answering questions.
-- **Parser selection**: For images or scanned PDFs, OCR may be used automatically. You can manually select a parser if needed.
+- **Parser selection**: Docling (the default) performs OCR internally for scanned PDFs and images, so you do not need to choose a separate OCR parser. You can override the parser per upload (e.g. PDFPlumber, DPT-2, LlamaParse, Unstructured) if a key is configured.
 - **Generate AI prompt**: When creating a document, generating an AI prompt helps the assistant give more relevant answers. You can add or edit it later in Document Settings.
 
 ## Related Topics

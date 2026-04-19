@@ -1,6 +1,39 @@
-// Common citation interface (unified for both contract and legal citations)
+/**
+ * Citation type.
+ * - 'document': Citation from the user's uploaded document (preferred).
+ * - 'legal': Citation from legal/regulatory sources.
+ * - 'contract': @deprecated Use 'document' instead. Kept for backward compatibility with cached/legacy responses.
+ */
+export type CitationType = 'contract' | 'document' | 'legal';
+
+/**
+ * Narrow shape for citations from the user's contract or uploaded document.
+ * Use with `satisfies DocumentCitation` when building RAG citations so `type` and fields stay aligned.
+ */
+export interface DocumentCitation {
+  type: 'document' | 'contract';
+  fileName?: string;
+  pageNumber?: number;
+  paragraph?: string;
+  paragraphId?: string;
+  quoteSnippet?: string;
+}
+
+/**
+ * Narrow shape for citations from legal/regulatory sources.
+ * Use with `satisfies LegalSourceCitation` when building RAG citations.
+ */
+export interface LegalSourceCitation {
+  type: 'legal';
+  sourceName?: string;
+  section?: string;
+  url?: string;
+  quoteSnippet?: string;
+}
+
+// Common citation interface (unified wire/API shape for both document and legal citations)
 export interface Citation {
-  type: 'contract' | 'legal';
+  type: CitationType;
   fileName?: string;
   pageNumber?: number;
   paragraph?: string;
@@ -9,6 +42,13 @@ export interface Citation {
   sourceName?: string;
   section?: string;
   url?: string;
+}
+
+/** Citation types that denote "citation from user's document". Accept both for backward compat. */
+export const DOCUMENT_CITATION_TYPES = ['contract', 'document'] as const;
+
+export function isDocumentCitation(c: Citation): boolean {
+  return (DOCUMENT_CITATION_TYPES as readonly string[]).includes(c.type);
 }
 
 // Pagination types

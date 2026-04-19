@@ -1,4 +1,5 @@
 import { DocumentParser } from '../enums/document-parser.enum';
+import type { ParsingContext } from './documents';
 
 export interface ParserInfo {
   id: DocumentParser;
@@ -13,4 +14,5 @@ export interface ParseResult {
   markdown: string;
   pageCount?: number | null;
   metadata?: Record<string, unknown>;
+  parserContext?: ParsingContext;
 }

@@ -1,4 +1,5 @@
 export * from './documents';
+export * from './websocket';
 export * from './workspaces';
 export * from './chat';
 export * from './redline';
@@ -12,3 +13,4 @@ export * from './asset';
 export * from './user-storage';
 export * from './transcription';
 export * from './tts';
+export * from './llm';

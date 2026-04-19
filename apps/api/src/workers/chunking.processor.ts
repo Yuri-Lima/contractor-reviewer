@@ -8,6 +8,7 @@ import { Document } from '../entities/document.entity';
 import { WorkspaceSettings } from '../entities/workspace-settings.entity';
 import { CHUNK_REPOSITORY, IChunkRepository } from '../chunks/chunk-repository.interface';
 import { ChunkingService } from '../rag/chunking.service';
+import { JobProgressPublisher } from './job-progress.publisher';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { abortAsPromise } from '../common/utils/abort-promise';
@@ -40,6 +41,7 @@ export class ChunkingProcessor extends WorkerHost {
     private chunkingService: ChunkingService,
     @InjectQueue('embeddings')
     private embeddingsQueue: Queue,
+    private jobProgressPublisher: JobProgressPublisher,
   ) {
     super();
   }
@@ -91,6 +93,7 @@ export class ChunkingProcessor extends WorkerHost {
     // Log progress update for debugging
     const finalProgress = progress !== undefined ? progress : job.progress;
     this.logger.log(`[PROGRESS] Job ${jobId} (${job.type}): status=${status}, progress=${finalProgress}%`);
+    this.jobProgressPublisher.publish(job.documentId, job).catch(() => {});
   }
 
   async process(

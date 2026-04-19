@@ -41,6 +41,7 @@
     "diff-match-patch-ts": "^0.8.0",
     "file-type": "^21.3.0",
     "ioredis": "^5.4.1",
+    "marked": "^14",
     "openai": "^4.28.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

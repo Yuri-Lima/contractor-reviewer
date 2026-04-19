@@ -9,7 +9,6 @@ import { DocumentFile } from '../entities/document-file.entity';
 import { Document } from '../entities/document.entity';
 import { ChatThread } from '../entities/chat-thread.entity';
 import { ChatMessage } from '../entities/chat-message.entity';
-import { DocumentVersion } from '../entities/document-version.entity';
 import { Memory } from '../entities/memory.entity';
 import { ChunksModule } from '../chunks/chunks.module';
 import { StorageModule } from '../storage/storage.module';
@@ -31,7 +30,6 @@ const isWorker =
       Document,
       ChatThread,
       ChatMessage,
-      DocumentVersion,
       Memory,
     ]),
     ChunksModule,

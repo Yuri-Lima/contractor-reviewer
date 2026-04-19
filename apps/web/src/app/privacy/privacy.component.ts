@@ -18,7 +18,6 @@ import { TranslatePipe } from '@ngx-translate/core';
 interface NoLogsConfig {
   skipDocumentContent?: boolean;
   skipChatMessages?: boolean;
-  skipVersions?: boolean;
   acceleratedPurgeDays?: number;
 }
 
@@ -73,7 +72,6 @@ export class PrivacyComponent implements OnInit, OnDestroy {
       noLogsEnabled: [false],
       skipDocumentContent: [false],
       skipChatMessages: [false],
-      skipVersions: [false],
       acceleratedPurgeDays: [7],
     });
 
@@ -108,7 +106,6 @@ export class PrivacyComponent implements OnInit, OnDestroy {
           noLogsEnabled: response.enabled,
           skipDocumentContent: response.config?.skipDocumentContent || false,
           skipChatMessages: response.config?.skipChatMessages || false,
-          skipVersions: response.config?.skipVersions || false,
           acceleratedPurgeDays: response.config?.acceleratedPurgeDays || 7,
         }, { emitEvent: false }); // Don't emit events to avoid triggering valueChanges
         
@@ -130,7 +127,6 @@ export class PrivacyComponent implements OnInit, OnDestroy {
       this.noLogsForm.patchValue({
         skipDocumentContent: false,
         skipChatMessages: false,
-        skipVersions: false,
         acceleratedPurgeDays: 7,
       });
       this.saveNoLogsConfig();
@@ -169,7 +165,6 @@ export class PrivacyComponent implements OnInit, OnDestroy {
     const config: NoLogsConfig = {
       skipDocumentContent: this.noLogsForm.value.skipDocumentContent,
       skipChatMessages: this.noLogsForm.value.skipChatMessages,
-      skipVersions: this.noLogsForm.value.skipVersions,
       acceleratedPurgeDays: this.noLogsForm.value.acceleratedPurgeDays,
     };
 

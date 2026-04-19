@@ -18,7 +18,6 @@ Canonical reference for the ContractAI Review RAG pipeline. Use this document to
 | Vector store | `apps/api/src/vector-store/` | `IVectorStore` interface, pgvector implementation |
 | Ingestion | `apps/api/src/workers/parsing.processor.ts`, `chunking.processor.ts`, `embeddings.processor.ts` | Parsing → Chunking → Embeddings |
 | Memory summarization | `apps/api/src/workers/summarize-memory.processor.ts` | BullMQ job: summarize thread Q&A → upsert thread memory |
-| Redline RAG | `apps/api/src/documents/redline.service.ts` | Similar flow for redline generation |
 | Memory | `apps/api/src/memory/memory.service.ts` | Thread/document memory for RAG context injection |
 | Memory entity | `apps/api/src/entities/memory.entity.ts` | `scopeType` (thread/document/workspace), `scopeId`, `content`, `version` |
 | Parsers | `apps/api/src/parsers/` | Docling, PDFPlumber, DPT-2 adapters |
@@ -84,10 +83,6 @@ When Developer Mode is enabled (Settings) and `CHAT_PREPARE_ENABLED=true`, the c
 3. `POST /chat/execute` – With `requestId`, call LLM and return response.
 
 See [chat-prepare-dev-mode.md](./chat-prepare-dev-mode.md) for full reference.
-
-### Redline Flow
-
-Similar RAG flow in `redline.service.ts`: selected text + contract/legal context → `PromptService` (redline prompts + playbook) → OpenAI → structured JSON with suggestedText, explanation, citations.
 
 ## Key Types
 
@@ -174,7 +169,7 @@ interface LegalChunkSearchResult extends VectorSearchResult<Embedding> {
 | `OPENAI_CHAT_MODEL` | OpenAI chat model (default: `gpt-4o-mini`) |
 | `ANTHROPIC_API_KEY` | Required when a workspace selects the Anthropic LLM provider |
 | `ANTHROPIC_CHAT_MODEL` | Anthropic chat model (default: `claude-sonnet-4-20250514`) |
-| `LLM_MAX_TOKENS` | Max output tokens per LLM completion (chat + redline). Default: `2000`. Higher values allow longer answers but increase cost. |
+| `LLM_MAX_TOKENS` | Max output tokens per LLM completion. Default: `2000`. Higher values allow longer answers but increase cost. |
 | `DOCLING_URL` | Docling service URL (default: `http://localhost:8000`) |
 | `PDFPLUMBER_URL` | PDFPlumber service URL (default: `http://localhost:8001`) |
 | `LOG_LLM_PROMPT_CONTEXT` | When `true`, logs the full system + user prompt sent to the LLM (debug only — never enable in production). |
@@ -199,16 +194,16 @@ Per-workspace override: `WorkspaceSettings.documentProcessing.defaultLlmProvider
 | `parserApiKeys` | Per-parser encrypted keys | For DPT-2, LlamaParse, Unstructured |
 | Global prompt | `global.system` | Account-level system prompt (Account Settings → AI Prompts) |
 | Workspace prompt | `workspace.system` | Workspace-level system prompt (Workspace Settings → AI Prompts) |
-| Document prompts | 7 keys (chat/redline) | Document-level prompts (Document Settings) |
+| Document prompts | chat keys | Document-level prompts (Document Settings) |
 
 ### Prompt Keys (from `packages/shared/src/constants/prompts.ts`)
 
 **Scoped by level:**
 - **Account (1 prompt):** `global.system` — Global system prompt, merged at top of context (Account Settings → AI Prompts)
 - **Workspace (1 prompt):** `workspace.system` — Workspace system prompt, merged below global (Workspace Settings → AI Prompts)
-- **Document (7 prompts):** `chat.system`, `chat.user`, `redline.system`, `redline.user`, `redline.playbook.balanced`, `redline.playbook.conservative`, `redline.playbook.client-friendly` — Chat RAG and redline playbooks (Document Settings only)
+- **Document (2 prompts):** `chat.system`, `chat.user` — Chat RAG (Document Settings only)
 
-**Prompt hierarchy:** For system keys (`chat.system`, `redline.system`): `global.system` + `workspace.system` + document override (per scope toggles). See [prompt-generator.md](prompt-generator.md) for prompt categories and create-document API.
+**Prompt hierarchy:** For system key (`chat.system`): `global.system` + `workspace.system` + document override (per scope toggles). See [prompt-generator.md](prompt-generator.md) for prompt categories and create-document API.
 
 ## Memory (Conversation Summaries)
 

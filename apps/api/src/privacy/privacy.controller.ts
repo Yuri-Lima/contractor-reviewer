@@ -53,7 +53,6 @@ export class PrivacyController {
       requestInfo.userAgent,
       {
         chatMessagesCount: exportData.chatMessages?.length || 0,
-        versionsCount: exportData.versions?.length || 0,
         auditLogsCount: exportData.auditLogs?.length || 0,
       },
     );
@@ -86,7 +85,6 @@ export class PrivacyController {
       config?: {
         skipDocumentContent?: boolean;
         skipChatMessages?: boolean;
-        skipVersions?: boolean;
         acceleratedPurgeDays?: number;
       };
     },

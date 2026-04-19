@@ -115,7 +115,7 @@ export class TourService {
             text: t(_('common.next')),
             action: async function (this: Tour) {
               onboarding.markChecklistItem('upload_contract');
-              tabSvc.requestTab('2');
+              tabSvc.requestTab('1');
               await nav.waitForElement('[data-tour="chat-input"]');
               this.next();
             },
@@ -136,27 +136,6 @@ export class TourService {
             text: t(_('common.next')),
             action: async function (this: Tour) {
               onboarding.markChecklistItem('run_first_review');
-              tabSvc.requestTab('1');
-              await nav.waitForElement('[data-tour="redline-generate-btn"]');
-              this.next();
-            },
-          },
-        ],
-      },
-      {
-        id: 'redline',
-        title: t(_('onboarding.tour.redline')),
-        text: t(_('onboarding.tour.redlineText')),
-        attachTo: {
-          element: () => document.querySelector('[data-tour="redline-generate-btn"]') as HTMLElement | null,
-          on: 'top' as const,
-        },
-        buttons: [
-          { text: t(_('common.previous')), action: function (this: Tour) { this.back(); }, secondary: true },
-          {
-            text: t(_('common.next')),
-            action: async function (this: Tour) {
-              onboarding.markChecklistItem('apply_first_redline');
               tabSvc.requestTab('0');
               await nav.waitForElement('[data-tour="download-btn"]');
               this.next();

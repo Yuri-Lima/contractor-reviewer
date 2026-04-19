@@ -78,7 +78,7 @@ Each `target` maps to a base meta-prompt:
 ### Extensibility
 
 - Adding `target: 'workspace'` requires only a new meta-prompt entry
-- `useCase` (e.g. `'redline'`) can be used for future variants
+- `useCase` can be used for future variants
 - No service logic changes needed for new targets
 
 ## Temporary Context (.md)
@@ -131,7 +131,7 @@ Pre-built prompt sets by contract domain. Defined in `packages/shared/src/consta
 | `it-software` | Software licenses, SaaS, SLAs |
 | `insurance`, `banking`, `construction`, `healthcare`, `ma-corporate`, etc. | Domain-specific variants |
 
-Each category provides prompts for all 7 document keys: `chat.system`, `chat.user`, `redline.system`, `redline.user`, and the three playbooks. Use `promptCategoryId` in the create-document request to apply a full set.
+Each category provides prompts for the document keys: `chat.system`, `chat.user`. Use `promptCategoryId` in the create-document request to apply a full set.
 
 **UI: Prompt preview tab** — When the user selects a prompt category from the dropdown, a collapsible accordion appears below showing a read-only preview of all 7 prompts. This lets users see what will be applied before creating the document. When "None" is selected, the preview is hidden.
 

@@ -792,14 +792,6 @@ export class DocumentsListComponent implements OnInit {
         label: t('contextMenu.documents.chat'),
         icon: 'pi pi-comments',
         command: () => {
-          this.documentViewTabService.requestTab('2');
-          this.router.navigate(workspaceDocument(wsId, doc.id));
-        },
-      },
-      {
-        label: t('contextMenu.documents.redline'),
-        icon: 'pi pi-file-edit',
-        command: () => {
           this.documentViewTabService.requestTab('1');
           this.router.navigate(workspaceDocument(wsId, doc.id));
         },

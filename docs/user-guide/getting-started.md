@@ -2,12 +2,12 @@
 
 ## Summary
 
-This topic covers the first-time setup for ContractAI Review: creating an account, your first workspace, your first document, and uploading your first file. After completing these steps, you can start asking questions about contracts and generating redline suggestions.
+This topic covers the first-time setup for ContractAI Review: creating an account, your first workspace, your first document, and uploading your first file. After completing these steps, you can start asking questions about contracts.
 
 ## When to Use
 
 - You are new to ContractAI Review
-- You want to understand the basic flow: workspace → document → file → chat/redline
+- You want to understand the basic flow: workspace → document → file → chat
 
 ## Prerequisites
 
@@ -55,7 +55,7 @@ This topic covers the first-time setup for ContractAI Review: creating an accoun
 4. If prompted, choose a **parser** for the file(s). The default is Docling, which handles all of the above; you can override per upload.
 5. Confirm the upload. Files are processed in the background (parsing — including OCR for scans/images — then chunking and embeddings).
 6. Wait for processing to complete. The file status changes from "Processing" to "Available".
-7. Once available, you can view the file and use Chat or Redline.
+7. Once available, you can view the file and use Chat.
 
 ## Options / Variations
 

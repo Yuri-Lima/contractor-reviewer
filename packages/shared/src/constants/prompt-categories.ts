@@ -15,75 +15,6 @@ Context:
 Question: {{question}}
 
 Answer (be concise and cite specific excerpts, respond in {{languageName}}). When citing excerpts, use **Document Excerpt N** (bold) or \`Document Excerpt N\` (inline code). Do NOT use markdown link syntax like [Document Excerpt N][document excerpt n].`,
-  'redline.system':
-    'You are a legal assistant. Provide structured, evidence-based contract revisions. Always use conditional language and cite sources. Never provide legal advice. IMPORTANT: When a language is specified, provide all explanations in that language.',
-  'redline.user': `You are a legal assistant helping to revise contract clauses. Your task is to suggest improvements to the selected text while maintaining legal accuracy and professional tone.
-
-IMPORTANT: You MUST provide all responses, especially the "explanation" field, in {{languageName}}. All explanations, suggestions, and comments must be written in {{languageName}}.
-
-{{playbookPrompt}}
-
-Selected Text to Revise:
-"{{selectedText}}"
-
-Context from Contract and Legal Sources:
-{{context}}
-
-{{objective}}{{instructions}}
-
-IMPORTANT RULES:
-- NEVER say "this is illegal", "you must", or "you should"
-- ALWAYS use conditional language ("may", "could", "depending on", "consider")
-- NEVER provide legal advice or make absolute statements
-- ALWAYS cite specific excerpts from the contract or legal sources
-- If you cannot find sufficient evidence, respond with "NOT FOUND" and explain what was searched
-- RESPOND IN {{languageName}}: All explanations must be in {{languageName}}
-
-Please provide:
-1. A revised version of the selected text (suggestedText) - keep original language of the contract
-2. A clear explanation of why the change was suggested (explanation) - MUST be in {{languageName}}
-3. Specific citations from the contract (citations)
-4. Legal citations if relevant (legalCitations)
-
-Format your response as JSON:
-{
-  "suggestedText": "...",
-  "explanation": "...",
-  "citations": [
-    {
-      "kind": "contract",
-      "file": "...",
-      "page": 12,
-      "spanId": "...",
-      "quoteSnippet": "..."
-    }
-  ],
-  "legalCitations": [
-    {
-      "kind": "legal",
-      "source": "...",
-      "section": "...",
-      "url": "..."
-    }
-  ]
-}`,
-  'redline.playbook.balanced': `Playbook: BALANCED
-- Balance risks and benefits for all parties
-- Use neutral, professional language
-- Suggest improvements that enhance clarity and fairness
-- Consider both parties' interests equally`,
-  'redline.playbook.conservative': `Playbook: CONSERVATIVE
-- Minimize changes to the original text
-- Focus on clarity and precision
-- Use neutral, professional language
-- Only suggest changes that improve clarity without changing meaning
-- Avoid favoritism toward any party`,
-  'redline.playbook.client-friendly': `Playbook: CLIENT_FRIENDLY
-- Suggest changes that are more favorable to the client/user
-- However, remain professional and defensible
-- Avoid extreme language or absolute guarantees
-- Ensure suggestions are plausible and reasonable
-- Balance client interests with legal soundness`,
 };
 
 /** Domain prefix helper: prepends domain context to the base system prompt */
@@ -94,7 +25,6 @@ function withDomain(
   return {
     ...base,
     'chat.system': `${domainPrefix}\n\n${base['chat.system']}`,
-    'redline.system': `${domainPrefix}\n\n${base['redline.system']}`,
   };
 }
 
@@ -282,7 +212,7 @@ export function getPromptCategoryById(
   return PROMPT_CATEGORIES.find((c) => c.id === id) ?? null;
 }
 
-// Validate at module load: each category has all 7 keys
+// Validate at module load: each category has all required keys
 const REQUIRED_KEYS = new Set(PROMPT_KEYS);
 for (const cat of PROMPT_CATEGORIES) {
   for (const key of REQUIRED_KEYS) {

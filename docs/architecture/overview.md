@@ -29,7 +29,7 @@ contractor-reviwer/
 | **Parsers** | Docling, PDFPlumber (Python), DPT-2, LlamaParse, Unstructured (cloud) |
 | **Frontend** | Angular 21, PrimeNG, Tailwind, Capacitor |
 | **AI (embeddings)** | OpenAI `text-embedding-3-small` |
-| **AI (chat/redline LLM)** | Provider-agnostic via `LlmProviderRegistry`. Adapters: OpenAI (default), Anthropic. Selected per-workspace via `defaultLlmProvider` setting. |
+| **AI (chat LLM)** | Provider-agnostic via `LlmProviderRegistry`. Adapters: OpenAI (default), Anthropic. Selected per-workspace via `defaultLlmProvider` setting. |
 | **WebSocket** | Socket.IO + Redis adapter + Redis Streams (job progress) |
 
 ## Services Diagram
@@ -135,7 +135,7 @@ In Developer Mode, the two-step `POST /chat/prepare` → `POST /chat/execute` fl
 
 For end-user help and step-by-step instructions, see the topic-based user guide:
 
-- [User Guide (docs/user-guide/README.md)](../user-guide/README.md) — How to use ContractAI Review (workspaces, documents, chat, redline, settings, privacy, audit, developer mode)
+- [User Guide (docs/user-guide/README.md)](../user-guide/README.md) — How to use ContractAI Review (workspaces, documents, chat, settings, privacy, audit, developer mode)
 
 ## Architecture Docs
 

@@ -24,7 +24,6 @@ import { TranslateService } from '@ngx-translate/core';
           </h3>
           @if (contentData()) {
             <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              {{ 'documentContent.currentVersion' | translate }}: {{ contentData()?.versionNumber || 0 }} • 
               {{ 'documentContent.lastUpdated' | translate }}: {{ formatDate(contentData()?.lastUpdated || '') }}
             </div>
           }
@@ -95,7 +94,7 @@ export class DocumentContentComponent implements OnInit {
   documentId = signal('');
   loading = signal(false);
   error = signal(false);
-  contentData = signal<{ content: string; versionNumber: number; lastUpdated: string } | null>(null);
+  contentData = signal<{ content: string; lastUpdated: string } | null>(null);
   
   textSelected = output<{ text: string; startIndex?: number; endIndex?: number }>();
 

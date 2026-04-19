@@ -14,7 +14,6 @@ import { DocumentFile } from './document-file.entity';
 import { Chunk } from './chunk.entity';
 import { DocumentJob } from './document-job.entity';
 import { ChatMessage } from './chat-message.entity';
-import { DocumentVersion } from './document-version.entity';
 
 // Re-export for backward compatibility
 export { DocumentStatus, JurisdictionStatus };
@@ -92,7 +91,4 @@ export class Document {
 
   @OneToMany(() => ChatMessage, (message) => message.document)
   chatMessages: ChatMessage[];
-
-  @OneToMany(() => DocumentVersion, (version) => version.document)
-  versions: DocumentVersion[];
 }

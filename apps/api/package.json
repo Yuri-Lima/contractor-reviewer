@@ -38,7 +38,6 @@
     "bullmq": "^5.22.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
-    "diff-match-patch-ts": "^0.8.0",
     "file-type": "^21.3.0",
     "ioredis": "^5.4.1",
     "marked": "^14",

@@ -12,7 +12,6 @@ const KEY_TO_TITLE: Record<string, string> = {
   create_workspace: 'onboarding.checklist.createWorkspace',
   upload_contract: 'onboarding.checklist.uploadContract',
   run_first_review: 'onboarding.checklist.runFirstReview',
-  apply_first_redline: 'onboarding.checklist.applyFirstRedline',
   export_document: 'onboarding.checklist.exportDocument',
 };
 

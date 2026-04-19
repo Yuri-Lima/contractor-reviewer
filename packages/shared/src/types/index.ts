@@ -2,7 +2,6 @@ export * from './documents';
 export * from './websocket';
 export * from './workspaces';
 export * from './chat';
-export * from './redline';
 export * from './audit';
 export * from './privacy';
 export * from './common';

@@ -29,7 +29,7 @@ Workspace Settings let you configure retention (how long files and indexed conte
 1. Go to the **Retention** tab.
 2. **File Retention**: Set the number of days (1–365) after which uploaded files (PDF, DOCX, etc.) are permanently deleted. A daily purge job applies this.
 3. **Text and Embeddings Retention**: Set the number of days (1–730) after which extracted text and RAG embeddings are deleted. This affects search and chat.
-4. **Fuzzy Match Threshold**: Set a percentage (0–100) for how closely contract text must match when applying redlines. Higher = stricter match.
+4. **Fuzzy Match Threshold**: Set a percentage (0–100) for how closely contract text must match. Higher = stricter match.
 5. Click **Save Settings**.
 
 *Important*: Deletions are permanent. Retention is calculated from the file/document creation date. The purge runs daily.
@@ -62,7 +62,7 @@ Workspace Settings let you configure retention (how long files and indexed conte
 3. Edit the **Workspace system prompt** (`workspace.system`). This single prompt applies to all documents in this workspace and is merged below the global prompt.
 4. Save.
 
-**Prompt hierarchy:** Global system prompt (`global.system`) → Workspace system prompt (`workspace.system`) → Document prompts (7 keys: chat, redline, playbooks). Document prompts live only in Document Settings.
+**Prompt hierarchy:** Global system prompt (`global.system`) → Workspace system prompt (`workspace.system`) → Document prompts (chat keys). Document prompts live only in Document Settings.
 
 ## Options / Variations
 

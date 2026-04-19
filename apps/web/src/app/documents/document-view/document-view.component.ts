@@ -54,8 +54,6 @@ const CHAT_MODE = {
   AudioAndText: 'audio_and_text',
 } as const;
 import { DocumentViewerComponent } from '../document-viewer/document-viewer.component';
-import { RedlineComponent } from '../redline/redline.component';
-import { VersionsComponent } from '../versions/versions.component';
 import { FileContentDialogComponent } from '../file-content-dialog/file-content-dialog.component';
 import { LlmPayloadDialogComponent } from '../llm-payload-dialog/llm-payload-dialog.component';
 import { DevVisualizationsService } from '../../core/services/dev-visualizations.service';
@@ -126,8 +124,6 @@ interface FilesResourceParams extends FilesRequestParams {
     SelectModule,
     BaseDialogComponent,
     DocumentViewerComponent,
-    RedlineComponent,
-    VersionsComponent,
     FileContentDialogComponent,
     BaseListComponent,
     ContextMenu,
@@ -265,9 +261,7 @@ interface FilesResourceParams extends FilesRequestParams {
       <p-tabs [value]="activeTab()" (valueChange)="activeTab.set($event ?? '0')">
         <p-tablist>
           <p-tab value="0">{{ 'documents.files' | translate }}</p-tab>
-          <p-tab value="1">{{ 'documents.redline' | translate }}</p-tab>
-          <p-tab value="2">{{ 'documents.chat' | translate }}</p-tab>
-          <p-tab value="3">{{ 'versions.title' | translate }}</p-tab>
+          <p-tab value="1">{{ 'documents.chat' | translate }}</p-tab>
         </p-tablist>
         <p-tabpanels>
           <p-tabpanel value="0">
@@ -403,10 +397,6 @@ interface FilesResourceParams extends FilesRequestParams {
           </p-tabpanel>
 
           <p-tabpanel value="1">
-            <app-redline #redlineComponent></app-redline>
-          </p-tabpanel>
-
-          <p-tabpanel value="2">
             <app-chat-panel
               [messages]="chatMessages()"
               [threads]="chatThreads()"
@@ -431,10 +421,6 @@ interface FilesResourceParams extends FilesRequestParams {
               (getFreshResponse)="onGetFreshResponse($event)"
             />
           </p-tabpanel>
-
-          <p-tabpanel value="3">
-            <app-versions></app-versions>
-          </p-tabpanel>
         </p-tabpanels>
       </p-tabs>
 
@@ -452,7 +438,6 @@ interface FilesResourceParams extends FilesRequestParams {
                 [blobUrl]="fileToView() ? getFileObjectUrl(fileToView()!.id) : null"
                 [textContent]="textFileContent()"
                 [loading]="viewerLoading()"
-                (textSelected)="onTextSelectedForRedline($event)"
                 (downloadRequested)="onViewerDownloadRequested()"
               />
             </div>
@@ -524,7 +509,6 @@ interface FilesResourceParams extends FilesRequestParams {
         [workspaceId]="workspaceId()"
         [documentId]="documentId()"
         (closed)="fileForContentDialog.set(null)"
-        (closedWithSelections)="onFileContentClosedWithSelections($event)"
       ></app-file-content-dialog>
 
       @if (llmPayloadToShow() && llmPayloadRequestId()) {
@@ -564,8 +548,6 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   devVisualizationsService = inject(DevVisualizationsService);
   private i18nService = inject(I18nService);
   private webSocketService = inject(WebSocketService);
-
-  redlineComponent = viewChild<RedlineComponent>('redlineComponent');
 
   /** Dev mode: payload + requestId for LLM preview dialog */
   llmPayloadToShow = signal<ChatPreparePayload | null>(null);
@@ -808,7 +790,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       }
     });
 
-    // React to tour tab request (switch to chat/redline tab when tour advances)
+    // React to tour tab request (switch to chat tab when tour advances)
     effect(() => {
       const tab = this.documentViewTabService.requestedTab();
       if (tab != null && this.workspaceId() && this.documentId()) {
@@ -1649,11 +1631,6 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     return typeof h === 'string' ? h : 'Choose Document Parser';
   }
 
-  getConfidenceLabel(confidence: string): string {
-    if (!confidence) return '';
-    return this.translateService.instant(`redline.confidence.${confidence}`) || confidence;
-  }
-
   onQuestionInput(event: Event): void {
     const target = event.target as HTMLInputElement;
     if (target) {
@@ -2432,14 +2409,6 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     this.textFileLoadComplete.set(false);
   }
 
-  onTextSelectedForRedline(event: { text: string }): void {
-    const redline = this.redlineComponent();
-    if (redline) {
-      redline.onTextSelectedFromContent({ text: event.text });
-    }
-    this.activeTab.set('1');
-  }
-
   onViewerDownloadRequested(): void {
     const file = this.fileToView();
     if (file) {
@@ -2526,22 +2495,6 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
       return;
     }
     this.fileForContentDialog.set(file);
-  }
-
-  onFileContentClosedWithSelections(selections: string[]): void {
-    if (selections.length === 0) return;
-    const combinedText = selections.join('\n\n');
-    const redline = this.redlineComponent();
-    if (redline) {
-      redline.onTextSelectedFromContent({ text: combinedText });
-    }
-    this.fileForContentDialog.set(null);
-    this.activeTab.set('1');
-    this.messageService.add({
-      severity: 'success',
-      summary: this.translateService.instant(_('common.success')),
-      detail: this.translateService.instant(_('redline.selectionsAdded')),
-    });
   }
 
   confirmDelete(): void {

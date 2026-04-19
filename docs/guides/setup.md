@@ -97,11 +97,11 @@ Abre em http://localhost:4200.
 | `DATABASE_URL` | Sim | URL do Postgres (ex: `postgresql://user:pass@host:5432/db`) |
 | `REDIS_URL` | Sim | URL do Redis (ex: `redis://localhost:6379`) |
 | `JWT_SECRET` | Sim | Segredo para tokens JWT (mín. 32 caracteres em produção) |
-| `OPENAI_API_KEY` | Sim* | Chave OpenAI para RAG. *Obrigatório para embeddings (`text-embedding-3-small`) e para o adapter OpenAI de chat/redline. |
+| `OPENAI_API_KEY` | Sim* | Chave OpenAI para RAG. *Obrigatório para embeddings (`text-embedding-3-small`) e para o adapter OpenAI de chat. |
 | `OPENAI_CHAT_MODEL` | Não | Modelo de chat OpenAI (padrão: `gpt-4o-mini`). |
 | `ANTHROPIC_API_KEY` | Se usar Anthropic | Necessário quando o workspace seleciona o provider `anthropic` em Workspace Settings → AI Prompts/LLM. |
 | `ANTHROPIC_CHAT_MODEL` | Não | Modelo Anthropic (padrão: `claude-sonnet-4-20250514`). |
-| `LLM_MAX_TOKENS` | Não | Máx. tokens de saída para chat e redline (padrão: `2000`). Compartilhado por todos os providers (OpenAI, Anthropic). |
+| `LLM_MAX_TOKENS` | Não | Máx. tokens de saída para chat (padrão: `2000`). Compartilhado por todos os providers (OpenAI, Anthropic). |
 | `LOG_LLM_PROMPT_CONTEXT` | Não | `true` para logar o prompt completo enviado ao LLM (apenas debug — nunca em produção). |
 | `PARSER_KEYS_ENCRYPTION_KEY` | Se usar parsers pagos | 32 bytes hex. Gerar: `openssl rand -hex 32`. Criptografa API keys de DPT-2, LlamaParse, Unstructured |
 | `DOCLING_URL` | Não | URL do Docling (padrão: `http://localhost:8000`) |
@@ -156,11 +156,9 @@ Ver [document-parsers](../architecture/document-parsers.md) para detalhes.
 2. Criar documento
 3. Upload de arquivo (escolher parser ou usar padrão)
 4. Chat com citações
-5. Gerar redline com playbook
-6. Visualizar versões e diff
-7. Export privacidade (DSAR-lite)
-8. Verificar purge de retenção
-9. **Onboarding**: checklist (floating widget), tour guiado, reset em Account Settings > Help & Onboarding
+5. Export privacidade (DSAR-lite)
+6. Verificar purge de retenção
+7. **Onboarding**: checklist (floating widget), tour guiado, reset em Account Settings > Help & Onboarding
 
 ## Troubleshooting
 
@@ -209,4 +207,4 @@ Acesse **Settings** no sidebar do workspace para:
 - **Retention:** dias de retenção de arquivos e textos/embeddings
 - **Document Processing:** estratégia de chunking (paragraph, sentence, fixed_size)
 - **Document Parsers:** parser padrão e API keys (DPT-2, LlamaParse, Unstructured)
-- **AI Prompts:** override de prompts de chat e redline por workspace
+- **AI Prompts:** override de prompts de chat por workspace

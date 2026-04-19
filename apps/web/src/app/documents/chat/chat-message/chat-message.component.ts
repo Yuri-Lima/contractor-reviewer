@@ -228,7 +228,7 @@ export class ChatMessageComponent {
   confidenceLabel = computed(() => {
     const c = this.message().confidence || '';
     if (!c) return '';
-    return this.translateService.instant(`redline.confidence.${c}`) || c;
+    return this.translateService.instant(`chat.confidence.${c}`) || c;
   });
 
   isPlaying = computed(() => this.playingMessageIndex() === this.index());

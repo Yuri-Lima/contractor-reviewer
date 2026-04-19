@@ -23,9 +23,6 @@ import {
   ChatPrepareResponse,
   ChatRequest,
   ChatResponse,
-  RedlineRequest,
-  RedlineResponse,
-  DocumentVersion,
   RetentionConfig,
   DocumentFile,
   FileContentResponse,
@@ -823,94 +820,9 @@ export class ApiService {
     );
   }
 
-  // Redline
-  generateRedline(
-    workspaceId: string,
-    documentId: string,
-    request: RedlineRequest,
-    options?: { signal?: AbortSignal },
-  ): Observable<RedlineResponse> {
-    if (options?.signal !== undefined) {
-      return this.fetchGenerateRedline(
-        workspaceId,
-        documentId,
-        request,
-        options.signal,
-      );
-    }
-    return this.http.post<RedlineResponse>(
-      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.redline(workspaceId, documentId)}`,
-      request,
-    );
-  }
-
-  private fetchGenerateRedline(
-    workspaceId: string,
-    documentId: string,
-    request: RedlineRequest,
-    signal: AbortSignal,
-  ): Observable<RedlineResponse> {
-    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.redline(workspaceId, documentId)}`;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    const token = this.authService.getToken();
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    return from(
-      fetch(url, {
-        method: 'POST',
-        body: JSON.stringify(request),
-        signal,
-        headers,
-      }).then(async (res) => {
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw {
-            status: res.status,
-            error: body,
-            message: body?.message ?? res.statusText,
-          };
-        }
-        return res.json() as Promise<RedlineResponse>;
-      }),
-    );
-  }
-
-  applyRedline(
-    workspaceId: string,
-    documentId: string,
-    versionId: string,
-    decisions?: Array<{ blockId: string; decision: 'accept' | 'reject' }>,
-    finalText?: string,
-  ): Observable<{ versionId: string; versionNumber: number; finalText: string; createdAt: string }> {
-    const body: { decisions?: Array<{ blockId: string; decision: 'accept' | 'reject' }>; finalText?: string } = {};
-    if (decisions) {
-      body.decisions = decisions;
-    }
-    if (finalText) {
-      body.finalText = finalText;
-    }
-    return this.http.post<{ versionId: string; versionNumber: number; finalText: string; createdAt: string }>(
-      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.redline(workspaceId, documentId)}/${versionId}/apply`,
-      body,
-    );
-  }
-
-  getDocumentVersions(workspaceId: string, documentId: string): Observable<DocumentVersion[]> {
-    return this.http.get<DocumentVersion[]>(
-      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/versions`,
-    );
-  }
-
-  getDocumentContent(workspaceId: string, documentId: string): Observable<{ content: string; versionNumber: number; lastUpdated: string }> {
-    return this.http.get<{ content: string; versionNumber: number; lastUpdated: string }>(
+  getDocumentContent(workspaceId: string, documentId: string): Observable<{ content: string; lastUpdated: string }> {
+    return this.http.get<{ content: string; lastUpdated: string }>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/content`,
-    );
-  }
-
-  getVersionContent(workspaceId: string, documentId: string, versionId: string): Observable<{ content: string; versionNumber: number; createdAt: string }> {
-    return this.http.get<{ content: string; versionNumber: number; createdAt: string }>(
-      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/versions/${versionId}/content`,
     );
   }
 

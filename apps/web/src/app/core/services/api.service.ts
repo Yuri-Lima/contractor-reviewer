@@ -613,53 +613,6 @@ export class ApiService {
     });
   }
 
-  chat(
-    workspaceId: string,
-    documentId: string,
-    request: ChatRequest,
-    options?: { signal?: AbortSignal },
-  ): Observable<ChatResponse> {
-    if (options?.signal !== undefined) {
-      return this.fetchChat(workspaceId, documentId, request, options.signal);
-    }
-    return this.http.post<ChatResponse>(
-      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}`,
-      request,
-    );
-  }
-
-  private fetchChat(
-    workspaceId: string,
-    documentId: string,
-    request: ChatRequest,
-    signal: AbortSignal,
-  ): Observable<ChatResponse> {
-    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat(workspaceId, documentId)}`;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    const token = this.authService.getToken();
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    return from(
-      fetch(url, {
-        method: 'POST',
-        body: JSON.stringify(request),
-        signal,
-        headers,
-      }).then(async (res) => {
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw {
-            status: res.status,
-            error: body,
-            message: body?.message ?? res.statusText,
-          };
-        }
-        return res.json() as Promise<ChatResponse>;
-      }),
-    );
-  }
-
   chatPrepare(
     workspaceId: string,
     documentId: string,

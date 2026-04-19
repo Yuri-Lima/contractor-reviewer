@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Param,
   Query,
   UseGuards,
   HttpCode,
@@ -14,7 +13,6 @@ import { AuditLogQueryDto, AuditLog } from '@contractai-review/shared';
 import { WorkspaceRole } from '../entities/workspace-member.entity';
 import { WorkspaceId } from '../workspace/decorators';
 import { AuditService } from './audit.service';
-import { AuditAction, TargetType } from '../entities/audit-log.entity';
 
 @Controller('workspaces/:workspaceId/audit')
 @UseGuards(JwtAuthGuard, WorkspaceGuard, RolesGuard)

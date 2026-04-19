@@ -6,7 +6,7 @@ Canonical reference for the ContractAI Review RAG pipeline. Use this document to
 
 | Component | File | Role |
 |-----------|------|------|
-| Main RAG flow | `apps/api/src/rag/rag.service.ts` | `generateAnswer()`: embed question, search chunks, inject memory, build context, call OpenAI |
+| Main RAG flow | `apps/api/src/rag/rag.service.ts` | `generateAnswerStream()`: embed question, search chunks, inject memory, build context, stream LLM completion (SSE) |
 | Document retrieval | Same file | `searchDocumentChunks()` — pgvector cosine similarity |
 | Legal retrieval | Same file | `searchLegalChunks()` — pgvector + jurisdiction filter |
 | Jurisdiction resolution | `apps/api/src/rag/jurisdiction-resolver.service.ts`, `jurisdiction-evaluation.service.ts` | Evidence extraction, LLM evaluation, candidates for user override; see [jurisdiction-resolution.md](./jurisdiction-resolution.md) |
@@ -60,7 +60,7 @@ flowchart TD
     StoreCache --> ReturnFresh[Return + fromCache: false]
 ```
 
-Flow: `ChatController` → `RagService.generateAnswer()` → semantic cache lookup (or bypass if `forceFresh`) → `EmbeddingsService` + `IVectorStore` + `MemoryService.getDocumentAndThreadMemory()` + `PromptService` → OpenAI → optional cache store. After saving the chat message, a `SummarizeMemory` job is enqueued (unless no-logs skips persistence).
+Flow: `ChatController.chatStream()` (`POST /chat/stream`, SSE) → `RagService.generateAnswerStream()` → semantic cache lookup (or bypass if `forceFresh`) → `EmbeddingsService` + `IVectorStore` + `MemoryService.getDocumentAndThreadMemory()` + `PromptService` → LLM provider streaming completion → cache store on miss. The controller persists the assembled answer (carrying `fromCache`) and enqueues a `SummarizeMemory` job after the `done` event (unless no-logs skips persistence or the client aborted mid-stream). The non-stream `POST /chat` endpoint and `RagService.generateAnswer()` / `generateAnswerText()` were removed; streaming is the single chat path.
 
 ### Semantic Query Cache
 

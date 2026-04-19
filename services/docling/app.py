@@ -2,13 +2,18 @@
 Docling conversion microservice.
 Converts PDF, DOCX, PPTX, XLSX, images to markdown with pipeline options and metadata.
 """
+from importlib.metadata import PackageNotFoundError, version
 from io import BytesIO
 
-import docling
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from docling.datamodel.base_models import DocumentStream, InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
+
+try:
+    DOCLING_VERSION: str | None = version("docling")
+except PackageNotFoundError:
+    DOCLING_VERSION = None
 
 # Pipeline options for PDF (table structure, OCR enabled by default)
 pipeline_options = PdfPipelineOptions(
@@ -135,7 +140,7 @@ async def convert(
     metadata = {
         "filename": file.filename,
         "parser": "docling",
-        "parser_version": docling.__version__,
+        "parser_version": DOCLING_VERSION,
         "pipeline_mode": "default",
         "used_ocr": used_ocr,
     }

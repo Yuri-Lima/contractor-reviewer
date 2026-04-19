@@ -25,10 +25,19 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      PGADMIN_PGPASS_LINE: "postgres:5432:*:${POSTGRES_USER:-contractai}:${POSTGRES_PASSWORD:-contractai}"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        printf '%s\n' "$$PGADMIN_PGPASS_LINE" > /var/lib/pgadmin/pgpass && \
+        chmod 600 /var/lib/pgadmin/pgpass && \
+        exec /entrypoint.sh
     ports:
       - "${PGADMIN_PORT:-5051}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
     depends_on:
       postgres:
         condition: service_healthy

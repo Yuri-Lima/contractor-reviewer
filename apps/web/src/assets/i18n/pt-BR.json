@@ -65,7 +65,9 @@
     "register": "Registrar",
     "loginError": "Email ou senha inválidos",
     "emailPlaceholder": "seu@email.com",
-    "passwordPlaceholder": "••••••••"
+    "passwordPlaceholder": "••••••••",
+    "emailAlreadyExists": "Este email já está cadastrado.",
+    "signInInstead": "Entrar"
   },
   "workspaces": {
     "title": "Workspaces",

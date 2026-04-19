@@ -45,6 +45,7 @@ export class RegisterComponent {
   registerForm: FormGroup;
   loading = signal(false);
   error = signal('');
+  emailExists = signal(false);
 
   canSubmit = computed(() => !this.registerForm.invalid && !this.loading());
 
@@ -63,6 +64,7 @@ export class RegisterComponent {
 
     this.loading.set(true);
     this.error.set('');
+    this.emailExists.set(false);
 
     const data: RegisterRequest = this.registerForm.value;
     this.authService.register(data).subscribe({
@@ -72,12 +74,12 @@ export class RegisterComponent {
       error: (err) => {
         this.loading.set(false);
         console.error('Register error:', err);
-        
-        // Tratar diferentes tipos de erro
+
         if (err.status === 0) {
           this.error.set(this.translateService.instant(_('errors.network')));
         } else if (err.status === 409) {
-          this.error.set(this.translateService.instant(_('errors.generic')));
+          this.emailExists.set(true);
+          this.error.set(this.translateService.instant(_('auth.emailAlreadyExists')));
         } else if (err.status === 400) {
           this.error.set(err.error?.message || this.translateService.instant(_('errors.generic')));
         } else {

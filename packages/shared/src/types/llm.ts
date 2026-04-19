@@ -1,12 +1,13 @@
 /** LLM provider identifiers */
-export const LlmProviderId = {
+export const LLM_PROVIDER_ID = {
   OpenAI: 'openai',
   Anthropic: 'anthropic',
+  XAI: 'xai',
 } as const;
 
-export type LlmProviderId = (typeof LlmProviderId)[keyof typeof LlmProviderId];
+export type LlmProviderId = (typeof LLM_PROVIDER_ID)[keyof typeof LLM_PROVIDER_ID];
 
-export const LLM_PROVIDER_IDS: LlmProviderId[] = Object.values(LlmProviderId);
+export const LLM_PROVIDER_IDS: LlmProviderId[] = Object.values(LLM_PROVIDER_ID);
 
 /** Type guard for LlmProviderId */
 export function isLlmProviderId(value: string | null | undefined): value is LlmProviderId {

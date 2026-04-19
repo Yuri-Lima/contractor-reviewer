@@ -6,20 +6,34 @@ import { LLM_PROVIDER_ID } from '@contractai-review/shared';
 import type { ILlmProvider } from '../interfaces/llm-provider.interface';
 
 const DEFAULT_LLM_MAX_TOKENS = 2000;
+const XAI_BASE_URL = 'https://api.x.ai/v1';
+const DEFAULT_XAI_MODEL = 'grok-4-1-fast-reasoning';
 
+/**
+ * Adapter for xAI's Grok models. xAI exposes an OpenAI-compatible
+ * `/v1/chat/completions` endpoint, so we reuse the `openai` SDK and
+ * just point `baseURL` at `https://api.x.ai/v1`.
+ *
+ * Note: xAI does NOT provide an embeddings endpoint. Embeddings continue
+ * to be served by `EmbeddingsService` (OpenAI), even when this provider
+ * is selected for chat.
+ */
 @Injectable()
-export class OpenAILlmAdapter implements ILlmProvider {
-  private readonly logger = new Logger(OpenAILlmAdapter.name);
-  readonly id = LLM_PROVIDER_ID.OpenAI;
+export class XaiLlmAdapter implements ILlmProvider {
+  private readonly logger = new Logger(XaiLlmAdapter.name);
+  readonly id = LLM_PROVIDER_ID.XAI;
   private readonly client: OpenAI;
   private readonly defaultModel: string;
   private readonly defaultMaxTokens: number;
 
   constructor(private configService: ConfigService) {
-    const apiKey = this.configService.get<string>('OPENAI_API_KEY');
-    this.client = new OpenAI({ apiKey: apiKey || 'dummy-key' });
+    const apiKey = this.configService.get<string>('XAI_API_KEY');
+    this.client = new OpenAI({
+      apiKey: apiKey || 'dummy-key',
+      baseURL: XAI_BASE_URL,
+    });
     this.defaultModel =
-      this.configService.get<string>('OPENAI_CHAT_MODEL') || 'gpt-4o-mini';
+      this.configService.get<string>('XAI_CHAT_MODEL') || DEFAULT_XAI_MODEL;
     const raw = this.configService.get<string>('LLM_MAX_TOKENS');
     const parsed = raw ? parseInt(raw, 10) : DEFAULT_LLM_MAX_TOKENS;
     this.defaultMaxTokens = parsed > 0 ? parsed : DEFAULT_LLM_MAX_TOKENS;
@@ -38,7 +52,7 @@ export class OpenAILlmAdapter implements ILlmProvider {
       },
       { signal: options?.signal },
     );
-    return response.choices[0].message.content || 'NOT FOUND';
+    return response.choices[0]?.message?.content || 'NOT FOUND';
   }
 
   async *completeStream(

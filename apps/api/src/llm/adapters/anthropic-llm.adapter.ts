@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import type { LlmMessage, LlmCompleteOptions } from '@contractai-review/shared';
-import { LlmProviderId } from '@contractai-review/shared';
+import { LLM_PROVIDER_ID } from '@contractai-review/shared';
 import type { ILlmProvider } from '../interfaces/llm-provider.interface';
 
 const DEFAULT_LLM_MAX_TOKENS = 2000;
@@ -10,7 +10,7 @@ const DEFAULT_LLM_MAX_TOKENS = 2000;
 @Injectable()
 export class AnthropicLlmAdapter implements ILlmProvider {
   private readonly logger = new Logger(AnthropicLlmAdapter.name);
-  readonly id = LlmProviderId.Anthropic;
+  readonly id = LLM_PROVIDER_ID.Anthropic;
   private readonly client: Anthropic;
   private readonly defaultModel: string;
   private readonly defaultMaxTokens: number;

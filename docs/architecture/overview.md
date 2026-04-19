@@ -28,7 +28,8 @@ contractor-reviwer/
 | **Storage** | S3/R2 compatible (local in dev) |
 | **Parsers** | Docling, PDFPlumber (Python), DPT-2, LlamaParse, Unstructured (cloud) |
 | **Frontend** | Angular 21, PrimeNG, Tailwind, Capacitor |
-| **AI** | OpenAI (embeddings, chat RAG) |
+| **AI (embeddings)** | OpenAI `text-embedding-3-small` |
+| **AI (chat/redline LLM)** | Provider-agnostic via `LlmProviderRegistry`. Adapters: OpenAI (default), Anthropic. Selected per-workspace via `defaultLlmProvider` setting. |
 | **WebSocket** | Socket.IO + Redis adapter + Redis Streams (job progress) |
 
 ## Services Diagram
@@ -100,27 +101,35 @@ Document available for RAG
 
 ### Real-time: Document Job Progress
 
-BullMQ workers (OCR, parsing, chunking, embeddings) update `DocumentJob` in Postgres and publish to Redis Stream `job:progress`. The API consumes the stream and emits `job:progress` via WebSocket (port 3200) to clients subscribed to the document. Replaces aggressive REST polling. See [websocket.md](websocket.md).
+BullMQ workers (parsing, chunking, embeddings, jurisdiction-evaluation, summarize-memory) update `DocumentJob` in Postgres and publish to Redis Stream `job:progress`. The API consumes the stream and emits `job:progress` via WebSocket (port 3200) to clients subscribed to the document. Replaces aggressive REST polling. See [websocket.md](websocket.md).
+
+> The previous standalone Tesseract OCR worker was removed; OCR is now performed inside the Docling parser microservice when needed.
 
 ### Chat / RAG Flow
 
+Chat is **streaming-only** via Server-Sent Events (`POST /chat/stream`). The legacy non-streaming `POST /chat` endpoint and `RagService.generateAnswer*()` helpers were removed.
+
 ```
-User question
+User question (POST /chat/stream)
   ↓
 Embed question (OpenAI text-embedding-3-small)
+  ↓
+Semantic cache lookup (skip if forceFresh)
   ↓
 Vector search (document chunks + legal chunks)
   ↓
 Inject memory (document/thread conversation summaries)
   ↓
-Build context with citations
+Build context with citations (DocumentCitation / LegalSourceCitation)
   ↓
-OpenAI chat (PromptService, workspace overrides)
+LLM provider streaming completion (OpenAI or Anthropic, per workspace)
   ↓
-Response with confidence + citations
+SSE stream of `chunk` events → final `done` event { answerText, confidence, citations, fromCache }
   ↓
-SummarizeMemory job (async) → update thread memory for future turns
+Persist message + SummarizeMemory job (async) → update thread memory
 ```
+
+In Developer Mode, the two-step `POST /chat/prepare` → `POST /chat/execute` flow is also available; see [chat-prepare-dev-mode.md](chat-prepare-dev-mode.md).
 
 ## User Guide
 
@@ -134,8 +143,13 @@ For end-user help and step-by-step instructions, see the topic-based user guide:
 - [websocket.md](websocket.md) — WebSocket architecture, Redis Streams, job progress
 - [deployment.md](deployment.md) — Production deployment with Traefik, TLS
 - [rag-pipeline.md](rag-pipeline.md) — RAG pipeline reference (file map, flow, config)
+- [rag-cache.md](rag-cache.md) — Semantic query cache (Redis), thresholds, invalidation
+- [chat-prepare-dev-mode.md](chat-prepare-dev-mode.md) — Two-step prepare/execute chat (Developer Mode)
+- [chat-markdown-rendering.md](chat-markdown-rendering.md) — Incremark-based Markdown rendering for chat answers
 - [memory.md](memory.md) — Chat memory (thread/document summaries, SummarizeMemory job, RAG injection, purge, DSAR)
 - [vector-db-separation.md](vector-db-separation.md) — Future migration to separate vector DB
 - [storage.md](storage.md) — S3/local storage, validations
 - [workspace-rbac.md](workspace-rbac.md) — Multi-tenant, RBAC
 - [document-parsers.md](document-parsers.md) — Parser reference
+- [jurisdiction-resolution.md](jurisdiction-resolution.md) — Governing-law extraction, evaluation, candidates
+- [prompt-generator.md](prompt-generator.md) — LLM-assisted document/workspace prompt generation

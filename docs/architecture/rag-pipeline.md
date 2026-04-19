@@ -106,8 +106,9 @@ interface ChatResponse {
 ### Citation (from `@contractai-review/shared`)
 
 ```typescript
+// Wire/API shape — superset of all citation fields
 interface Citation {
-  type: 'document' | 'legal';  // 'contract' is deprecated; use 'document' for new code
+  type: 'document' | 'legal' | 'contract'; // 'contract' is deprecated
   fileName?: string;
   pageNumber?: number;
   paragraph?: string;
@@ -117,9 +118,29 @@ interface Citation {
   section?: string;
   url?: string;
 }
+
+// Narrow shapes used when building citations in `RagService` (with `satisfies`)
+interface DocumentCitation {
+  type: 'document' | 'contract';
+  fileName?: string;
+  pageNumber?: number;
+  paragraph?: string;
+  paragraphId?: string;
+  quoteSnippet?: string;
+}
+
+interface LegalSourceCitation {
+  type: 'legal';
+  sourceName?: string;
+  section?: string;
+  url?: string;
+  quoteSnippet?: string;
+}
 ```
 
-**Note:** `'contract'` is deprecated. Use `'document'` for citations from the user's uploaded document. The union still accepts `'contract'` for backward compatibility with cached/legacy responses. Use `isDocumentCitation(c)` to treat both as document citations.
+**Notes:**
+- `'contract'` is deprecated. Use `'document'` for citations from the user's uploaded document. The union still accepts `'contract'` for backward compatibility with cached/legacy responses. Use `isDocumentCitation(c)` to treat both as document citations.
+- New code in `RagService` builds citations with `satisfies DocumentCitation` / `satisfies LegalSourceCitation` so `type` and the relevant fields stay aligned at compile time.
 
 ### VectorStore (from `apps/api/src/vector-store/vector-store.interface.ts`)
 
@@ -149,10 +170,25 @@ interface LegalChunkSearchResult extends VectorSearchResult<Embedding> {
 
 | Variable | Description |
 |----------|-------------|
-| `OPENAI_API_KEY` | Required for RAG (embeddings + chat) |
-| `OPENAI_CHAT_MODEL` | Chat model (default: `gpt-4o-mini`) |
+| `OPENAI_API_KEY` | Required for embeddings (`text-embedding-3-small`) and the OpenAI chat adapter |
+| `OPENAI_CHAT_MODEL` | OpenAI chat model (default: `gpt-4o-mini`) |
+| `ANTHROPIC_API_KEY` | Required when a workspace selects the Anthropic LLM provider |
+| `ANTHROPIC_CHAT_MODEL` | Anthropic chat model (default: `claude-sonnet-4-20250514`) |
+| `LLM_MAX_TOKENS` | Max output tokens per LLM completion (chat + redline). Default: `2000`. Higher values allow longer answers but increase cost. |
 | `DOCLING_URL` | Docling service URL (default: `http://localhost:8000`) |
 | `PDFPLUMBER_URL` | PDFPlumber service URL (default: `http://localhost:8001`) |
+| `LOG_LLM_PROMPT_CONTEXT` | When `true`, logs the full system + user prompt sent to the LLM (debug only — never enable in production). |
+
+### LLM Provider Selection
+
+LLM completions are abstracted by `LlmProviderRegistry` (`apps/api/src/llm/`). Two adapters are bundled:
+
+| Provider | Adapter | ID |
+|----------|---------|----|
+| OpenAI (default) | `OpenAILlmAdapter` | `openai` |
+| Anthropic | `AnthropicLlmAdapter` | `anthropic` |
+
+Per-workspace override: `WorkspaceSettings.documentProcessing.defaultLlmProvider` (`openai` \| `anthropic`). When unset, the registry falls back to OpenAI. Both adapters honor `LLM_MAX_TOKENS` and stream via `completeStream()` for SSE chat.
 
 ### Workspace Settings (via Workspace Settings UI or API)
 

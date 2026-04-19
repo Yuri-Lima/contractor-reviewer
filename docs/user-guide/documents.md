@@ -2,7 +2,7 @@
 
 ## Summary
 
-A document is a container for one or more uploaded files (e.g., a contract and its annexes). Each document has a title, optional description, and optional AI prompt to guide the assistant. You can upload PDFs, Word documents, images, and text files, then use Chat and Redline on the content.
+A document is a container for one or more uploaded files (e.g., a contract and its annexes). Each document has a title, optional description, and optional AI prompt to guide the assistant. You can upload PDFs, Word documents, PowerPoint and Excel files, plain text/Markdown, and images (PNG, JPG, TIFF, BMP, WEBP), then use Chat and Redline on the content.
 
 ## When to Use
 
@@ -36,11 +36,13 @@ You can use a prompt category, generate a custom prompt, or neither. Document pr
 2. Go to the **Files** tab (or the upload area).
 3. Click **Upload File** or **Upload Files**.
 4. Select files from your computer. Supported formats:
-   - **PDF** — contracts, scanned documents
-   - **DOCX** — Microsoft Word
-   - **TXT** — plain text
-   - **PNG, JPG** — images (processed with OCR)
-5. If prompted, **select a parser** for the files (e.g., PDF parser, DOCX parser, OCR).
+   - **PDF** — contracts, scanned documents (Docling performs OCR internally for scanned PDFs)
+   - **DOC, DOCX** — Microsoft Word
+   - **PPTX** — PowerPoint
+   - **XLSX** — Excel
+   - **TXT, MD** — plain text and Markdown
+   - **PNG, JPG, TIFF, BMP, WEBP** — images (Docling performs OCR internally)
+5. If prompted, **select a parser** for the files (Docling is the default; you can override per-upload — see [Document Parsers](../architecture/document-parsers.md)).
 6. Confirm the upload. Files are processed in the background.
 7. Wait until status changes from "Processing" to "Available".
 
@@ -57,9 +59,9 @@ When a document has multiple jurisdiction candidates (e.g., governing law clause
 
 ## Supported Formats and Limits
 
-- **Formats**: PDF, DOCX, TXT, PNG, JPG
-- **Size limits**: Typically up to 50MB per file; total batch size may be limited (e.g., 100MB).
-- **Batch limits**: Up to a certain number of files per upload (e.g., 20).
+- **Formats**: PDF, DOC, DOCX, PPTX, XLSX, TXT, MD, PNG, JPG, JPEG, TIFF, BMP, WEBP
+- **Size limit per file**: 50MB
+- **Batch limits**: Up to 100MB total per upload, max 20 files per batch
 
 If a file exceeds limits or is in an unsupported format, the upload will fail with an error message.
 
@@ -75,13 +77,13 @@ If a file exceeds limits or is in an unsupported format, the upload will fail wi
 
 ## Parser Selection
 
-When uploading files, you may be asked to select a parser:
+When uploading files, you may be asked to select a parser. The available options depend on the workspace configuration:
 
-- **PDF parser** — Extracts text from PDFs. Use for native PDFs.
-- **OCR parser** — Extracts text from images or scanned PDFs using OCR.
-- **DOCX parser** — Extracts text from Word documents.
+- **Docling** (default) — Self-hosted, no API key required. Handles PDF, DOC, DOCX, PPTX, XLSX, and images. Performs OCR internally for scanned PDFs and image files.
+- **PDFPlumber** — Self-hosted fallback for native PDFs (no OCR).
+- **DPT-2 / LlamaParse / Unstructured** — Cloud parsers (require an API key configured in Workspace Settings → Document Parsers).
 
-Select the parser that matches your file type. For scanned documents or images, choose OCR.
+For scanned documents or images, Docling already runs OCR — you do not need to select a separate OCR parser. See [Document Parsers](../architecture/document-parsers.md) for capabilities and configuration.
 
 ## Options / Variations
 

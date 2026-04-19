@@ -97,8 +97,12 @@ Abre em http://localhost:4200.
 | `DATABASE_URL` | Sim | URL do Postgres (ex: `postgresql://user:pass@host:5432/db`) |
 | `REDIS_URL` | Sim | URL do Redis (ex: `redis://localhost:6379`) |
 | `JWT_SECRET` | Sim | Segredo para tokens JWT (mín. 32 caracteres em produção) |
-| `OPENAI_API_KEY` | Sim* | Chave OpenAI para RAG (*obrigatório para chat/embeddings) |
-| `LLM_MAX_TOKENS` | Não | Máx. tokens de saída para chat e redline (padrão: `2000`). Valores maiores permitem respostas mais longas. |
+| `OPENAI_API_KEY` | Sim* | Chave OpenAI para RAG. *Obrigatório para embeddings (`text-embedding-3-small`) e para o adapter OpenAI de chat/redline. |
+| `OPENAI_CHAT_MODEL` | Não | Modelo de chat OpenAI (padrão: `gpt-4o-mini`). |
+| `ANTHROPIC_API_KEY` | Se usar Anthropic | Necessário quando o workspace seleciona o provider `anthropic` em Workspace Settings → AI Prompts/LLM. |
+| `ANTHROPIC_CHAT_MODEL` | Não | Modelo Anthropic (padrão: `claude-sonnet-4-20250514`). |
+| `LLM_MAX_TOKENS` | Não | Máx. tokens de saída para chat e redline (padrão: `2000`). Compartilhado por todos os providers (OpenAI, Anthropic). |
+| `LOG_LLM_PROMPT_CONTEXT` | Não | `true` para logar o prompt completo enviado ao LLM (apenas debug — nunca em produção). |
 | `PARSER_KEYS_ENCRYPTION_KEY` | Se usar parsers pagos | 32 bytes hex. Gerar: `openssl rand -hex 32`. Criptografa API keys de DPT-2, LlamaParse, Unstructured |
 | `DOCLING_URL` | Não | URL do Docling (padrão: `http://localhost:8000`) |
 | `PDFPLUMBER_URL` | Não | URL do PDFPlumber (padrão: `http://localhost:8001`) |

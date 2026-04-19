@@ -1,6 +1,8 @@
 # WebSocket Architecture — Real-time Job Progress
 
-WebSocket server for real-time document job progress (OCR, parsing, chunking, embeddings). Replaces aggressive REST polling with push-based updates.
+WebSocket server for real-time document job progress (parsing, chunking, embeddings, jurisdiction-evaluation, summarize-memory). Replaces aggressive REST polling with push-based updates.
+
+> The previous standalone Tesseract OCR worker was removed; OCR is now performed inside the Docling parser microservice when needed, and reported as part of the `parsing` job.
 
 ## Architecture
 

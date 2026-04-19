@@ -58,9 +58,10 @@ import { DocxViewerComponent } from '../docx-viewer/docx-viewer.component';
         [fileName]="file()?.fileName ?? ''"
         (textSelected)="textSelected.emit($event)"
       />
-    } @else if (format() === 'docx' && blobUrl()) {
+    } @else if (format() === 'docx' && (blob() || blobUrl())) {
       <app-docx-viewer
-        [blobUrl]="blobUrl()!"
+        [blob]="blob()"
+        [blobUrl]="blobUrl() ?? ''"
         [fileName]="file()?.fileName ?? ''"
         (textSelected)="textSelected.emit($event)"
       />
@@ -81,6 +82,7 @@ import { DocxViewerComponent } from '../docx-viewer/docx-viewer.component';
 })
 export class DocumentViewerComponent {
   file = input<DocumentFile | null>(null);
+  blob = input<Blob | null>(null);
   blobUrl = input<string | null>(null);
   textContent = input<string | null>(null);
   loading = input(false);

@@ -11,6 +11,7 @@ import {
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { TranslatePipe } from '@ngx-translate/core';
+import { Button } from 'primeng/button';
 
 export interface TextSelection {
   text: string;
@@ -21,7 +22,7 @@ export interface TextSelection {
 @Component({
   selector: 'app-docx-viewer',
   standalone: true,
-  imports: [CommonModule, TranslatePipe],
+  imports: [CommonModule, TranslatePipe, Button],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
@@ -34,8 +35,14 @@ export interface TextSelection {
         </div>
       }
       @if (error()) {
-        <div class="text-center py-8 text-red-600 dark:text-red-400">
-          {{ error() }}
+        <div class="text-center py-8">
+          <p class="text-red-600 dark:text-red-400 mb-3">{{ error() | translate }}</p>
+          <p-button
+            [label]="'common.retry' | translate"
+            icon="pi pi-refresh"
+            size="small"
+            (onClick)="retry()"
+          />
         </div>
       }
       @if (!loading() && !error() && renderedHtml()) {
@@ -63,7 +70,8 @@ export class DocxViewerComponent {
   private sanitizer = inject(DomSanitizer);
   private platformId = inject(PLATFORM_ID);
 
-  blobUrl = input.required<string>();
+  blob = input<Blob | null>(null);
+  blobUrl = input<string>('');
   fileName = input<string>('');
 
   textSelected = output<TextSelection>();
@@ -74,22 +82,50 @@ export class DocxViewerComponent {
 
   constructor() {
     effect(() => {
+      const blob = this.blob();
       const url = this.blobUrl();
-      if (url && isPlatformBrowser(this.platformId)) {
-        this.loadDocx(url);
+      if (!isPlatformBrowser(this.platformId)) return;
+      if (blob || url) {
+        this.loadDocx();
       }
     });
   }
 
-  private async loadDocx(url: string): Promise<void> {
+  retry(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    void this.loadDocx();
+  }
+
+  private async loadDocx(): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
     this.renderedHtml.set(null);
 
+    let arrayBuffer: ArrayBuffer;
     try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch document');
-      const arrayBuffer = await response.arrayBuffer();
+      const blob = this.blob();
+      if (blob) {
+        arrayBuffer = await blob.arrayBuffer();
+      } else {
+        const url = this.blobUrl();
+        if (!url) {
+          throw new Error('No document source provided');
+        }
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        arrayBuffer = await response.arrayBuffer();
+      }
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error('docx-viewer: failed to load source', detail);
+      this.error.set('documentViewer.docxFetchError');
+      this.loading.set(false);
+      return;
+    }
+
+    try {
       const mammoth = await import('mammoth');
       const result = await mammoth.convertToHtml({ arrayBuffer });
       const html = result.value;
@@ -97,8 +133,9 @@ export class DocxViewerComponent {
         html ? this.sanitizer.bypassSecurityTrustHtml(html) : null
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to load document';
-      this.error.set(msg);
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error('docx-viewer: failed to parse docx', detail);
+      this.error.set('documentViewer.docxParseError');
     } finally {
       this.loading.set(false);
     }

@@ -435,6 +435,7 @@ interface FilesResourceParams extends FilesRequestParams {
             <div class="p-4">
               <app-document-viewer
                 [file]="fileToView()"
+                [blob]="fileToView() ? getFileBlob(fileToView()!.id) : null"
                 [blobUrl]="fileToView() ? getFileObjectUrl(fileToView()!.id) : null"
                 [textContent]="textFileContent()"
                 [loading]="viewerLoading()"
@@ -638,6 +639,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
   /** AbortController for file viewer downloads; aborted on close or when switching files */
   private downloadAbortController: AbortController | null = null;
   fileObjectUrls = signal<Map<string, string>>(new Map());
+  fileBlobs = signal<Map<string, Blob>>(new Map());
   jobs = signal<DocumentJob[]>([]);
   private destroyAggressive$ = new Subject<void>();
   private isLoadingJobs = false; // Prevent concurrent loadJobs() calls
@@ -833,6 +835,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     // Clean up object URLs to prevent memory leaks
     this.fileObjectUrls().forEach(url => URL.revokeObjectURL(url));
     this.fileObjectUrls.set(new Map());
+    this.fileBlobs.set(new Map());
     // Revoke TTS audio blob URLs
     this.chatMessages().forEach((m) => {
       if (m.audioUrl) URL.revokeObjectURL(m.audioUrl);
@@ -2287,6 +2290,10 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     return '';
   }
 
+  getFileBlob(fileId: string): Blob | null {
+    return this.fileBlobs().get(fileId) ?? null;
+  }
+
   loadFileAsBlob(file: DocumentFile): void {
     const existingUrl = this.fileObjectUrls().get(file.id);
     if (existingUrl) {
@@ -2309,6 +2316,11 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
           this.fileObjectUrls.update(urls => {
             const newMap = new Map(urls);
             newMap.set(file.id, objectUrl);
+            return newMap;
+          });
+          this.fileBlobs.update(blobs => {
+            const newMap = new Map(blobs);
+            newMap.set(file.id, blob);
             return newMap;
           });
         },
@@ -2385,6 +2397,11 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
               this.fileObjectUrls.update(urls => {
                 const newMap = new Map(urls);
                 newMap.set(file.id, objectUrl);
+                return newMap;
+              });
+              this.fileBlobs.update(blobs => {
+                const newMap = new Map(blobs);
+                newMap.set(file.id, blob);
                 return newMap;
               });
             },

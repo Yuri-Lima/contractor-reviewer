@@ -17,12 +17,6 @@ export interface ListPromptsResponse {
   prompts: PromptListItem[];
 }
 
-export interface GeneratePromptRequest {
-  title: string;
-  description: string;
-  contextMarkdown?: string;
-}
-
 export interface GeneratePromptResponse {
   generatedPrompt: string;
 }

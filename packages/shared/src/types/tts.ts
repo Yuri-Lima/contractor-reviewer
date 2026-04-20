@@ -40,4 +40,3 @@ export interface TtsProviderConfig {
 
 /** ElevenLabs plan values - used for output format selection */
 export const ELEVENLABS_PLANS = ['free', 'starter', 'pro', 'scale', 'business'] as const;
-export type ElevenLabsPlan = (typeof ELEVENLABS_PLANS)[number];

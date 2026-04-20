@@ -23,7 +23,6 @@ import {
   ChatPrepareResponse,
   ChatRequest,
   ChatResponse,
-  RetentionConfig,
   DocumentFile,
   FileContentResponse,
   WorkspaceSettingsConfig,
@@ -845,11 +844,6 @@ export class ApiService {
     );
   }
 
-  getDocumentContent(workspaceId: string, documentId: string): Observable<{ content: string; lastUpdated: string }> {
-    return this.http.get<{ content: string; lastUpdated: string }>(
-      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}/content`,
-    );
-  }
 
   // Privacy
   exportPrivacyData(
@@ -904,15 +898,6 @@ export class ApiService {
   // Audit
   getAuditLogs(workspaceId: string, params?: any): Observable<any> {
     return this.http.get(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.audit(workspaceId)}`, { params });
-  }
-
-  // Retention
-  getRetentionConfig(workspaceId: string): Observable<RetentionConfig> {
-    return this.http.get<RetentionConfig>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.retention(workspaceId)}`);
-  }
-
-  updateRetentionConfig(workspaceId: string, config: Partial<RetentionConfig>): Observable<RetentionConfig> {
-    return this.http.put<RetentionConfig>(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.retention(workspaceId)}`, config);
   }
 
   // Workspace Settings (unified: retention, document processing, etc.)

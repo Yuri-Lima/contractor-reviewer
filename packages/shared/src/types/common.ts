@@ -1,13 +1,4 @@
 /**
- * Citation type.
- * - 'document': Citation from the user's uploaded document (preferred).
- * - 'legal': Citation from legal/regulatory sources.
- * - 'web': Citation from a web search result (supplementary, never canonical).
- * - 'contract': @deprecated Use 'document' instead. Kept for backward compatibility with cached/legacy responses.
- */
-export type CitationType = 'contract' | 'document' | 'legal' | 'web';
-
-/**
  * Narrow shape for citations from the user's contract or uploaded document.
  * Use with `satisfies DocumentCitation` when building RAG citations so `type` and fields stay aligned.
  */
@@ -34,21 +25,9 @@ export interface LegalSourceCitation {
   quoteSnippet?: string;
 }
 
-/**
- * Narrow shape for citations from web search results. Web citations are
- * always supplementary — the model is instructed to prefer document and
- * legal sources for canonical claims.
- */
-export interface WebCitation {
-  type: 'web';
-  title: string;
-  url: string;
-  snippet?: string;
-}
-
 // Common citation interface (unified wire/API shape for document, legal and web citations)
 export interface Citation {
-  type: CitationType;
+  type: 'contract' | 'document' | 'legal' | 'web';
   fileName?: string;
   pageNumber?: number;
   paragraph?: string;
@@ -63,37 +42,6 @@ export interface Citation {
   title?: string;
   /** Web-only: short summary returned by the search provider. */
   snippet?: string;
-}
-
-/** Citation types that denote "citation from user's document". Accept both for backward compat. */
-export const DOCUMENT_CITATION_TYPES = ['contract', 'document'] as const;
-
-export function isDocumentCitation(c: Citation): boolean {
-  return (DOCUMENT_CITATION_TYPES as readonly string[]).includes(c.type);
-}
-
-// Pagination types
-export interface PaginationParams {
-  limit?: number;
-  offset?: number;
-  page?: number;
-  pageSize?: number;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  limit: number;
-  offset: number;
-  page?: number;
-  pageSize?: number;
-}
-
-// API Response wrapper
-export interface ApiResponse<T> {
-  data: T;
-  message?: string;
-  error?: string;
 }
 
 // User types

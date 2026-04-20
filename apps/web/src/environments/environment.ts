@@ -13,6 +13,4 @@
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:3000/api',
-  // Detect if running in Capacitor
-  isMobile: false, // Will be set dynamically in api.config.ts
 };

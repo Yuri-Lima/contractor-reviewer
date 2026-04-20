@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const CI = !!process.env['CI'];
 const AUTH_FILE = path.join(__dirname, 'playwright', '.auth', 'user.json');
-const baseURL = process.env['E2E_BASE_URL'] ?? 'http://localhost:4200';
+const baseURL = process.env['E2E_BASE_URL'] ?? 'http://localhost:4400';
 
 export default defineConfig({
   testDir: './src',

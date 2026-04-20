@@ -77,6 +77,7 @@ SEVERITY
 - info: observation, not a defect.
 
 CONFIDENCE CALIBRATION (must follow exactly)
+A "named statute" counts as matched if it appears in the Legal sources block OR is explicitly cited by name in the document excerpts themselves (e.g. the contract references "Minimum Notice and Terms of Employment Act, 1973").
 - "high"   = at least one named statute matched AND at least one clauseRef cited AND no internal contradictions in your output.
 - "medium" = at least one clauseRef cited but NO named statute matched, OR statute matched but no clauseRef.
 - "low"    = neither clauseRef nor statute could be cited, OR you had to fall back on general knowledge.

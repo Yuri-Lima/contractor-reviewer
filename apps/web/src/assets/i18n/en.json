@@ -394,6 +394,12 @@
       "belowFloor": "No sufficiently relevant excerpts were found for this question. Try rephrasing or asking about a more specific clause.",
       "generic": "No relevant context was found in this document.",
       "webSourceLabel": "Web source"
+    },
+    "statusPhase": {
+      "embedding": "Analyzing your question...",
+      "searching": "Searching documents...",
+      "web-search": "Searching the web...",
+      "generating": "Generating answer..."
     }
   },
   "parsers": {

@@ -685,14 +685,34 @@ export class RagService {
     },
   ): AsyncIterable<StreamEvent> {
     try {
+      // ── Phase A: parallel — embedding + settings + preflight ──────────
+      // These three have no data dependencies on each other. Running them
+      // concurrently saves 100-300ms of sequential DB/API round-trips.
+      yield { type: 'status', phase: 'embedding' };
       this.logger.log(
-        `[generateAnswerStream] Generate question embedding: documentId=${documentId} workspaceId=${workspaceId}`,
+        `[generateAnswerStream] Phase A (parallel): embedding + settings + preflight: documentId=${documentId} workspaceId=${workspaceId}`,
       );
-      const questionEmbedding = await this.embeddingsService.generateEmbedding(
-        question,
-        options,
+      const [questionEmbedding, workspaceSettings, preflightReason] = await Promise.all([
+        this.embeddingsService.generateEmbedding(question, options),
+        this.workspaceSettingsService.getSettings(workspaceId),
+        this.classifyChunkState(documentId),
+      ]);
+
+      if (preflightReason) {
+        this.logger.warn(
+          `[generateAnswerStream] preflight=${preflightReason} documentId=${documentId}`,
+        );
+      }
+
+      // Derive flags from the single settings fetch (no redundant DB calls)
+      const legalReviewMode = this.deriveLegalReviewMode(workspaceSettings);
+      const variant = legalReviewMode ? LEGAL_REVIEW_PROMPT_VARIANT : 'default';
+      const provider = this.llmProviderRegistry.resolveFromSettings(workspaceSettings);
+      this.logger.log(
+        `[generateAnswerStream] mode resolved: documentId=${documentId} legalReviewMode=${legalReviewMode} variant=${variant} providerId=${provider.id}`,
       );
 
+      // ── Semantic cache check ──────────────────────────────────────────
       this.logger.log(
         `[generateAnswerStream] Check semantic cache: documentId=${documentId} forceFresh=${options?.forceFresh ?? false}`,
       );
@@ -709,7 +729,6 @@ export class RagService {
             `[generateAnswerStream] Cache hit: documentId=${documentId} answerLength=${cached.answerText?.length ?? 0} hasLegalAnswer=${Boolean(cached.legalAnswer)}`,
           );
           if (cached.legalAnswer) {
-            // Structured cache hit — replay the structured event before `done`.
             yield { type: 'legal-answer', answer: cached.legalAnswer };
           } else {
             yield { type: 'chunk', content: cached.answerText };
@@ -727,34 +746,11 @@ export class RagService {
         }
       }
 
-      const legalReviewMode = await this.resolveLegalReviewMode(workspaceId);
-      const variant = legalReviewMode ? LEGAL_REVIEW_PROMPT_VARIANT : 'default';
-      this.logger.log(
-        `[generateAnswerStream] mode resolved: documentId=${documentId} legalReviewMode=${legalReviewMode} variant=${variant}`,
-      );
-
-      // Pre-flight diagnostic: classify the document's chunk/embedding
-      // state BEFORE running the search. If the result comes back empty,
-      // we'll surface a specific `notFoundReason` instead of a generic
-      // "NOT FOUND" so the UI can render a meaningful message.
-      const preflightReason = await this.classifyChunkState(documentId);
-      if (preflightReason) {
-        this.logger.warn(
-          `[generateAnswerStream] preflight=${preflightReason} documentId=${documentId}`,
-        );
-      }
-
+      // ── Phase B: vector search (parallel doc + legal) ─────────────────
+      yield { type: 'status', phase: 'searching' };
       this.logger.log(
         `[generateAnswerStream] Search document + legal chunks (parallel) then web: documentId=${documentId} jurisdiction=${jurisdiction ?? 'none'} webTrigger=${this.webSearchTrigger}`,
       );
-      // Vector queries run in parallel; web search runs AFTER so we can
-      // mine statute hints from the retrieved chunks and feed them into
-      // Tavily. Latency cost is small (vector queries are typically
-      // <300ms) and the relevance lift from real act names in the query
-      // is large — `Pensions Act 1990` re-ranks `.gov.ie` above generic
-      // explainers. For trigger='off' or service disabled we skip web
-      // search entirely; for trigger='fallback' we still issue the call
-      // and may discard the result post-hoc (see `shouldRunWebSearch`).
       const documentSearchPromise = this.searchDocumentChunks(
         questionEmbedding,
         documentId,
@@ -774,18 +770,21 @@ export class RagService {
         legalSearchPromise,
       ]);
 
+      // ── Web search (sequential — needs statute hints from vector results)
       const webSearchEnabled =
         this.webSearchTrigger !== 'off' && this.webSearchService.isEnabled();
       const statuteHints = webSearchEnabled
         ? this.deriveStatuteHints(rawLegalChunks, rawDocumentChunks)
         : [];
-      const webResultsRaw: WebSearchResult[] = webSearchEnabled
-        ? await this.webSearchService.search(question, {
-            jurisdiction,
-            statuteHints,
-            signal: options?.signal,
-          })
-        : [];
+      let webResultsRaw: WebSearchResult[] = [];
+      if (webSearchEnabled) {
+        yield { type: 'status', phase: 'web-search' };
+        webResultsRaw = await this.webSearchService.search(question, {
+          jurisdiction,
+          statuteHints,
+          signal: options?.signal,
+        });
+      }
       if (webSearchEnabled && webResultsRaw.length > 0) {
         this.logger.log(
           `[generateAnswerStream] webResults raw=${webResultsRaw.length} hints=${statuteHints.join('|') || 'none'}`,
@@ -800,9 +799,6 @@ export class RagService {
           `topK=${this.topKDocument}`,
       );
 
-      // Apply the trigger gate AFTER both searches have settled so we can
-      // make an informed decision. With 'fallback', drop web results when
-      // local retrieval already produced a healthy chunk set.
       const webResults = this.shouldRunWebSearch(
         this.webSearchTrigger,
         documentChunks.length,
@@ -814,10 +810,6 @@ export class RagService {
           `[generateAnswerStream] Web search results discarded by trigger gate (trigger=fallback, documentChunks=${documentChunks.length})`,
         );
       }
-      // Phase 3 rerank: nudge legal chunks whose `actName` appears verbatim in
-      // any retrieved document chunk so the LLM sees the most-relevant statute
-      // first. Bonus is +0.1 (cap at 1.0) and applied before the similarity
-      // floor — keeps the quote-match signal but doesn't bypass the floor.
       const legalChunksReranked = this.rerankLegalByActMention(
         rawLegalChunks,
         rawDocumentChunks.map((c) => c.item.text),
@@ -830,6 +822,7 @@ export class RagService {
         );
       }
 
+      // ── Confidence scoring ────────────────────────────────────────────
       const hasGoodMatches =
         documentChunks.length > 0 && documentChunks[0].distance > 0.7;
       const hasLegalMatches =
@@ -844,12 +837,9 @@ export class RagService {
       if (hasGoodMatches || hasLegalMatches) confidence = 'high';
       else if (hasMediumMatches || hasMultipleChunks) confidence = 'medium';
       else if (hasAnyMatches) confidence = 'low';
-      // Soft-floor fallback fired: every kept chunk is below the primary
-      // floor, so cap confidence at "low" regardless of how many chunks
-      // we relaxed in. Prevents a 0.31-similarity match from being
-      // labelled "high" just because it cleared the relaxed floor.
       if (docFallbackUsed) confidence = 'low';
 
+      // ── Citations ─────────────────────────────────────────────────────
       const doc = await this.documentRepository.findOne({
         where: { id: documentId },
       });
@@ -878,10 +868,6 @@ export class RagService {
           });
         }
       }
-      // Web citations are always supplementary — never canonical — so we
-      // surface them at the end of the citation list. Snippet is truncated
-      // to keep the wire payload small (the user can click through for the
-      // full page).
       for (const w of webResults) {
         citations.push({
           type: 'web',
@@ -891,10 +877,10 @@ export class RagService {
         });
       }
 
-      const [workspaceSettings, docForScope] = await Promise.all([
-        this.workspaceSettingsService.getSettings(workspaceId),
-        this.documentRepository.findOne({ where: { id: documentId } }),
-      ]);
+      // ── Phase C: parallel — memory + doc scope + prompt assembly ──────
+      // Memory retrieval is independent of scope flag resolution; run them
+      // concurrently. We already have workspaceSettings from Phase A.
+      const docForScope = await this.documentRepository.findOne({ where: { id: documentId } });
       const scopeFlags =
         workspaceSettings || docForScope
           ? {
@@ -913,10 +899,6 @@ export class RagService {
         );
       }
 
-      // Legal-review variant uses a separate {{legalSources}} slot; otherwise
-      // we keep the legacy concatenated context for backward compatibility.
-      // Web sources are folded into context for the legacy default variant
-      // (no dedicated slot in that template) so behaviour is consistent.
       const legacyContextParts = legalReviewMode
         ? [documentContextStr]
         : [documentContextStr, legalContextStr, webSourcesStr];
@@ -933,10 +915,6 @@ export class RagService {
       }
 
       this.logger.log(
-        `[generateAnswerStream] Resolve LLM provider via workspace settings: workspaceId=${workspaceId}`,
-      );
-      const provider = await this.llmProviderRegistry.resolveProvider(workspaceId);
-      this.logger.log(
         `[generateAnswerStream] Build system + user prompts: documentId=${documentId} workspaceId=${workspaceId} variant=${variant}`,
       );
       const { system, user } = await this.promptService.getChatPrompts(
@@ -952,13 +930,14 @@ export class RagService {
         { workspaceId, documentId, scopeFlags, variant },
       );
 
+      // ── Phase D: LLM streaming ───────────────────────────────────────
+      yield { type: 'status', phase: 'generating' };
+
       let answerText = '';
       let legalAnswer: LegalAnswer | undefined;
       let finalConfidence: 'high' | 'medium' | 'low' = confidence;
 
       if (legalReviewMode) {
-        // Structured-output path: a single `legal-answer` event, then `done`.
-        // OpenAI/Anthropic structured-output APIs don't safely stream partial JSON.
         const overrideModel = this.legalReviewModelResolver.resolve(provider) ?? null;
         legalAnswer = await this.callLlmStructured(system, user, workspaceId, {
           signal: options?.signal,
@@ -997,17 +976,10 @@ export class RagService {
         `[generateAnswerStream] LLM call done: documentId=${documentId} answerLength=${answerText.length} hasLegalAnswer=${Boolean(legalAnswer)}`,
       );
 
-      // We treat the answer as "found" if any source produced material —
-      // local document chunks, legal chunks, or web results. Web-only
-      // answers are flagged as low-confidence elsewhere because they
-      // didn't ground in the user's actual document.
       const notFound =
         documentChunks.length === 0 &&
         legalChunks.length === 0 &&
         webResults.length === 0;
-      // When `notFound`, choose the most informative reason. Pre-flight
-      // (no_chunks / embeddings_pending) takes priority over below_floor
-      // because it points to a fixable system state, not a query problem.
       let notFoundReason: NotFoundReason | undefined;
       if (notFound) {
         notFoundReason = preflightReason ?? 'below_floor';
@@ -1023,15 +995,6 @@ export class RagService {
         fromCache: false,
       };
 
-      // Cache key is independent of RAG_TOP_K_* / RAG_SIMILARITY_FLOOR.
-      // Tuning changes take effect for cache misses only; existing entries
-      // age out via RAG_CACHE_TTL_SECONDS (default 24h). For immediate
-      // effect, operators can call ragCacheService.invalidateDocument or
-      // flush the rag:cache:* keyspace.
-      //
-      // Skip caching notFound responses: they're cheap to recompute and
-      // caching them creates a poor-UX feedback loop where a one-off bad
-      // query poisons the cache.
       if (!notFound) {
         await this.ragCacheService.set(
           documentId,
@@ -1067,6 +1030,14 @@ export class RagService {
     const settings = await this.workspaceSettingsService
       .getSettings(workspaceId)
       .catch(() => null);
+    return this.deriveLegalReviewMode(settings);
+  }
+
+  /**
+   * Derive legal-review mode from already-fetched workspace settings,
+   * avoiding a redundant DB round-trip when the caller already has them.
+   */
+  private deriveLegalReviewMode(settings?: { legalReviewMode?: boolean } | null): boolean {
     const wsFlag = settings?.legalReviewMode;
     if (typeof wsFlag === 'boolean') return wsFlag;
     const envFlag = (this.configService.get<string>('LEGAL_REVIEW_MODE') ?? '').toLowerCase();

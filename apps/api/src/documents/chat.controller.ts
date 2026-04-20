@@ -346,7 +346,7 @@ export class ChatController {
           threadId,
         },
       )) {
-        if (event.type === 'chunk') {
+        if (event.type === 'chunk' || event.type === 'status') {
           res.write(`data: ${JSON.stringify(event)}\n\n`);
         } else if (event.type === 'done') {
           finalAnswerText = event.answerText;
@@ -372,47 +372,56 @@ export class ChatController {
         return;
       }
 
+      // Close the SSE connection immediately so the client isn't held open
+      // while we persist. The `done` event was already written above.
+      res.end();
+
+      // Fire-and-forget: persist chat message + audit log in the background.
+      // The Nest process stays alive to run these; errors are logged, not
+      // propagated (the user already has the answer).
       this.logger.log(
         `[ChatStream] Calling chatMessageService.saveChatMessage: documentId=${documentId} threadId=${threadId} fromCache=${finalFromCache}`,
       );
-      const savedStream = await this.chatMessageService.saveChatMessage(
-        documentId,
-        workspaceId,
-        user.id,
-        question,
-        {
-          answerText: finalAnswerText,
-          confidence: finalConfidence,
-          citations: finalCitations,
-          notFound: finalNotFound,
-          fromCache: finalFromCache,
-        },
-        jurisdiction,
-        threadId,
-      );
-      if (savedStream) {
-        this.memoryQueue.add('summarize', { threadId, documentId, workspaceId }).catch(() => {});
-      }
-
-      await this.auditService.createAuditLog(
-        workspaceId,
-        user.id,
-        AuditAction.CHAT_QUERY,
-        TargetType.DOCUMENT,
-        documentId,
-        requestInfo.ip,
-        requestInfo.userAgent,
-        {
-          questionLength: question.length,
+      Promise.all([
+        this.chatMessageService.saveChatMessage(
+          documentId,
+          workspaceId,
+          user.id,
+          question,
+          {
+            answerText: finalAnswerText,
+            confidence: finalConfidence,
+            citations: finalCitations,
+            notFound: finalNotFound,
+            fromCache: finalFromCache,
+          },
+          jurisdiction,
           threadId,
-          hasAnswer: !!finalAnswerText,
-          confidence: finalConfidence,
-          citationsCount: finalCitations.length,
-          fromCache: finalFromCache,
-        },
+        ).then((saved) => {
+          if (saved) {
+            this.memoryQueue.add('summarize', { threadId, documentId, workspaceId }).catch(() => {});
+          }
+        }),
+        this.auditService.createAuditLog(
+          workspaceId,
+          user.id,
+          AuditAction.CHAT_QUERY,
+          TargetType.DOCUMENT,
+          documentId,
+          requestInfo.ip,
+          requestInfo.userAgent,
+          {
+            questionLength: question.length,
+            threadId,
+            hasAnswer: !!finalAnswerText,
+            confidence: finalConfidence,
+            citationsCount: finalCitations.length,
+            fromCache: finalFromCache,
+          },
+        ),
+      ]).catch((err) =>
+        this.logger.error('[ChatStream] Post-stream persist failed', err),
       );
-
-      res.end();
     } catch (error) {
       if (signal?.aborted) return;
       this.logError('ChatStream', { documentId, workspaceId }, error);

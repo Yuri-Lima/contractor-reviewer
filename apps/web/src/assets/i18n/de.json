@@ -392,6 +392,12 @@
       "belowFloor": "Es wurden keine ausreichend relevanten Auszüge zu dieser Frage gefunden. Formulieren Sie sie um oder fragen Sie nach einer konkreteren Klausel.",
       "generic": "Im Dokument wurde kein relevanter Kontext gefunden.",
       "webSourceLabel": "Webquelle"
+    },
+    "statusPhase": {
+      "embedding": "Frage wird analysiert...",
+      "searching": "Dokumente werden durchsucht...",
+      "web-search": "Websuche läuft...",
+      "generating": "Antwort wird generiert..."
     }
   },
   "parsers": {

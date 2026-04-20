@@ -297,17 +297,36 @@ export class RagService {
     workspaceId: string,
     jurisdiction?: string,
     language: string = 'en',
-    options?: { signal?: AbortSignal },
+    options?: { signal?: AbortSignal; forceFresh?: boolean; threadId?: string; similarityThreshold?: number },
   ): Promise<ChatPrepareResponse> {
+    const totalStart = Date.now();
+
+    // --- Embedding ---
+    const embStart = Date.now();
     const questionEmbedding = await this.embeddingsService.generateEmbedding(
       question,
       options,
     );
+    const embeddingMs = Date.now() - embStart;
 
-    // Pre-flight: if the document has no chunks or embeddings are still
-    // pending, log it so dev-mode users see why retrieval was thin. We
-    // still run the search (it'll just return []) so the prepared payload
-    // shape stays consistent with the streaming path.
+    // --- Cache probe (read-only) ---
+    let cacheStatus: { wouldHitCache: boolean; cacheSimilarityThreshold: number } | undefined;
+    if (!options?.forceFresh) {
+      const cached = await this.ragCacheService.get(
+        documentId,
+        jurisdiction,
+        questionEmbedding,
+        language,
+        { similarityThreshold: options?.similarityThreshold },
+      );
+      cacheStatus = {
+        wouldHitCache: cached != null,
+        cacheSimilarityThreshold: options?.similarityThreshold ?? 0.95,
+      };
+    } else {
+      cacheStatus = { wouldHitCache: false, cacheSimilarityThreshold: options?.similarityThreshold ?? 0.95 };
+    }
+
     const preflightReason = await this.classifyChunkState(documentId);
     if (preflightReason) {
       this.logger.warn(
@@ -315,11 +334,14 @@ export class RagService {
       );
     }
 
+    // --- Document search ---
+    const docSearchStart = Date.now();
     const rawDocumentChunks = await this.searchDocumentChunks(
       questionEmbedding,
       documentId,
       this.topKDocument,
     );
+    const documentSearchMs = Date.now() - docSearchStart;
     const { kept: documentChunks, usedFallback: docFallbackUsed } =
       this.applyFloorWithFallback(rawDocumentChunks);
     this.logger.log(
@@ -328,6 +350,8 @@ export class RagService {
         `topK=${this.topKDocument}`,
     );
 
+    // --- Legal search ---
+    const legalSearchStart = Date.now();
     const rawLegalChunks = jurisdiction
       ? await this.searchLegalChunks(
           questionEmbedding,
@@ -336,6 +360,7 @@ export class RagService {
           this.topKLegal,
         )
       : [];
+    const legalSearchMs = Date.now() - legalSearchStart;
     const legalChunks = this.applySimilarityFloor(rawLegalChunks);
     if (jurisdiction) {
       this.logger.log(
@@ -344,12 +369,8 @@ export class RagService {
       );
     }
 
-    // Run web search according to the same trigger semantics as
-    // generateAnswerStream so the prepared payload reflects what the
-    // execute path would actually send to the LLM. Web search runs AFTER
-    // the vector queries so we can mine statute hints from the retrieved
-    // chunks and feed them into the Tavily query — anchoring on real act
-    // names (e.g. "Pensions Act 1990") materially improves `.gov` recall.
+    // --- Web search ---
+    const webSearchStart = Date.now();
     let webResults: WebSearchResult[] = [];
     if (this.shouldRunWebSearch(this.webSearchTrigger, documentChunks.length)) {
       const statuteHints = this.deriveStatuteHints(
@@ -367,6 +388,15 @@ export class RagService {
         );
       }
     }
+    const webSearchMs = webResults.length > 0 || this.shouldRunWebSearch(this.webSearchTrigger, documentChunks.length)
+      ? Date.now() - webSearchStart
+      : undefined;
+
+    // --- Memory (parity with streaming path) ---
+    const memoryContext = await this.memoryService.getDocumentAndThreadMemory(
+      documentId,
+      options?.threadId ?? null,
+    );
 
     const documentContext = this.formatDocumentContext(documentChunks);
     const legalContext = this.formatLegalContext(legalChunks);
@@ -377,31 +407,29 @@ export class RagService {
       this.documentRepository.findOne({ where: { id: documentId } }),
     ]);
 
-    const scopeFlags =
-      workspaceSettings || document
-        ? {
-            includeGlobal: workspaceSettings?.promptScopeIncludeGlobal ?? true,
-            includeWorkspace: workspaceSettings?.promptScopeIncludeWorkspace ?? true,
-            includeDocument: (document as { promptScopeIncludeDocument?: boolean })?.promptScopeIncludeDocument ?? true,
-          }
-        : undefined;
+    const resolvedScopeFlags = {
+      includeGlobal: workspaceSettings?.promptScopeIncludeGlobal ?? true,
+      includeWorkspace: workspaceSettings?.promptScopeIncludeWorkspace ?? true,
+      includeDocument: (document as { promptScopeIncludeDocument?: boolean })?.promptScopeIncludeDocument ?? true,
+    };
 
     const legalReviewMode = await this.resolveLegalReviewMode(workspaceId);
     const variant = legalReviewMode ? LEGAL_REVIEW_PROMPT_VARIANT : 'default';
 
-    // Legal-review variant has separate {{context}}, {{legalSources}} and
-    // {{webSources}} slots. The default variant has no dedicated webSources
-    // slot, so we fold web hits into the combined context for parity with
-    // the streaming path.
-    const combinedContext =
-      [
-        documentContext,
-        !legalReviewMode && legalContext ? legalContext : '',
-        !legalReviewMode && webSourcesStr ? webSourcesStr : '',
-      ]
-        .filter(Boolean)
-        .join('\n\n') || 'No relevant context found.';
+    const combinedContextParts = [
+      documentContext,
+      !legalReviewMode && legalContext ? legalContext : '',
+      !legalReviewMode && webSourcesStr ? webSourcesStr : '',
+    ].filter(Boolean);
 
+    let combinedContext = combinedContextParts.join('\n\n') || 'No relevant context found.';
+
+    if (memoryContext) {
+      combinedContext = `${memoryContext}\n\n---\n\n${combinedContext}`;
+    }
+
+    // --- Prompt assembly ---
+    const promptStart = Date.now();
     const languageName = this.promptService.getLanguageName(language);
     const { system, user } = await this.promptService.getChatPrompts(
       {
@@ -412,16 +440,18 @@ export class RagService {
         legalSources: legalContext || 'No statutes available for this jurisdiction.',
         webSources: webSourcesStr,
       },
-      { workspaceId, documentId, scopeFlags, variant },
+      { workspaceId, documentId, scopeFlags: resolvedScopeFlags, variant },
     );
+    const promptAssemblyMs = Date.now() - promptStart;
 
-    // Resolve model: in legal-review mode, prefer LEGAL_REVIEW_MODEL_<PROVIDER>
-    // (returns null = adapter default). Otherwise the legacy chatModel.
+    // Resolve model + provider
+    const provider = await this.llmProviderRegistry.resolveProvider(workspaceId);
     let resolvedModel: string | null = this.chatModel;
     if (legalReviewMode) {
-      const provider = await this.llmProviderRegistry.resolveProvider(workspaceId);
       resolvedModel = this.legalReviewModelResolver.resolve(provider) ?? null;
     }
+
+    const totalMs = Date.now() - totalStart;
 
     const payload: ChatPreparePayload = {
       systemPrompt: system,
@@ -430,6 +460,8 @@ export class RagService {
         text: c.item.text,
         pageNumber: c.item.pageNumber ?? undefined,
         paragraphId: c.item.paragraphId ?? undefined,
+        clauseNumber: (c.item as { clauseNumber?: string | null }).clauseNumber ?? undefined,
+        headingPath: (c.item as { headingPath?: string[] | null }).headingPath ?? undefined,
         similarity: c.distance,
       })),
       legalChunks: legalChunks.map((c) => ({
@@ -444,6 +476,38 @@ export class RagService {
       temperature: legalReviewMode ? 0 : 0.3,
       maxTokens: this.maxTokens,
       legalReviewMode,
+      provider: provider.id,
+      retrievalStats: {
+        documentChunksRetrieved: rawDocumentChunks.length,
+        documentChunksKept: documentChunks.length,
+        legalChunksRetrieved: rawLegalChunks.length,
+        legalChunksKept: legalChunks.length,
+        similarityFloor: this.similarityFloor,
+        similarityFloorFallback: this.similarityFloorFallback,
+        fallbackUsed: docFallbackUsed,
+        topKDocument: this.topKDocument,
+        topKLegal: this.topKLegal,
+        webSearchTrigger: this.webSearchTrigger,
+        webResultsCount: webResults.length,
+        preflightReason: preflightReason ?? null,
+        embeddingModel: this.embeddingsService.modelName,
+      },
+      webSearchResults: webResults.map((w) => ({
+        title: w.title,
+        url: w.url,
+        snippet: w.snippet,
+      })),
+      memoryContext: memoryContext ?? null,
+      cacheStatus,
+      scopeFlags: resolvedScopeFlags,
+      timings: {
+        embeddingMs,
+        documentSearchMs,
+        legalSearchMs,
+        webSearchMs,
+        promptAssemblyMs,
+        totalMs,
+      },
     };
 
     const requestId = await this.chatPrepareCacheService.set(

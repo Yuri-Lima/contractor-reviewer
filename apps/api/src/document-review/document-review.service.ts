@@ -127,14 +127,15 @@ export class DocumentReviewService {
 
     // Idempotency: re-use existing row if the (documentId, rulesVersion,
     // llmModel) tuple already has one and `force` is not set.
-    if (!opts.force) {
-      const existing = await this.reviewRepo.findOne({
-        where: {
-          documentId: opts.documentId,
-          rulesVersion,
-          ...(llmModel !== null ? { llmModel } : { llmModel: IsNull() }),
-        },
-      });
+    const existingWhere = {
+      documentId: opts.documentId,
+      rulesVersion,
+      ...(llmModel !== null ? { llmModel } : { llmModel: IsNull() }),
+    };
+    if (opts.force) {
+      await this.reviewRepo.delete(existingWhere);
+    } else {
+      const existing = await this.reviewRepo.findOne({ where: existingWhere });
       if (existing) {
         this.logger.log(
           `[review] hit idempotency cache: doc=${opts.documentId} rulesVersion=${rulesVersion} llmModel=${llmModel ?? 'none'}`,

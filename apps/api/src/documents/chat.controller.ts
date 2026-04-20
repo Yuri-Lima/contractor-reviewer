@@ -435,7 +435,7 @@ export class ChatController {
     @WorkspaceId() workspaceId: string,
     @Param('documentId') documentId: string,
     @ReqAbortSignal() signal: AbortSignal,
-    @Body() chatDto: { question: string; language?: string; forceFresh?: boolean },
+    @Body() chatDto: { question: string; language?: string; forceFresh?: boolean; threadId?: string },
   ): Promise<ChatPrepareResponse> {
     if (!this.isPrepareEnabled()) {
       throw new NotFoundException();
@@ -465,7 +465,7 @@ export class ChatController {
         workspaceId,
         jurisdiction,
         chatDto.language || 'en',
-        { signal },
+        { signal, forceFresh: chatDto.forceFresh, threadId: chatDto.threadId },
       );
       this.logger.log('[ChatPrepare] Completed', {
         documentId,

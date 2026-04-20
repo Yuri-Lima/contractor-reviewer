@@ -22,6 +22,10 @@ export class EmbeddingsService {
     this.model = this.configService.get<string>('OPENAI_EMBEDDING_MODEL') || 'text-embedding-3-small';
   }
 
+  get modelName(): string {
+    return this.model;
+  }
+
   /**
    * Generate embedding for a single text
    */

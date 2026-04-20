@@ -1,8 +1,5 @@
 export type AssetContext = 'avatar' | 'workspace_logo' | 'document_thumbnail';
 
-/** @deprecated Use AssetContext */
-export type ImageAssetContext = AssetContext;
-
 export interface Asset {
   id: string;
   context: AssetContext;
@@ -15,9 +12,6 @@ export interface Asset {
   createdAt: string;
 }
 
-/** @deprecated Use Asset */
-export interface ImageAsset extends Asset {}
-
 export interface AssetStrategyConfig {
   context: AssetContext;
   maxSizeBytes: number;
@@ -27,6 +21,3 @@ export interface AssetStrategyConfig {
   pathPrefix: string;
   generateVariants?: { name: string; width: number; height?: number }[];
 }
-
-/** @deprecated Use AssetStrategyConfig */
-export interface ImageAssetStrategyConfig extends AssetStrategyConfig {}

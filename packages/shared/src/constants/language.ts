@@ -1,15 +1,6 @@
-/**
- * Supported i18n locale codes. Single source of truth for app languages.
- */
-export const SUPPORTED_LOCALE_CODES = ['en', 'es', 'pt-BR', 'pt', 'de'] as const;
+type SupportedLocaleCode = 'en' | 'es' | 'pt-BR' | 'pt' | 'de';
 
-export type SupportedLocaleCode = (typeof SUPPORTED_LOCALE_CODES)[number];
-
-/**
- * Maps app i18n locale codes to ML model language codes (Whisper, TTS).
- * Reused by transcription providers and TTS adapters.
- */
-export const I18N_TO_ML_LANG: Record<SupportedLocaleCode, string> = {
+const I18N_TO_ML_LANG: Record<SupportedLocaleCode, string> = {
   en: 'en',
   es: 'es',
   'pt-BR': 'pt',
@@ -17,10 +8,7 @@ export const I18N_TO_ML_LANG: Record<SupportedLocaleCode, string> = {
   de: 'de',
 };
 
-/**
- * Display names for supported locale codes (used in prompts, UI).
- */
-export const LANGUAGE_DISPLAY_NAMES: Record<SupportedLocaleCode, string> = {
+const LANGUAGE_DISPLAY_NAMES: Record<SupportedLocaleCode, string> = {
   en: 'English',
   es: 'Spanish',
   'pt-BR': 'Portuguese (Brazil)',

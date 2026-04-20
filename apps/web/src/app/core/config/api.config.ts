@@ -91,7 +91,6 @@ export const API_CONFIG = {
       `/workspaces/${workspaceId}/documents/${documentId}/chat/stream`,
     privacy: (workspaceId: string) => `/workspaces/${workspaceId}/privacy`,
     audit: (workspaceId: string) => `/workspaces/${workspaceId}/audit`,
-    retention: (workspaceId: string) => `/workspaces/${workspaceId}/retention`,
     settings: (workspaceId: string) => `/workspaces/${workspaceId}/settings`,
     prompts: (workspaceId: string) => `/workspaces/${workspaceId}/prompts`,
     documentPrompts: (workspaceId: string, documentId: string) =>

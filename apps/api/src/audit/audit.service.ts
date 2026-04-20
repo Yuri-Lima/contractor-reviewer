@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository } from 'typeorm';
 import { AuditLog as AuditLogEntity, AuditAction, TargetType } from '../entities/audit-log.entity';
 import { AuditLogQueryDto, AuditLog } from '@contractai-review/shared';
 

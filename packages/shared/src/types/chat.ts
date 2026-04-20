@@ -91,8 +91,3 @@ export interface ChatPrepareResponse {
   payload: ChatPreparePayload;
 }
 
-/** Request body for POST /chat/execute */
-export interface ChatExecuteRequest {
-  requestId: string;
-  threadId?: string; // Optional; use when execute is part of a thread
-}

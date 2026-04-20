@@ -13,10 +13,6 @@
 export const ISSUE_SEVERITIES = ['blocker', 'high', 'medium', 'low', 'info'] as const;
 export type IssueSeverity = (typeof ISSUE_SEVERITIES)[number];
 
-export function isIssueSeverity(value: unknown): value is IssueSeverity {
-  return typeof value === 'string' && (ISSUE_SEVERITIES as readonly string[]).includes(value);
-}
-
 /** Numeric weight for severity comparison (higher = more severe). */
 export const ISSUE_SEVERITY_RANK: Record<IssueSeverity, number> = {
   blocker: 4,
@@ -43,10 +39,6 @@ export const ISSUE_CATEGORIES = [
   'other',
 ] as const;
 export type IssueCategory = (typeof ISSUE_CATEGORIES)[number];
-
-export function isIssueCategory(value: unknown): value is IssueCategory {
-  return typeof value === 'string' && (ISSUE_CATEGORIES as readonly string[]).includes(value);
-}
 
 /**
  * A single drafting / compliance issue surfaced by the LLM (chat) or the
@@ -109,23 +101,6 @@ export interface LegalAnswer {
   confidence: LegalAnswerConfidence;
   /** Optional human prose summary, ≤500 chars. Used as fallback for legacy renderers. */
   freeText?: string;
-}
-
-/**
- * Type guard for runtime narrowing in the UI when `answer` is
- * `LegalAnswer | string`.
- */
-export function isLegalAnswer(value: unknown): value is LegalAnswer {
-  if (value == null || typeof value !== 'object') return false;
-  const v = value as Record<string, unknown>;
-  return (
-    Array.isArray(v.compliantElements) &&
-    Array.isArray(v.issues) &&
-    Array.isArray(v.recommendations) &&
-    Array.isArray(v.legislationReferenced) &&
-    typeof v.confidence === 'string' &&
-    ['high', 'medium', 'low'].includes(v.confidence)
-  );
 }
 
 /**

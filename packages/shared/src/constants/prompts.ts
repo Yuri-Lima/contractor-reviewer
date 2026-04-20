@@ -9,7 +9,6 @@ export const WORKSPACE_PROMPT_KEY = 'workspace.system' as const;
 /** Document-level prompt keys used for RAG chat. Single source of truth. */
 export const PROMPT_KEYS = ['chat.system', 'chat.user'] as const;
 
-/** Document prompt key type */
 export type DocumentPromptKey = (typeof PROMPT_KEYS)[number];
 
 /** Maps prompt key to i18n translation key for UI labels. Single source of truth. */

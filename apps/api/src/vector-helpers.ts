@@ -23,20 +23,3 @@
 export function arrayToVectorString(arr: number[]): string {
   return `[${arr.join(',')}]`;
 }
-
-/**
- * Parse PostgreSQL vector string to number array
- */
-export function vectorStringToArray(str: string): number[] {
-  if (!str || typeof str !== 'string') {
-    return [];
-  }
-  if (str.startsWith('[') && str.endsWith(']')) {
-    return str
-      .slice(1, -1)
-      .split(',')
-      .map((v) => parseFloat(v.trim()))
-      .filter((v) => !isNaN(v));
-  }
-  return [];
-}

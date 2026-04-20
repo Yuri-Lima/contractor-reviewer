@@ -47,12 +47,6 @@
             ],
             "scripts": [],
             "allowedCommonJsDependencies": [
-              "cytoscape-fcose",
-              "@braintree/sanitize-url",
-              "dayjs",
-              "cytoscape-cose-bilkent",
-              "vscode-jsonrpc",
-              "vscode-languageserver-protocol",
               "@xmldom/xmldom",
               "mammoth",
               "underscore",
@@ -64,8 +58,7 @@
               "xmlbuilder",
               "react",
               "react-dom",
-              "react/jsx-runtime",
-              "langium"
+              "react/jsx-runtime"
             ]
           },
           "configurations": {

@@ -8,5 +8,4 @@
 export const environment = {
   production: true,
   apiUrl: '/api',
-  isMobile: false, // Will be set dynamically in api.config.ts
 };

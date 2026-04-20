@@ -28,7 +28,7 @@ export const AUDIO_ALLOWED_MIME_TYPES = [
 export const AUDIO_MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25MB
 
 /** Maps MIME type to file extension for audio uploads. */
-export const MIME_TO_EXTENSION: Record<string, string> = {
+const MIME_TO_EXTENSION: Record<string, string> = {
   'audio/webm': 'webm',
   'audio/wav': 'wav',
   'audio/x-wav': 'wav',

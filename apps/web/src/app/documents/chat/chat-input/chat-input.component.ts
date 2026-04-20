@@ -51,9 +51,9 @@ const LINE_HEIGHT = 24;
             [rounded]="true"
             [text]="true"
             severity="secondary"
-            (onClick)="onAttachClick()"
-            [pTooltip]="'chat.attachFile' | translate"
-            [attr.aria-label]="'chat.attachFile' | translate"
+            [disabled]="true"
+            [pTooltip]="'common.comingSoon' | translate"
+            [attr.aria-label]="'common.comingSoon' | translate"
             styleClass="chat-toolbar-btn"
           ></p-button>
           <p-button
@@ -61,8 +61,9 @@ const LINE_HEIGHT = 24;
             [rounded]="true"
             [text]="true"
             severity="secondary"
-            [pTooltip]="'chat.language' | translate"
-            [attr.aria-label]="'chat.language' | translate"
+            [disabled]="true"
+            [pTooltip]="'common.comingSoon' | translate"
+            [attr.aria-label]="'common.comingSoon' | translate"
             styleClass="chat-toolbar-btn"
           ></p-button>
           <p-button
@@ -70,8 +71,9 @@ const LINE_HEIGHT = 24;
             [rounded]="true"
             [text]="true"
             severity="secondary"
-            [pTooltip]="'chat.documents' | translate"
-            [attr.aria-label]="'chat.documents' | translate"
+            [disabled]="true"
+            [pTooltip]="'common.comingSoon' | translate"
+            [attr.aria-label]="'common.comingSoon' | translate"
             styleClass="chat-toolbar-btn"
           ></p-button>
           <p-button
@@ -79,8 +81,9 @@ const LINE_HEIGHT = 24;
             [rounded]="true"
             [text]="true"
             severity="secondary"
-            [pTooltip]="'chat.auto' | translate"
-            [attr.aria-label]="'chat.auto' | translate"
+            [disabled]="true"
+            [pTooltip]="'common.comingSoon' | translate"
+            [attr.aria-label]="'common.comingSoon' | translate"
             styleClass="chat-toolbar-btn"
           >
             <span class="text-xs ml-1">{{ 'chat.auto' | translate }}</span>
@@ -126,9 +129,14 @@ const LINE_HEIGHT = 24;
       :host ::ng-deep .chat-toolbar-btn.p-button {
         color: var(--text-secondary);
       }
-      :host ::ng-deep .chat-toolbar-btn.p-button:hover {
+      :host ::ng-deep .chat-toolbar-btn.p-button:hover:not(:disabled) {
         color: var(--text-primary);
         background-color: color-mix(in srgb, var(--text-primary) 8%, var(--surface-hover));
+      }
+      :host ::ng-deep .chat-toolbar-btn.p-button:disabled {
+        opacity: 0.5;
+        pointer-events: auto;
+        cursor: default;
       }
       :host ::ng-deep .chat-send-btn.p-button {
         background-color: var(--primary-color);

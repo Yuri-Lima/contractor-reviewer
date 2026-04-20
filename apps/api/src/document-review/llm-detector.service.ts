@@ -18,6 +18,7 @@ import { completeStructuredWithRetry } from '../rag/structured-output.helper';
 
 const MAX_WINDOW_CHARS = 16_000; // ~4k tokens — gpt-4o sweet spot
 const WINDOW_OVERLAP = 800;
+const DEFAULT_STRUCTURED_MAX_TOKENS = 8000;
 
 interface LlmDetectorOptions {
   workspaceId: string;
@@ -63,12 +64,17 @@ Return ONLY the JSON. Do not wrap it in prose.`;
 @Injectable()
 export class LlmDetectorService {
   private readonly logger = new Logger(LlmDetectorService.name);
+  private readonly structuredMaxTokens: number;
 
   constructor(
     private readonly llmProviderRegistry: LlmProviderRegistry,
     private readonly modelResolver: LegalReviewModelResolver,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    const raw = this.configService.get<string>('LEGAL_REVIEW_MAX_TOKENS');
+    const parsed = raw ? parseInt(raw, 10) : NaN;
+    this.structuredMaxTokens = parsed > 0 ? parsed : DEFAULT_STRUCTURED_MAX_TOKENS;
+  }
 
   async detect(text: string, opts: LlmDetectorOptions): Promise<LlmDetectorResult> {
     const provider = await this.llmProviderRegistry.resolveProvider(opts.workspaceId);
@@ -105,7 +111,7 @@ export class LlmDetectorService {
           {
             ...(overrideModel ? { model: overrideModel } : {}),
             temperature: 0,
-            maxTokens: 2000,
+            maxTokens: this.structuredMaxTokens,
             signal: opts.signal,
           },
         );

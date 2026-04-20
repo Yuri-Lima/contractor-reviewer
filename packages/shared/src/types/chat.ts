@@ -2,6 +2,57 @@ import { Citation } from './common';
 import type { LegalAnswer } from './legal-review';
 import type { NotFoundReason } from './llm';
 
+// ---------------------------------------------------------------------------
+// Dev-mode retrieval diagnostics
+// ---------------------------------------------------------------------------
+
+/** RAG retrieval statistics surfaced in the dev-mode prepare payload. */
+export interface ChatPrepareRetrievalStats {
+  documentChunksRetrieved: number;
+  documentChunksKept: number;
+  legalChunksRetrieved: number;
+  legalChunksKept: number;
+  similarityFloor: number;
+  similarityFloorFallback: number;
+  fallbackUsed: boolean;
+  topKDocument: number;
+  topKLegal: number;
+  webSearchTrigger: 'off' | 'fallback' | 'always';
+  webResultsCount: number;
+  preflightReason: NotFoundReason | null;
+  embeddingModel: string;
+}
+
+/** Semantic-cache probe result (read-only, does not consume the cache). */
+export interface ChatPrepareCacheStatus {
+  wouldHitCache: boolean;
+  cacheSimilarityThreshold: number;
+}
+
+/** Web search result surfaced in the dev-mode prepare payload. */
+export interface ChatPrepareWebResult {
+  title: string;
+  url: string;
+  snippet?: string;
+}
+
+/** Prompt scope flags active for this request. */
+export interface ChatPrepareScopeFlags {
+  includeGlobal: boolean;
+  includeWorkspace: boolean;
+  includeDocument: boolean;
+}
+
+/** Per-step latency breakdown (milliseconds). */
+export interface ChatPrepareTimings {
+  embeddingMs: number;
+  documentSearchMs: number;
+  legalSearchMs: number;
+  webSearchMs?: number;
+  promptAssemblyMs: number;
+  totalMs: number;
+}
+
 export interface ChatThread {
   id: string;
   documentId: string;
@@ -58,6 +109,8 @@ export interface ChatPrepareDocumentChunk {
   text: string;
   pageNumber?: number;
   paragraphId?: string;
+  clauseNumber?: string;
+  headingPath?: string[];
   similarity: number;
 }
 
@@ -83,6 +136,20 @@ export interface ChatPreparePayload {
   maxTokens: number;
   /** When true, executePreparedChat will call `completeStructured<LegalAnswer>` instead of `complete`/`completeStream`. */
   legalReviewMode?: boolean;
+  /** Resolved LLM provider ID (e.g. 'openai', 'anthropic', 'xai'). */
+  provider?: string;
+  /** Retrieval pipeline statistics for dev-mode diagnostics. */
+  retrievalStats?: ChatPrepareRetrievalStats;
+  /** Web search results (separate from prompt text for inspection). */
+  webSearchResults?: ChatPrepareWebResult[];
+  /** Document + thread memory injected into context. Null when no memory exists. */
+  memoryContext?: string | null;
+  /** Read-only cache probe: whether the question would have been served from semantic cache. */
+  cacheStatus?: ChatPrepareCacheStatus;
+  /** Which prompt scopes were active for this request. */
+  scopeFlags?: ChatPrepareScopeFlags;
+  /** Per-step latency breakdown. */
+  timings?: ChatPrepareTimings;
 }
 
 /** Response from POST /chat/prepare */

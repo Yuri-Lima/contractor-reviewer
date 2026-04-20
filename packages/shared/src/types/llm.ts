@@ -35,10 +35,13 @@ export interface StreamChunk {
 }
 
 import type { Citation } from './common';
+import type { LegalAnswer } from './legal-review';
 
 export interface StreamDoneChunk {
   type: 'done';
   answerText: string;
+  /** Present in legal-review mode. UI prefers this over answerText when set. */
+  legalAnswer?: LegalAnswer;
   confidence: 'high' | 'medium' | 'low';
   citations: Citation[];
   notFound: boolean;
@@ -50,4 +53,18 @@ export interface StreamErrorChunk {
   message: string;
 }
 
-export type StreamEvent = StreamChunk | StreamDoneChunk | StreamErrorChunk;
+/**
+ * Structured legal-answer event emitted instead of token-by-token chunks
+ * when `legalReviewMode` is on (structured-output APIs cannot safely stream
+ * partial JSON). Sent as a single message just before `StreamDoneChunk`.
+ */
+export interface StreamLegalAnswerChunk {
+  type: 'legal-answer';
+  answer: LegalAnswer;
+}
+
+export type StreamEvent =
+  | StreamChunk
+  | StreamLegalAnswerChunk
+  | StreamDoneChunk
+  | StreamErrorChunk;

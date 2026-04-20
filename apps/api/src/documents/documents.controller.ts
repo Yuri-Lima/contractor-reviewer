@@ -194,6 +194,36 @@ export class DocumentsController {
     return document;
   }
 
+  /**
+   * Re-chunk an existing document using the current chunker. Used after the
+   * heading-aware (Phase-2 legal-grade) chunker shipped, to backfill the
+   * `clauseNumber` / `headingPath` columns on rows that pre-date it. Owner-
+   * only because it deletes and re-creates all chunks for the document.
+   */
+  @Post(':documentId/reindex')
+  @UseGuards(RolesGuard)
+  @Roles(WorkspaceRole.OWNER)
+  @HttpCode(HttpStatus.ACCEPTED)
+  async reindexDocument(
+    @WorkspaceId() workspaceId: string,
+    @Param('documentId') documentId: string,
+    @CurrentUser() user: { id: string },
+    @RequestInfo() requestInfo: { ip: string; userAgent: string },
+  ): Promise<{ enqueuedJobs: number; deletedChunks: number }> {
+    const result = await this.documentsService.reindexChunks(documentId, workspaceId);
+    await this.auditService.createAuditLog(
+      workspaceId,
+      user.id,
+      AuditAction.OPEN_VIEW,
+      TargetType.DOCUMENT,
+      documentId,
+      requestInfo.ip,
+      requestInfo.userAgent,
+      { reindex: true, ...result },
+    );
+    return result;
+  }
+
   @Get(':documentId')
   async getDocument(
     @WorkspaceId() workspaceId: string,

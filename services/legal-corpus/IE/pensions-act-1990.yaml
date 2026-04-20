@@ -1,0 +1,38 @@
+# Pensions Act 1990 (Ireland)
+# Consolidated text via https://revisedacts.lawreform.ie/eli/1990/act/25/revised/en/html
+#
+# Source verification:
+#   sourceVersion: consolidated text incl. amendments to 2024-12-31
+#   lastVerified:  2026-04-01
+
+country: IE
+jurisdiction: IE
+language: en
+sourceType: law
+sourceName: Pensions Act 1990
+actName: Pensions Act
+actYear: 1990
+url: https://revisedacts.lawreform.ie/eli/1990/act/25/revised/en/html
+lastVerified: 2026-04-01
+
+sections:
+  - id: pensions-act-1990-s121-prsa
+    section: "Section 121 — PRSA access (Personal Retirement Savings Accounts)"
+    text: |
+      An employer who does not operate an occupational pension scheme, OR who
+      operates one with a waiting/eligibility period, MUST designate at least
+      one Standard PRSA provider and give every "excluded employee" access to
+      a PRSA via salary deduction with no fee chargeable to the employee for
+      that facility. Failure is a strict-liability offence (s.121(7)).
+      Note: from the commencement of the Automatic Enrolment Retirement
+      Savings System Act 2024 the scope of s.121 narrows for newly-eligible
+      employees who are auto-enrolled into NAERSA.
+
+  - id: pensions-act-1990-s58-disclosure
+    section: "Section 58 — Disclosure of information"
+    text: |
+      Trustees of an occupational pension scheme must furnish prescribed
+      information to members, prospective members, and contributors. The
+      "Disclosure Regulations 2006 (S.I. No. 301/2006)" set the form and
+      timing — typically on joining, on annual statement, and on leaving
+      service.

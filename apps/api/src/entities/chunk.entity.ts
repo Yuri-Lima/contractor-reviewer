@@ -23,6 +23,24 @@ export class Chunk {
   @Column({ nullable: true })
   paragraphId: string; // Identifier for paragraph/span
 
+  /**
+   * Clause number extracted from the document's heading hierarchy
+   * (e.g. "9.1.3"). Populated by the docling-side chunker when it
+   * detects a numbered heading attached to the chunk's section. Null
+   * for free-floating text or pre-Phase-2 chunks (until reindex).
+   */
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  clauseNumber: string | null;
+
+  /**
+   * Full breadcrumb path of headings that govern this chunk
+   * (e.g. ["9. Pension", "9.1 Auto-enrolment", "9.1.3 Contributions"]).
+   * Stored as jsonb so the array can be searched/displayed without
+   * splitting a delimited string.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  headingPath: string[] | null;
+
   @Column({ type: 'text' })
   text: string;
 

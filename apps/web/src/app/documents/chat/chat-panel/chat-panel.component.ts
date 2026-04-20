@@ -66,6 +66,7 @@ import { ChatSidebarComponent } from '../chat-sidebar/chat-sidebar.component';
                   (playAudio)="playAudio.emit($index)"
                   (pauseAudio)="pauseAudio.emit($event)"
                   (getFreshResponse)="getFreshResponse.emit($index)"
+                  (jumpToClause)="jumpToClause.emit($event)"
                 />
               }
             </div>
@@ -127,6 +128,7 @@ import { ChatSidebarComponent } from '../chat-sidebar/chat-sidebar.component';
                   (playAudio)="playAudio.emit($index)"
                   (pauseAudio)="pauseAudio.emit($event)"
                   (getFreshResponse)="getFreshResponse.emit($index)"
+                  (jumpToClause)="jumpToClause.emit($event)"
                 />
               }
             </div>
@@ -193,6 +195,8 @@ export class ChatPanelComponent {
   pauseAudio = output<number>();
   getFreshResponse = output<number>();
   attachClick = output<void>();
+  /** Forwarded from LegalAnswerComponent: clauseRef the user wants to scroll to in the document viewer. */
+  jumpToClause = output<string>();
 
   fullscreenMode = signal(false);
 

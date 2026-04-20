@@ -1,0 +1,46 @@
+# Automatic Enrolment Retirement Savings System Act 2024 (Ireland)
+# https://www.irishstatutebook.ie/eli/2024/act/20/enacted/en/html
+#
+# Source verification:
+#   sourceVersion: enacted text as of 2024-07-09
+#   lastVerified:  2026-04-01
+# Re-run `pnpm nx run api:lint-legal-corpus` after editing — warnings if
+# `lastVerified` is older than 6 months.
+
+country: IE
+jurisdiction: IE
+language: en
+sourceType: law
+sourceName: Automatic Enrolment Retirement Savings System Act 2024
+actName: Automatic Enrolment Retirement Savings System Act
+actYear: 2024
+url: https://www.irishstatutebook.ie/eli/2024/act/20/enacted/en/html
+lastVerified: 2026-04-01
+
+sections:
+  - id: ae-act-2024-s2
+    section: "Section 2 — Interpretation"
+    text: |
+      In this Act, "qualifying earnings" is NOT a defined term — the Act uses
+      "gross earnings" as the contribution base, with no lower or upper
+      threshold deductions. Phased contributions are tiered by years of
+      participation in the system.
+
+  - id: ae-act-2024-s10-eligibility
+    section: "Section 10 — Eligible employees"
+    text: |
+      An eligible employee is, broadly, a worker aged 23 or over and under 60
+      whose gross earnings exceed €20,000 in a 13-week period and who is not
+      already an active member of an occupational pension scheme, PRSA, or
+      trust RAC providing comparable benefits in respect of that employment.
+
+  - id: ae-act-2024-s30-contributions
+    section: "Section 30 — Contribution rates (phased)"
+    text: |
+      Contribution rates start at 1.5% employee + 1.5% employer + 0.5% State
+      top-up of gross earnings in years 1–3, rising in three further phases to
+      6% + 6% + 2% by year 10. The State top-up is paid by the National
+      Automatic Enrolment Retirement Savings Authority ("NAERSA"), not the
+      employer. Contracting out into a comparable occupational scheme is
+      permitted only where the alternative is at least as generous on a
+      whole-of-life basis.

@@ -247,6 +247,52 @@
     "title": "Document Settings",
     "tabPrompts": "AI Prompts"
   },
+  "legalAnswer": {
+    "title": "Legal review",
+    "compliant": "Compliant elements",
+    "issues": "Issues",
+    "recommendations": "Recommendations",
+    "legislationReferenced": "Legislation referenced",
+    "suggestion": "Suggestion",
+    "clausePrefix": "Clause",
+    "confidence": {
+      "high": "High confidence",
+      "medium": "Medium confidence",
+      "low": "Low confidence"
+    },
+    "severity": {
+      "blocker": "Blocker",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "info": "Info"
+    },
+    "category": {
+      "compliance": "Compliance",
+      "drafting": "Drafting",
+      "terminology": "Terminology",
+      "missing-statute": "Missing statute",
+      "deprecated-term": "Deprecated term",
+      "ambiguous": "Ambiguous",
+      "template-artefact": "Template artefact",
+      "other": "Other"
+    }
+  },
+  "legalReview": {
+    "tab": "Review",
+    "title": "Legal review",
+    "lastRun": "Last run",
+    "rules": "rules",
+    "rerun": "Re-run review",
+    "rerunning": "Running...",
+    "loading": "Loading review...",
+    "empty": "No review has been generated yet. Click Re-run review to start one.",
+    "noIssues": "No issues found",
+    "degraded": "Review completed with degraded coverage",
+    "audit": {
+      "documentReviewGenerated": "Document review generated"
+    }
+  },
   "chat": {
     "voiceInput": "Voice input",
     "voiceInputUnsupported": "Voice input is not supported in this browser",

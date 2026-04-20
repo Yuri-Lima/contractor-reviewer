@@ -45,6 +45,27 @@ export class Embedding {
   @Column({ nullable: true })
   section: string; // Article, section, etc.
 
+  /**
+   * Canonical short name of the act (e.g. "Automatic Enrolment Retirement
+   * Savings System Act"). Used for the legal-rerank similarity bonus —
+   * document chunks that mention this string get +0.1 to their score so
+   * the LLM sees the most-relevant statute first. Denormalized from the
+   * authoring YAML (services/legal-corpus/<jurisdiction>/*.yaml).
+   */
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  actName: string | null;
+
+  /** Year the act was enacted (used for "Pensions Act 1990" rendering). */
+  @Column({ type: 'int', nullable: true })
+  actYear: number | null;
+
+  /**
+   * Source verification stamp from the YAML's `lastVerified` field.
+   * Used by the corpus-staleness lint script (warns when older than 6 months).
+   */
+  @Column({ type: 'date', nullable: true })
+  lastVerified: Date | null;
+
   @Column({ nullable: true })
   metadata: string; // JSON string with additional metadata
 

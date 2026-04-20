@@ -1,0 +1,35 @@
+# Terminology red flags — wrong jurisdiction-specific terms (e.g. importing
+# UK pension language into an Irish contract).
+# Phase 4 of the legal-grade RAG pipeline. rulesVersion: v1.
+
+rulesVersion: v1
+category: terminology
+appliesTo: jurisdiction:IE
+
+rules:
+  - id: qualifying-earnings-uk
+    # "qualifying earnings" is a UK Pensions Act 2008 term and does NOT exist
+    # under the Irish Automatic Enrolment Retirement Savings System Act 2024,
+    # which uses "gross earnings" instead.
+    pattern: "qualifying earnings"
+    flags: gi
+    severity: high
+    message: "'Qualifying earnings' is a UK Pensions Act 2008 term and is not defined under Irish law."
+    remediation: "Replace with 'gross earnings' to align with the Automatic Enrolment Retirement Savings System Act 2024."
+    legislationReferenced:
+      - actName: Automatic Enrolment Retirement Savings System Act
+        actYear: 2024
+
+  - id: nest-uk-scheme
+    pattern: "\\bNEST\\b"
+    flags: g
+    severity: medium
+    message: "'NEST' is the UK National Employment Savings Trust; Ireland uses NAERSA under the AE Act 2024."
+    remediation: "If the intent is the Irish auto-enrolment scheme, refer to NAERSA."
+
+  - id: workplace-pension-uk-phrase
+    pattern: "workplace pension scheme \\(as defined under (the )?Pensions Act 200[48]\\)"
+    flags: gi
+    severity: high
+    message: "Reference to the UK Pensions Act 2004/2008 in an Irish contract."
+    remediation: "Cite the Pensions Act 1990 (Ireland) or the Automatic Enrolment Retirement Savings System Act 2024 instead."

@@ -1,6 +1,18 @@
 """
 Docling conversion microservice.
 Converts PDF, DOCX, PPTX, XLSX, images to markdown with pipeline options and metadata.
+
+Heading / clause metadata contract (consumed by the API-side chunker for the
+legal-grade RAG pipeline):
+  - The exported markdown MUST preserve heading levels (#, ##, ### ...) and the
+    original numeric clause prefixes (e.g. "## 9.1.3 Contributions"). Docling's
+    default `export_to_markdown()` already does both for DOCX/PDF inputs.
+  - The TS-side `ChunkingService.splitMarkdownBlocksWithHeadings` walks the
+    token stream and attaches the active heading breadcrumb + parsed
+    `clauseNumber` to each chunk; no extra fields need to be returned here.
+  - If a future docling release strips heading numbers, switch this endpoint
+    to additionally return `result.document.export_to_dict()` so the chunker
+    can pull `heading_number` + `heading_path` directly from the AST.
 """
 from importlib.metadata import PackageNotFoundError, version
 from io import BytesIO

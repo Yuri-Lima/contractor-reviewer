@@ -40,6 +40,7 @@ import {
   UserStorageConfigResponse,
   UpdateUserStorageRequest,
   UpdateAccountPreferencesRequest,
+  DocumentReview,
 } from '@contractai-review/shared';
 
 @Injectable({
@@ -253,6 +254,30 @@ export class ApiService {
   deleteDocument(workspaceId: string, documentId: string): Observable<void> {
     return this.http.delete<void>(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documents(workspaceId)}/${documentId}`,
+    );
+  }
+
+  /**
+   * Fetch the latest persisted DocumentReview for a document, or null if none.
+   * The API returns 404 when no review has been generated yet — we map that
+   * to `null` so the UI can render an "empty state with a Run button".
+   */
+  getDocumentReview(workspaceId: string, documentId: string): Observable<DocumentReview | null> {
+    return this.http
+      .get<DocumentReview>(
+        `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documentReview(workspaceId, documentId)}`,
+      )
+      .pipe(catchError((err: { status?: number }) => (err?.status === 404 ? of(null) : (() => { throw err; })())));
+  }
+
+  /** Enqueue a fresh DocumentReview run; returns the queued job id (when known). */
+  rerunDocumentReview(
+    workspaceId: string,
+    documentId: string,
+  ): Observable<{ queued: true; jobId: string | undefined }> {
+    return this.http.post<{ queued: true; jobId: string | undefined }>(
+      `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.documentReviewRerun(workspaceId, documentId)}`,
+      {},
     );
   }
 

@@ -154,6 +154,8 @@ export class ChunkingProcessor extends WorkerHost {
         paragraphId: chunk.paragraphId,
         startIndex: chunk.startIndex,
         endIndex: chunk.endIndex,
+        clauseNumber: chunk.clauseNumber ?? null,
+        headingPath: chunk.headingPath ?? null,
       }));
 
       let createPromise = this.chunkRepository.create(chunkDtos);

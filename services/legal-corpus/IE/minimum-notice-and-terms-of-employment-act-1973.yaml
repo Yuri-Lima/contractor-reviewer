@@ -1,0 +1,39 @@
+# Minimum Notice and Terms of Employment Act 1973 (Ireland)
+# https://revisedacts.lawreform.ie/eli/1973/act/4/revised/en/html
+#
+# Source verification:
+#   sourceVersion: consolidated text incl. amendments to 2024-12-31
+#   lastVerified:  2026-04-01
+
+country: IE
+jurisdiction: IE
+language: en
+sourceType: law
+sourceName: Minimum Notice and Terms of Employment Act 1973
+actName: Minimum Notice and Terms of Employment Act
+actYear: 1973
+url: https://revisedacts.lawreform.ie/eli/1973/act/4/revised/en/html
+lastVerified: 2026-04-01
+
+sections:
+  - id: mn-1973-s4-notice
+    section: "Section 4 — Statutory minimum notice"
+    text: |
+      An employer shall give an employee in continuous service ≥ 13 weeks
+      written notice on terminating their employment. The minimum period is
+      tiered by length of service:
+        - 13 weeks – < 2 years        : 1 week
+        - 2 – < 5 years               : 2 weeks
+        - 5 – < 10 years              : 4 weeks
+        - 10 – < 15 years             : 6 weeks
+        - ≥ 15 years                  : 8 weeks
+      A contract may stipulate a longer notice period; it cannot reduce these
+      minimums (any contractual term to the contrary is void by s.4(3)).
+
+  - id: mn-1973-s5-pay-in-lieu
+    section: "Section 5 — Right to be paid during notice"
+    text: |
+      During the statutory notice period the employee retains the same rights
+      to pay and benefits as if the contract had not been terminated.
+      Payment in lieu of notice is permitted only where the contract
+      expressly provides for it; otherwise the notice must be worked.

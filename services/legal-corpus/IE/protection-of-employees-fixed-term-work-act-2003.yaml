@@ -1,0 +1,34 @@
+# Protection of Employees (Fixed-Term Work) Act 2003 (Ireland)
+# https://revisedacts.lawreform.ie/eli/2003/act/29/revised/en/html
+#
+# Source verification:
+#   sourceVersion: consolidated text incl. amendments to 2024-12-31
+#   lastVerified:  2026-04-01
+
+country: IE
+jurisdiction: IE
+language: en
+sourceType: law
+sourceName: Protection of Employees (Fixed-Term Work) Act 2003
+actName: Protection of Employees (Fixed-Term Work) Act
+actYear: 2003
+url: https://revisedacts.lawreform.ie/eli/2003/act/29/revised/en/html
+lastVerified: 2026-04-01
+
+sections:
+  - id: fixed-term-2003-s8-renewal
+    section: "Section 8 — Objective grounds for renewal"
+    text: |
+      Where an employer proposes to renew a fixed-term contract, they must
+      inform the employee in writing, no later than the date of renewal, of
+      the objective grounds justifying the renewal and the failure to offer a
+      contract of indefinite duration. Failure to do so may be relied upon by
+      the employee in any subsequent CID claim before the WRC.
+
+  - id: fixed-term-2003-s9-cid
+    section: "Section 9 — Successive fixed-term contracts (CID)"
+    text: |
+      Where an employee has been on two or more continuous fixed-term
+      contracts the aggregate duration of which exceeds 4 years, the contract
+      shall be deemed to be one of indefinite duration UNLESS there are
+      objective grounds justifying renewal on a fixed-term basis.

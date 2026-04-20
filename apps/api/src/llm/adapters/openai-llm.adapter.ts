@@ -3,7 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { OpenAI } from 'openai';
 import type { LlmMessage, LlmCompleteOptions } from '@contractai-review/shared';
 import { LLM_PROVIDER_ID } from '@contractai-review/shared';
-import type { ILlmProvider } from '../interfaces/llm-provider.interface';
+import type {
+  ILlmProvider,
+  LlmStructuredResult,
+  LlmStructuredSchema,
+} from '../interfaces/llm-provider.interface';
 
 const DEFAULT_LLM_MAX_TOKENS = 2000;
 
@@ -34,7 +38,7 @@ export class OpenAILlmAdapter implements ILlmProvider {
         model: options?.model ?? this.defaultModel,
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         temperature: options?.temperature ?? 0.3,
-        max_tokens: options?.maxTokens ?? this.defaultMaxTokens,
+        max_completion_tokens: options?.maxTokens ?? this.defaultMaxTokens,
       },
       { signal: options?.signal },
     );
@@ -53,7 +57,7 @@ export class OpenAILlmAdapter implements ILlmProvider {
         model: options?.model ?? this.defaultModel,
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         temperature: options?.temperature ?? 0.3,
-        max_tokens: options?.maxTokens ?? this.defaultMaxTokens,
+        max_completion_tokens: options?.maxTokens ?? this.defaultMaxTokens,
         stream: true,
       },
       { signal: options?.signal },
@@ -70,5 +74,45 @@ export class OpenAILlmAdapter implements ILlmProvider {
     this.logger.log(
       `[completeStream] LLM provider.completeStream done: chunkCount=${chunkCount}`,
     );
+  }
+
+  async completeStructured(
+    messages: LlmMessage[],
+    schema: LlmStructuredSchema,
+    options?: LlmCompleteOptions,
+  ): Promise<LlmStructuredResult> {
+    const model = options?.model ?? this.defaultModel;
+    this.logger.log(
+      `[completeStructured] start: model=${model} schema=${schema.name} messageCount=${messages.length}`,
+    );
+    const response = await this.client.chat.completions.create(
+      {
+        model,
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        temperature: options?.temperature ?? 0,
+        max_completion_tokens: options?.maxTokens ?? this.defaultMaxTokens,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: schema.name,
+            schema: schema.jsonSchema,
+            strict: true,
+          },
+        },
+      },
+      { signal: options?.signal },
+    );
+
+    const raw = response.choices[0]?.message?.content ?? '';
+    let parsed: unknown | null = null;
+    try {
+      parsed = raw ? JSON.parse(raw) : null;
+    } catch (err) {
+      this.logger.warn(
+        `[completeStructured] JSON.parse failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      parsed = null;
+    }
+    return { raw, parsed };
   }
 }

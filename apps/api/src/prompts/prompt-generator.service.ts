@@ -76,7 +76,7 @@ export class PromptGeneratorService {
           { role: 'user', content: userMessage },
         ],
         temperature: 0.5,
-        max_tokens: 500,
+        max_completion_tokens: 1500,
       },
       { signal },
     );

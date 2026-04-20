@@ -1,4 +1,4 @@
-import type { Citation } from '@contractai-review/shared';
+import type { Citation, LegalAnswer } from '@contractai-review/shared';
 
 /** Audio state for a chat message when TTS is enabled */
 export type ChatMessageAudioState = 'none' | 'synthesizing' | 'ready' | 'playing';
@@ -7,6 +7,11 @@ export type ChatMessageAudioState = 'none' | 'synthesizing' | 'ready' | 'playing
 export interface ChatMessageWithAudio {
   question: string;
   answerText?: string;
+  /**
+   * Structured legal-grade answer (Phase 1 of legal-review pipeline).
+   * When present, the chat message renders the LegalAnswerComponent instead of the free-text/markdown view.
+   */
+  legalAnswer?: LegalAnswer;
   confidence?: string;
   citations?: Citation[];
   audioState?: ChatMessageAudioState;

@@ -8,6 +8,7 @@ import { WorkspaceModule } from './workspace/workspace.module';
 import { StorageModule } from './storage/storage.module';
 import { QueueModule } from './queue/queue.module';
 import { DocumentsModule } from './documents/documents.module';
+import { DocumentReviewModule } from './document-review/document-review.module';
 import { WorkersModule } from './workers/workers.module';
 import { RagModule } from './rag/rag.module';
 import { MemoryModule } from './memory/memory.module';
@@ -60,6 +61,7 @@ if (!isWorker) {
     RagModule,
     MemoryModule,
     DocumentsModule,
+    DocumentReviewModule,
     WorkersModule,
     PrivacyModule,
     AuditModule,

@@ -91,6 +91,12 @@ export class PgVectorStore implements IVectorStore {
       paramIndex++;
     }
 
+    if (filters?.actName) {
+      query += ` AND e."actName" = $${paramIndex}`;
+      params.push(filters.actName);
+      paramIndex++;
+    }
+
     query += ` ORDER BY e.embedding::vector <=> $1::vector LIMIT $${paramIndex}`;
     params.push(limit);
 
@@ -114,6 +120,8 @@ export class PgVectorStore implements IVectorStore {
         country: item.country ?? undefined,
         jurisdiction: item.jurisdiction ?? undefined,
         url: item.url ?? undefined,
+        actName: (item as { actName?: string | null }).actName ?? undefined,
+        actYear: (item as { actYear?: number | null }).actYear ?? undefined,
       };
     });
   }

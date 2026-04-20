@@ -1,0 +1,39 @@
+# Template-artefact red flags — patterns that indicate the contract is
+# still in template form and was not fully customised before delivery.
+# Phase 4 of the legal-grade RAG pipeline. rulesVersion: v1.
+
+rulesVersion: v1
+category: template-artefact
+appliesTo: any  # any | jurisdiction:IE | etc.
+
+rules:
+  - id: bracketed-placeholder
+    pattern: "\\[[A-Z_]{2,}\\]"
+    flags: g
+    severity: high
+    message: "Unfilled placeholder token detected (e.g. [XX], [COMPANY_NAME])."
+    remediation: "Replace the placeholder with the agreed value before signing."
+
+  - id: tbc-or-tbd
+    pattern: "\\b(?:tbc|tbd|to be confirmed|to be determined)\\b"
+    flags: gi
+    severity: high
+    message: "Contract contains a TBC / TBD marker."
+    remediation: "Resolve the open item or remove the marker."
+
+  - id: alt-clause-or
+    # Matches a literal "OR" in upper-case on its own line — the canonical
+    # template signal for "pick one of the alternatives below". Will NOT
+    # match the prose word "or".
+    pattern: "^\\s*OR\\s*$"
+    flags: m
+    severity: blocker
+    message: "Template alternative-clause marker (literal 'OR') still present."
+    remediation: "Pick one of the alternative clauses and delete the others."
+
+  - id: lorem-ipsum
+    pattern: "lorem ipsum|ipsum dolor"
+    flags: gi
+    severity: blocker
+    message: "Lorem-ipsum filler text found."
+    remediation: "Replace with the intended clause text."

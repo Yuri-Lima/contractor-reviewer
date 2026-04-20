@@ -7,6 +7,7 @@ import { RagService } from './rag.service';
 import { JurisdictionResolverService } from './jurisdiction-resolver.service';
 import { JurisdictionEvaluationService } from './jurisdiction-evaluation.service';
 import { ChatPrepareCacheService } from './chat-prepare-cache.service';
+import { LegalReviewModelResolver } from './legal-review-model-resolver.service';
 import { Document } from '../entities/document.entity';
 import { DocumentFile } from '../entities/document-file.entity';
 import { StorageModule } from '../storage/storage.module';
@@ -38,6 +39,7 @@ import { MemoryModule } from '../memory/memory.module';
     JurisdictionResolverService,
     JurisdictionEvaluationService,
     ChatPrepareCacheService,
+    LegalReviewModelResolver,
   ],
   exports: [
     VectorStoreModule,
@@ -47,6 +49,7 @@ import { MemoryModule } from '../memory/memory.module';
     RagService,
     JurisdictionResolverService,
     JurisdictionEvaluationService,
+    LegalReviewModelResolver,
   ],
 })
 export class RagModule {}

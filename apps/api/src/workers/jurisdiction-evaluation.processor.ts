@@ -1,12 +1,14 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
+import { Processor, WorkerHost, InjectQueue } from '@nestjs/bullmq';
+import { Job, Queue } from 'bullmq';
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Document } from '../entities/document.entity';
 import { JurisdictionEvaluationService } from '../rag/jurisdiction-evaluation.service';
 import { RagCacheService } from '../cache/rag-cache.service';
 import { JurisdictionStatus } from '@contractai-review/shared';
+import type { DocumentReviewJobData } from './document-review.processor';
 
 interface JurisdictionEvaluationJobData {
   documentId: string;
@@ -26,6 +28,9 @@ export class JurisdictionEvaluationProcessor extends WorkerHost {
     private documentRepository: Repository<Document>,
     private jurisdictionEvaluationService: JurisdictionEvaluationService,
     private ragCacheService: RagCacheService,
+    @InjectQueue('document-review')
+    private documentReviewQueue: Queue<DocumentReviewJobData>,
+    private configService: ConfigService,
   ) {
     super();
   }
@@ -60,5 +65,25 @@ export class JurisdictionEvaluationProcessor extends WorkerHost {
     this.logger.log(
       `[Jurisdiction] Completed: documentId=${documentId} resolved=${result.resolvedJurisdiction}`,
     );
+
+    // Phase 4: enqueue a document review now that text is parsed and the
+    // jurisdiction (which gates terminology rules) is resolved. Disabled when
+    // LEGAL_REVIEW_AUTO_REVIEW=off so deployments can opt out of the cost.
+    const autoReview = (
+      this.configService.get<string>('LEGAL_REVIEW_AUTO_REVIEW') ?? 'on'
+    ).toLowerCase();
+    if (autoReview !== 'off' && document.workspaceId) {
+      try {
+        await this.documentReviewQueue.add('post-jurisdiction', {
+          documentId,
+          workspaceId: document.workspaceId,
+        });
+        this.logger.log(`[Jurisdiction] document-review enqueued for ${documentId}`);
+      } catch (err) {
+        this.logger.warn(
+          `[Jurisdiction] failed to enqueue document-review for ${documentId}: ${(err as Error).message}`,
+        );
+      }
+    }
   }
 }

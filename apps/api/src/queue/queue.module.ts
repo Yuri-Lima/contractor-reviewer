@@ -100,6 +100,15 @@ function writeLog(location: string, message: string, data: any, hypothesisId: st
           removeOnFail: { count: 50 },
         },
       },
+      {
+        name: 'document-review',
+        defaultJobOptions: {
+          attempts: 2,
+          backoff: { type: 'exponential', delay: 5000 },
+          removeOnComplete: { count: 100 },
+          removeOnFail: { count: 50 },
+        },
+      },
     ),
   ],
   exports: [BullModule, RedisModule],

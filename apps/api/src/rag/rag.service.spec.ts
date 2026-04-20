@@ -24,6 +24,7 @@ interface MockBag {
   llmProviderRegistry: { resolveProvider: jest.Mock };
   memoryService: { getDocumentAndThreadMemory: jest.Mock };
   legalReviewModelResolver: { resolve: jest.Mock };
+  webSearchService: { isEnabled: jest.Mock; search: jest.Mock };
 }
 
 function makeChunk(
@@ -68,9 +69,16 @@ function buildService(
   chunkResults: VectorSearchResult<Chunk>[] = [],
   legalResults: LegalChunkSearchResult[] = [],
 ): { service: RagService; mocks: MockBag } {
+  // Default chunk stats: total === embedded === <chunk count> so the
+  // pre-flight diagnostic returns null (no notFoundReason). Tests that
+  // care about the no_chunks / embeddings_pending paths override this.
   const vectorStore = {
     searchDocumentChunks: jest.fn().mockResolvedValue(chunkResults),
     searchLegalChunks: jest.fn().mockResolvedValue(legalResults),
+    getDocumentChunkStats: jest.fn().mockResolvedValue({
+      total: Math.max(chunkResults.length, 1),
+      embedded: Math.max(chunkResults.length, 1),
+    }),
   } as unknown as jest.Mocked<IVectorStore>;
 
   const mocks: MockBag = {
@@ -119,6 +127,10 @@ function buildService(
     legalReviewModelResolver: {
       resolve: jest.fn().mockReturnValue(undefined),
     },
+    webSearchService: {
+      isEnabled: jest.fn().mockReturnValue(false),
+      search: jest.fn().mockResolvedValue([]),
+    },
   };
 
   const service = new RagService(
@@ -133,6 +145,7 @@ function buildService(
     mocks.llmProviderRegistry as never,
     mocks.memoryService as never,
     mocks.legalReviewModelResolver as never,
+    mocks.webSearchService as never,
   );
 
   return { service, mocks };
@@ -266,21 +279,24 @@ describe('RagService', () => {
     });
 
     it('returns notFound=true when all chunks filtered out (streaming)', async () => {
-      const chunks = [makeChunk(0.3, 0), makeChunk(0.2, 1)];
+      // Below both primary (0.5) and fallback (0.3) floors so the soft-floor
+      // fallback cannot rescue them either.
+      const chunks = [makeChunk(0.2, 0), makeChunk(0.1, 1)];
       const { service } = buildService({}, chunks);
       const events = await drainStream(
         service.generateAnswerStream('q', 'doc-1', 'ws-1'),
       );
       const done = events.find((e) => 'type' in e && e.type === 'done') as
-        | { type: 'done'; notFound: boolean; citations: unknown[] }
+        | { type: 'done'; notFound: boolean; citations: unknown[]; notFoundReason?: string }
         | undefined;
       expect(done).toBeDefined();
       expect(done!.notFound).toBe(true);
       expect(done!.citations).toEqual([]);
+      expect(done!.notFoundReason).toBe('below_floor');
     });
 
     it('does NOT call ragCacheService.set when notFound=true', async () => {
-      const chunks = [makeChunk(0.3, 0)];
+      const chunks = [makeChunk(0.2, 0)];
       const { service, mocks } = buildService({}, chunks);
       await drainStream(service.generateAnswerStream('q', 'doc-1', 'ws-1'));
       expect(mocks.ragCacheService.set).not.toHaveBeenCalled();
@@ -370,10 +386,17 @@ describe('RagService', () => {
      * Old behavior: 3 chunks all at similarity 0.35 → all 3 cited (length fallback).
      * New behavior: floor=0.5 drops them all → 0 citations + notFound=true.
      * If anyone reintroduces the length fallback, this test fails immediately.
+     *
+     * NOTE: We pin RAG_SIMILARITY_FLOOR_FALLBACK to the same value as the
+     * primary floor here so the new soft-floor fallback (default 0.3) does
+     * NOT relax these chunks back in — that would mask the regression.
      */
     it('regression: 3 chunks at 0.35 with floor 0.5 → zero citations + notFound', async () => {
       const chunks = [makeChunk(0.35, 0), makeChunk(0.35, 1), makeChunk(0.35, 2)];
-      const { service } = buildService({}, chunks);
+      const { service } = buildService(
+        { RAG_SIMILARITY_FLOOR_FALLBACK: '0.5' },
+        chunks,
+      );
       const events = await drainStream(
         service.generateAnswerStream('q', 'doc-1', 'ws-1'),
       );
@@ -470,6 +493,492 @@ describe('RagService', () => {
         .map((args) => String(args[0]))
         .filter((s) => s.includes('retrieved=3 kept=2'));
       expect(filterLogs.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Section G: Pre-flight diagnostic + soft-floor fallback (Phase 1)
+  // ---------------------------------------------------------------------------
+  describe('pre-flight diagnostic', () => {
+    it('emits notFoundReason=no_chunks when the document has zero chunks', async () => {
+      const { service, mocks } = buildService({}, []);
+      mocks.vectorStore.getDocumentChunkStats.mockResolvedValue({
+        total: 0,
+        embedded: 0,
+      });
+      const events = await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1'),
+      );
+      const done = events.find((e) => 'type' in e && e.type === 'done') as
+        | { type: 'done'; notFound: boolean; notFoundReason?: string }
+        | undefined;
+      expect(done!.notFound).toBe(true);
+      expect(done!.notFoundReason).toBe('no_chunks');
+    });
+
+    it('emits notFoundReason=embeddings_pending when chunks exist but some are missing embeddings', async () => {
+      const { service, mocks } = buildService({}, []);
+      mocks.vectorStore.getDocumentChunkStats.mockResolvedValue({
+        total: 10,
+        embedded: 4,
+      });
+      const events = await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1'),
+      );
+      const done = events.find((e) => 'type' in e && e.type === 'done') as
+        | { type: 'done'; notFound: boolean; notFoundReason?: string }
+        | undefined;
+      expect(done!.notFound).toBe(true);
+      expect(done!.notFoundReason).toBe('embeddings_pending');
+    });
+
+    it('emits notFoundReason=below_floor when chunks + embeddings exist but none survive', async () => {
+      // Below both floors so the soft-floor fallback also fails.
+      const chunks = [makeChunk(0.1, 0), makeChunk(0.05, 1)];
+      const { service, mocks } = buildService({}, chunks);
+      mocks.vectorStore.getDocumentChunkStats.mockResolvedValue({
+        total: 2,
+        embedded: 2,
+      });
+      const events = await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1'),
+      );
+      const done = events.find((e) => 'type' in e && e.type === 'done') as
+        | { type: 'done'; notFound: boolean; notFoundReason?: string }
+        | undefined;
+      expect(done!.notFound).toBe(true);
+      expect(done!.notFoundReason).toBe('below_floor');
+    });
+
+    it('omits notFoundReason when chunks were retrieved (notFound=false)', async () => {
+      const chunks = [makeChunk(0.9, 0)];
+      const { service } = buildService({}, chunks);
+      const events = await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1'),
+      );
+      const done = events.find((e) => 'type' in e && e.type === 'done') as
+        | { type: 'done'; notFound: boolean; notFoundReason?: string }
+        | undefined;
+      expect(done!.notFound).toBe(false);
+      expect(done!.notFoundReason).toBeUndefined();
+    });
+  });
+
+  describe('soft-floor fallback', () => {
+    it('relaxes to RAG_SIMILARITY_FLOOR_FALLBACK when no chunks survive the primary floor', async () => {
+      // Primary 0.5 drops everything; default fallback 0.3 keeps 0.4 and 0.35.
+      const chunks = [makeChunk(0.4, 0), makeChunk(0.35, 1), makeChunk(0.1, 2)];
+      const { service } = buildService({}, chunks);
+      const events = await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1'),
+      );
+      const done = events.find((e) => 'type' in e && e.type === 'done') as
+        | {
+            type: 'done';
+            notFound: boolean;
+            citations: unknown[];
+            confidence: 'high' | 'medium' | 'low';
+          }
+        | undefined;
+      expect(done!.notFound).toBe(false);
+      // Soft-floor fallback caps confidence at 'low' regardless of count.
+      expect(done!.confidence).toBe('low');
+    });
+
+    it('does NOT relax when the primary floor already returned chunks', async () => {
+      const chunks = [makeChunk(0.9, 0), makeChunk(0.4, 1)];
+      const { service } = buildService({}, chunks);
+      const events = await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1'),
+      );
+      const done = events.find((e) => 'type' in e && e.type === 'done') as
+        | { type: 'done'; citations: unknown[]; confidence: 'high' | 'medium' | 'low' }
+        | undefined;
+      expect(done!.citations).toHaveLength(1);
+      // Single high-similarity chunk → high confidence (no fallback fired).
+      expect(done!.confidence).toBe('high');
+    });
+
+    it('disables the fallback when RAG_SIMILARITY_FLOOR_FALLBACK >= primary floor', async () => {
+      const chunks = [makeChunk(0.4, 0), makeChunk(0.35, 1)];
+      const { service } = buildService(
+        { RAG_SIMILARITY_FLOOR_FALLBACK: '0.5' },
+        chunks,
+      );
+      const events = await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1'),
+      );
+      const done = events.find((e) => 'type' in e && e.type === 'done') as
+        | { type: 'done'; notFound: boolean }
+        | undefined;
+      expect(done!.notFound).toBe(true);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Section H: Web search integration (Phase 2)
+  // ---------------------------------------------------------------------------
+  describe('web search integration', () => {
+    it('does not call web search when WEB_SEARCH_TRIGGER is unset (off by default)', async () => {
+      const chunks = [makeChunk(0.9, 0)];
+      const { service, mocks } = buildService({}, chunks);
+      mocks.webSearchService.isEnabled.mockReturnValue(true);
+      await drainStream(service.generateAnswerStream('q', 'doc-1', 'ws-1'));
+      expect(mocks.webSearchService.search).not.toHaveBeenCalled();
+    });
+
+    it('calls web search and adds web citations when trigger=always and service is enabled', async () => {
+      const chunks = [makeChunk(0.9, 0)];
+      const { service, mocks } = buildService(
+        { WEB_SEARCH_TRIGGER: 'always' },
+        chunks,
+      );
+      mocks.webSearchService.isEnabled.mockReturnValue(true);
+      mocks.webSearchService.search.mockResolvedValue([
+        {
+          title: 'Pensions Authority',
+          url: 'https://pensionsauthority.ie',
+          snippet: 'Auto-enrolment from 2024.',
+          score: 0.9,
+        },
+      ]);
+      const events = await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1'),
+      );
+      expect(mocks.webSearchService.search).toHaveBeenCalledWith(
+        'q',
+        expect.objectContaining({ jurisdiction: undefined }),
+      );
+      const done = events.find((e) => 'type' in e && e.type === 'done') as
+        | {
+            type: 'done';
+            citations: Array<{ type: string; url?: string; title?: string }>;
+          }
+        | undefined;
+      const webCitations = done!.citations.filter((c) => c.type === 'web');
+      expect(webCitations).toHaveLength(1);
+      expect(webCitations[0].url).toBe('https://pensionsauthority.ie');
+    });
+
+    it('runs web search but discards results in fallback mode when local retrieval is rich (>=2 chunks)', async () => {
+      const chunks = [makeChunk(0.9, 0), makeChunk(0.8, 1)];
+      const { service, mocks } = buildService(
+        { WEB_SEARCH_TRIGGER: 'fallback' },
+        chunks,
+      );
+      mocks.webSearchService.isEnabled.mockReturnValue(true);
+      mocks.webSearchService.search.mockResolvedValue([
+        { title: 'X', url: 'https://x', snippet: 'y' },
+      ]);
+      const events = await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1'),
+      );
+      // Search runs in parallel with vector retrieval, then gets gated out.
+      expect(mocks.webSearchService.search).toHaveBeenCalled();
+      const done = events.find((e) => 'type' in e && e.type === 'done') as
+        | { type: 'done'; citations: Array<{ type: string }> }
+        | undefined;
+      expect(done!.citations.filter((c) => c.type === 'web')).toHaveLength(0);
+    });
+
+    it('keeps web results in fallback mode when local retrieval is sparse (<2 chunks)', async () => {
+      const chunks = [makeChunk(0.9, 0)];
+      const { service, mocks } = buildService(
+        { WEB_SEARCH_TRIGGER: 'fallback' },
+        chunks,
+      );
+      mocks.webSearchService.isEnabled.mockReturnValue(true);
+      mocks.webSearchService.search.mockResolvedValue([
+        { title: 'X', url: 'https://x', snippet: 'y' },
+      ]);
+      const events = await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1'),
+      );
+      const done = events.find((e) => 'type' in e && e.type === 'done') as
+        | { type: 'done'; citations: Array<{ type: string }> }
+        | undefined;
+      expect(done!.citations.filter((c) => c.type === 'web')).toHaveLength(1);
+    });
+
+    it('treats web-only results as found (notFound=false)', async () => {
+      // No usable local chunks but web search returned a hit.
+      const { service, mocks } = buildService(
+        { WEB_SEARCH_TRIGGER: 'always' },
+        [],
+      );
+      mocks.vectorStore.getDocumentChunkStats.mockResolvedValue({
+        total: 5,
+        embedded: 5,
+      });
+      mocks.webSearchService.isEnabled.mockReturnValue(true);
+      mocks.webSearchService.search.mockResolvedValue([
+        { title: 'X', url: 'https://x', snippet: 'y' },
+      ]);
+      const events = await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1'),
+      );
+      const done = events.find((e) => 'type' in e && e.type === 'done') as
+        | { type: 'done'; notFound: boolean }
+        | undefined;
+      expect(done!.notFound).toBe(false);
+    });
+
+    it('passes the jurisdiction through to WebSearchService', async () => {
+      const chunks = [makeChunk(0.9, 0)];
+      const { service, mocks } = buildService(
+        { WEB_SEARCH_TRIGGER: 'always' },
+        chunks,
+      );
+      mocks.webSearchService.isEnabled.mockReturnValue(true);
+      mocks.webSearchService.search.mockResolvedValue([]);
+      await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1', 'IE'),
+      );
+      expect(mocks.webSearchService.search).toHaveBeenCalledWith(
+        'q',
+        expect.objectContaining({ jurisdiction: 'IE' }),
+      );
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Section I: Statute hint derivation for web search (Tier 2 reliability fix)
+  // ---------------------------------------------------------------------------
+  /**
+   * Verifies that RagService mines short statute identifiers from the
+   * retrieved RAG context and forwards them to WebSearchService. This is what
+   * lets Tavily anchor on `.gov` sources (e.g. searches for "Pensions Act
+   * 1990 Ireland law 2026" instead of the bare "pension Ireland law 2026").
+   *
+   * Hint sources, in priority order:
+   *   1. legalChunks[*].actName (curated corpus — preferred, safer)
+   *   2. regex over document chunk text (fallback, whitelist-only)
+   *
+   * Hard caps: ≤ 2 hints total; deduped case-insensitively.
+   */
+  describe('statute hint derivation (Tier 2)', () => {
+    /** Helper: extract the options arg from the most recent webSearch call. */
+    function lastSearchOptions(mocks: MockBag): {
+      statuteHints?: string[];
+      jurisdiction?: string;
+    } | undefined {
+      const calls = mocks.webSearchService.search.mock.calls;
+      if (calls.length === 0) return undefined;
+      return calls[calls.length - 1][1] as {
+        statuteHints?: string[];
+        jurisdiction?: string;
+      };
+    }
+
+    it('forwards actName + actYear from legal chunks as the primary hint source', async () => {
+      const docChunks = [makeChunk(0.9, 0)];
+      const legalChunks: LegalChunkSearchResult[] = [
+        {
+          ...makeLegalChunk(0.85, 0),
+          actName: 'Pensions Act',
+          actYear: 1990,
+          // The runtime reads actYear from `item`, mirror it there too.
+          item: {
+            id: 'legal-0',
+            text: 'legal text 0',
+            section: 's-0',
+            actYear: 1990,
+          } as unknown as LegalChunkSearchResult['item'],
+        },
+      ];
+      const { service, mocks } = buildService(
+        { WEB_SEARCH_TRIGGER: 'always' },
+        docChunks,
+        legalChunks,
+      );
+      mocks.webSearchService.isEnabled.mockReturnValue(true);
+      mocks.webSearchService.search.mockResolvedValue([]);
+
+      await drainStream(
+        service.generateAnswerStream('pension q', 'doc-1', 'ws-1', 'IE'),
+      );
+
+      const opts = lastSearchOptions(mocks);
+      expect(opts?.statuteHints).toEqual(['Pensions Act 1990']);
+    });
+
+    it('caps forwarded hints at 2 even when more legal chunks match', async () => {
+      const docChunks = [makeChunk(0.9, 0)];
+      const legalChunks: LegalChunkSearchResult[] = [
+        { ...makeLegalChunk(0.9, 0), actName: 'Pensions Act', actYear: 1990 },
+        {
+          ...makeLegalChunk(0.85, 1),
+          actName: 'Employment Equality Act',
+          actYear: 1998,
+        },
+        {
+          ...makeLegalChunk(0.8, 2),
+          actName: 'Industrial Relations Act',
+          actYear: 1990,
+        },
+      ];
+      const { service, mocks } = buildService(
+        { WEB_SEARCH_TRIGGER: 'always' },
+        docChunks,
+        legalChunks,
+      );
+      mocks.webSearchService.isEnabled.mockReturnValue(true);
+      mocks.webSearchService.search.mockResolvedValue([]);
+
+      await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1', 'IE'),
+      );
+
+      const opts = lastSearchOptions(mocks);
+      expect(opts?.statuteHints).toHaveLength(2);
+      expect(opts?.statuteHints).toEqual([
+        'Pensions Act 1990',
+        'Employment Equality Act 1998',
+      ]);
+    });
+
+    it('deduplicates legal-chunk hints case-insensitively', async () => {
+      const docChunks = [makeChunk(0.9, 0)];
+      const legalChunks: LegalChunkSearchResult[] = [
+        { ...makeLegalChunk(0.9, 0), actName: 'Pensions Act', actYear: 1990 },
+        // Same act surfaced from a different section (very common in the
+        // legal corpus): must collapse to a single hint.
+        { ...makeLegalChunk(0.85, 1), actName: 'PENSIONS ACT', actYear: 1990 },
+      ];
+      const { service, mocks } = buildService(
+        { WEB_SEARCH_TRIGGER: 'always' },
+        docChunks,
+        legalChunks,
+      );
+      mocks.webSearchService.isEnabled.mockReturnValue(true);
+      mocks.webSearchService.search.mockResolvedValue([]);
+
+      await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1', 'IE'),
+      );
+
+      expect(lastSearchOptions(mocks)?.statuteHints).toEqual([
+        'Pensions Act 1990',
+      ]);
+    });
+
+    it('falls back to a regex over document chunks when no legal chunks have actName', async () => {
+      const docChunks = [
+        makeChunk(0.9, 0, {
+          text:
+            'The Employee shall be enrolled in a pension scheme as required by the Pensions Act 1990.',
+        } as Partial<Chunk>),
+        makeChunk(0.85, 1, {
+          text: 'Disputes governed by the Workplace Relations Act 2015.',
+        } as Partial<Chunk>),
+      ];
+      const { service, mocks } = buildService(
+        { WEB_SEARCH_TRIGGER: 'always' },
+        docChunks,
+        [], // No legal chunks → regex fallback.
+      );
+      mocks.webSearchService.isEnabled.mockReturnValue(true);
+      mocks.webSearchService.search.mockResolvedValue([]);
+
+      await drainStream(
+        service.generateAnswerStream('pension', 'doc-1', 'ws-1', 'IE'),
+      );
+
+      const opts = lastSearchOptions(mocks);
+      expect(opts?.statuteHints).toEqual([
+        'Pensions Act 1990',
+        'Workplace Relations Act 2015',
+      ]);
+    });
+
+    it('regex fallback does not surface lowercase / sentence-fragment matches (PII guard)', async () => {
+      const docChunks = [
+        makeChunk(0.9, 0, {
+          text:
+            'Salary: 75000 EUR. The party John Smith of 12 Main Street agrees that pensions act as deferred wages.',
+        } as Partial<Chunk>),
+      ];
+      const { service, mocks } = buildService(
+        { WEB_SEARCH_TRIGGER: 'always' },
+        docChunks,
+        [],
+      );
+      mocks.webSearchService.isEnabled.mockReturnValue(true);
+      mocks.webSearchService.search.mockResolvedValue([]);
+
+      await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1', 'IE'),
+      );
+
+      const hints = lastSearchOptions(mocks)?.statuteHints ?? [];
+      // No statute pattern matches the lowercased "pensions act" + no year,
+      // and we must NOT surface salary or party name fragments.
+      expect(hints).toEqual([]);
+      expect(hints.join(' ')).not.toMatch(/John Smith|75000|Main Street/i);
+    });
+
+    it('combines legal-chunk and doc-regex hints: legal chunks first, then regex tops up to 2', async () => {
+      const docChunks = [
+        makeChunk(0.9, 0, {
+          text: 'Disputes governed by the Workplace Relations Act 2015.',
+        } as Partial<Chunk>),
+      ];
+      const legalChunks: LegalChunkSearchResult[] = [
+        { ...makeLegalChunk(0.9, 0), actName: 'Pensions Act', actYear: 1990 },
+      ];
+      const { service, mocks } = buildService(
+        { WEB_SEARCH_TRIGGER: 'always' },
+        docChunks,
+        legalChunks,
+      );
+      mocks.webSearchService.isEnabled.mockReturnValue(true);
+      mocks.webSearchService.search.mockResolvedValue([]);
+
+      await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1', 'IE'),
+      );
+
+      expect(lastSearchOptions(mocks)?.statuteHints).toEqual([
+        'Pensions Act 1990',
+        'Workplace Relations Act 2015',
+      ]);
+    });
+
+    it('forwards an empty hints array when nothing usable is found', async () => {
+      const docChunks = [
+        makeChunk(0.9, 0, { text: 'Generic boilerplate without statutes.' } as Partial<Chunk>),
+      ];
+      const { service, mocks } = buildService(
+        { WEB_SEARCH_TRIGGER: 'always' },
+        docChunks,
+        [],
+      );
+      mocks.webSearchService.isEnabled.mockReturnValue(true);
+      mocks.webSearchService.search.mockResolvedValue([]);
+
+      await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1', 'IE'),
+      );
+
+      const opts = lastSearchOptions(mocks);
+      expect(opts?.statuteHints).toEqual([]);
+    });
+
+    it('does not derive hints when web search is disabled (no wasted CPU)', async () => {
+      const docChunks = [
+        makeChunk(0.9, 0, {
+          text: 'The Pensions Act 1990 governs scheme contributions.',
+        } as Partial<Chunk>),
+      ];
+      const { service, mocks } = buildService({}, docChunks, []);
+      // trigger=off (default) AND isEnabled=true: still no call expected.
+      mocks.webSearchService.isEnabled.mockReturnValue(true);
+
+      await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1', 'IE'),
+      );
+
+      expect(mocks.webSearchService.search).not.toHaveBeenCalled();
     });
   });
 });

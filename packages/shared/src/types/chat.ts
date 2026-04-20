@@ -1,5 +1,6 @@
 import { Citation } from './common';
 import type { LegalAnswer } from './legal-review';
+import type { NotFoundReason } from './llm';
 
 export interface ChatThread {
   id: string;
@@ -47,6 +48,8 @@ export interface ChatResponse {
   confidence: 'high' | 'medium' | 'low';
   citations: Citation[];
   notFound: boolean;
+  /** When `notFound === true`, indicates the diagnostic root cause for the UI. */
+  notFoundReason?: NotFoundReason;
   fromCache?: boolean; // True when response was served from semantic cache
 }
 

@@ -37,6 +37,17 @@ export interface StreamChunk {
 import type { Citation } from './common';
 import type { LegalAnswer } from './legal-review';
 
+/**
+ * Why retrieval surfaced no usable context. Surfaced alongside `notFound`
+ * so the UI can render a specific message (still indexing, no chunks,
+ * embeddings pending) instead of a generic "NOT FOUND".
+ *
+ * - `no_chunks`         — the document has zero chunk rows (parsing/chunking has not run or failed).
+ * - `embeddings_pending` — chunks exist but at least one is missing an embedding (embed-chunks job still running).
+ * - `below_floor`       — chunks + embeddings exist, but none crossed the configured similarity floor.
+ */
+export type NotFoundReason = 'no_chunks' | 'embeddings_pending' | 'below_floor';
+
 export interface StreamDoneChunk {
   type: 'done';
   answerText: string;
@@ -45,6 +56,8 @@ export interface StreamDoneChunk {
   confidence: 'high' | 'medium' | 'low';
   citations: Citation[];
   notFound: boolean;
+  /** When `notFound === true`, indicates the diagnostic root cause for the UI. */
+  notFoundReason?: NotFoundReason;
   fromCache: boolean;
 }
 

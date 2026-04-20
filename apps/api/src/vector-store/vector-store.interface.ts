@@ -30,6 +30,17 @@ export interface LegalChunkFilters {
 }
 
 /**
+ * Diagnostic counts for a document's indexing state. Used by the RAG
+ * pipeline to surface a meaningful `notFoundReason` when retrieval returns
+ * no matches: did the document never produce chunks, are embeddings still
+ * pending, or did all chunks land below the similarity floor?
+ */
+export interface DocumentChunkStats {
+  total: number;
+  embedded: number;
+}
+
+/**
  * Abstraction over vector store for similarity search.
  * Swap implementations (pgvector, Pinecone, etc.) without changing consumers.
  *
@@ -53,6 +64,12 @@ export interface IVectorStore {
     filters?: LegalChunkFilters,
     limit?: number,
   ): Promise<LegalChunkSearchResult[]>;
+
+  /**
+   * Return chunk indexing stats for a document: total rows and how many
+   * have a non-null embedding. Used by the RAG pre-flight diagnostic.
+   */
+  getDocumentChunkStats(documentId: string): Promise<DocumentChunkStats>;
 }
 
 /** Injection token for IVectorStore */

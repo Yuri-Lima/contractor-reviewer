@@ -307,3 +307,21 @@ Recommendations for improvements:
 5. **Local LLM** — Abstract `LLMProvider`; support vLLM, Llama.cpp via config
 
 See the original gap analysis (archived) for detailed recommendations.
+
+## Inference Providers to Evaluate
+
+Alternative AI inference/GPU infrastructure providers to analyse for cost, latency, and scaling trade-offs against the current OpenAI/Anthropic direct-API setup:
+
+| Provider | Focus | URL | Status |
+|----------|-------|-----|--------|
+| **Fireworks AI** | Optimised open-model inference (serverless + on-demand); supports DeepSeek, Qwen, Gemma, Llama, Whisper, FLUX; fine-tuning; sub-second latency | <https://fireworks.ai/> | 🔍 To evaluate |
+| **RunPod** | GPU cloud (pods, serverless, clusters); 30+ GPU SKUs across 31 regions; autoscaling with FlashBoot (<200ms cold-start); SOC 2 Type II | <https://www.runpod.io/> | 🔍 To evaluate |
+
+**Evaluation criteria (TODO):**
+- Price per million tokens (input/output) vs current OpenAI/Anthropic costs
+- P50/P95 latency for structured-output calls (`completeStructured`)
+- Model availability (gpt-4o-class, Claude-class, open models)
+- Streaming support compatibility with existing `ILlmProvider.completeStream`
+- Fine-tuning capability for domain-specific legal review
+- Data residency / GDPR compliance for EU workspaces
+- Self-hosted / BYOC options for on-prem deployments

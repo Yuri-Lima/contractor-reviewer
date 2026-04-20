@@ -354,6 +354,13 @@
       "high": "Hohe Vertrauenswürdigkeit",
       "medium": "Mittlere Vertrauenswürdigkeit",
       "low": "Geringe Vertrauenswürdigkeit"
+    },
+    "notFoundReason": {
+      "noChunks": "Dieses Dokument wurde noch nicht indexiert. Warten Sie, bis die Verarbeitung abgeschlossen ist, und stellen Sie die Frage erneut.",
+      "embeddingsPending": "Die Indexierung des Dokuments läuft noch. Versuchen Sie es in wenigen Augenblicken erneut.",
+      "belowFloor": "Es wurden keine ausreichend relevanten Auszüge zu dieser Frage gefunden. Formulieren Sie sie um oder fragen Sie nach einer konkreteren Klausel.",
+      "generic": "Im Dokument wurde kein relevanter Kontext gefunden.",
+      "webSourceLabel": "Webquelle"
     }
   },
   "parsers": {

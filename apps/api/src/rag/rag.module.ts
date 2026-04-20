@@ -18,6 +18,7 @@ import { WorkspaceModule } from '../workspace/workspace.module';
 import { CacheModule } from '../cache/cache.module';
 import { LlmModule } from '../llm/llm.module';
 import { MemoryModule } from '../memory/memory.module';
+import { WebSearchModule } from '../web-search/web-search.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { MemoryModule } from '../memory/memory.module';
     CacheModule,
     LlmModule,
     MemoryModule,
+    WebSearchModule,
   ],
   providers: [
     PdfParserService,

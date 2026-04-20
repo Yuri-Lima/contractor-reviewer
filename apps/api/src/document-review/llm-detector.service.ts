@@ -18,7 +18,7 @@ import { completeStructuredWithRetry } from '../rag/structured-output.helper';
 
 const MAX_WINDOW_CHARS = 16_000; // ~4k tokens — gpt-4o sweet spot
 const WINDOW_OVERLAP = 800;
-const DEFAULT_STRUCTURED_MAX_TOKENS = 8000;
+const DEFAULT_STRUCTURED_MAX_TOKENS = 10000;
 
 interface LlmDetectorOptions {
   workspaceId: string;

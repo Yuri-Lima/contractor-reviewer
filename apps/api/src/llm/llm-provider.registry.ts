@@ -59,6 +59,24 @@ export class LlmProviderRegistry {
     return provider;
   }
 
+  /**
+   * Resolve the LLM provider from already-fetched workspace settings,
+   * avoiding a redundant DB round-trip when the caller already has them.
+   */
+  resolveFromSettings(settings?: { documentProcessing?: { defaultLlmProvider?: string } } | null): ILlmProvider {
+    const providerId = settings?.documentProcessing?.defaultLlmProvider;
+    const id = providerId || this.getDefaultProviderId();
+    const provider = this.get(id);
+
+    if (!provider) {
+      this.logger.log(`[resolveFromSettings] Using fallback: providerId=OpenAI`);
+      return this.openaiAdapter;
+    }
+
+    this.logger.log(`[resolveFromSettings] Resolved providerId=${id}`);
+    return provider;
+  }
+
   getAvailableIds(): string[] {
     return Array.from(this.providers.keys());
   }

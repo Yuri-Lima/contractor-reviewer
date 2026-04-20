@@ -2045,7 +2045,15 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
         .chatStream(workspaceId, documentId, chatRequest, { signal: this.chatAbortController!.signal })
         .subscribe({
           next: (event) => {
-            if (event.type === 'chunk') {
+            if (event.type === 'status') {
+              this.chatMessages.update((messages) => {
+                const next = [...messages];
+                if (next[targetIndex]) {
+                  next[targetIndex] = { ...next[targetIndex], statusPhase: event.phase };
+                }
+                return next;
+              });
+            } else if (event.type === 'chunk') {
               console.log(
                 '[ChatFlow] Update chatMessages signal: chunk',
                 `targetIndex=${targetIndex}`,
@@ -2057,6 +2065,7 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
                   next[targetIndex] = {
                     ...next[targetIndex],
                     answerText: (next[targetIndex].answerText ?? '') + event.content,
+                    statusPhase: undefined,
                   };
                 }
                 return next;

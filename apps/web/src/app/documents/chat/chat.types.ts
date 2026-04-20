@@ -1,4 +1,4 @@
-import type { Citation, LegalAnswer, NotFoundReason } from '@contractai-review/shared';
+import type { Citation, LegalAnswer, NotFoundReason, StreamStatusChunk } from '@contractai-review/shared';
 
 /** Audio state for a chat message when TTS is enabled */
 export type ChatMessageAudioState = 'none' | 'synthesizing' | 'ready' | 'playing';
@@ -27,6 +27,8 @@ export interface ChatMessageWithAudio {
    * of a generic NOT FOUND.
    */
   notFoundReason?: NotFoundReason;
+  /** Current RAG preparation phase (set during streaming before first chunk). */
+  statusPhase?: StreamStatusChunk['phase'];
 }
 
 /** Chat thread from API (for picker) */

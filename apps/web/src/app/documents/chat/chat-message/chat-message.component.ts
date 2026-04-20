@@ -60,6 +60,16 @@ const TRUNCATE_LENGTH = 80;
             <p class="text-gray-800 dark:text-gray-200 mt-1 whitespace-pre-wrap">{{ message().question }}</p>
           </div>
 
+          @if (message().streaming && message().statusPhase && !hasAnswer()) {
+            <!-- Status phase indicator: shown during RAG prep before first chunk -->
+            <div class="message-answer flex flex-col items-start text-left max-w-[85%] mr-auto px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
+              <strong class="text-green-600 dark:text-green-400">{{ 'documents.assistant' | translate }}:</strong>
+              <div class="flex items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
+                <i class="pi pi-spin pi-spinner"></i>
+                <span>{{ statusPhaseLabel() }}</span>
+              </div>
+            </div>
+          }
           @if (hasAnswer()) {
             <!-- Assistant: left-aligned bubble -->
             <div class="message-answer flex flex-col items-start text-left max-w-[85%] mr-auto px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
@@ -285,6 +295,12 @@ export class ChatMessageComponent {
   });
 
   isPlaying = computed(() => this.playingMessageIndex() === this.index());
+
+  statusPhaseLabel = computed(() => {
+    const phase = this.message().statusPhase;
+    if (!phase) return '';
+    return this.translateService.instant(`chat.statusPhase.${phase}`) || phase;
+  });
 
   /** Code form of the notFoundReason, used for styling switches. */
   notFoundReasonCode = computed(() => {

@@ -392,6 +392,12 @@
       "belowFloor": "No se encontraron extractos suficientemente relevantes para esta pregunta. Reformúlala o pregunta por una cláusula más específica.",
       "generic": "No se encontró contexto relevante en este documento.",
       "webSourceLabel": "Fuente web"
+    },
+    "statusPhase": {
+      "embedding": "Analizando tu pregunta...",
+      "searching": "Buscando en documentos...",
+      "web-search": "Buscando en la web...",
+      "generating": "Generando respuesta..."
     }
   },
   "parsers": {

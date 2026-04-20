@@ -67,6 +67,16 @@ export interface StreamErrorChunk {
 }
 
 /**
+ * Progress event emitted during the RAG preparation phase so the UI can
+ * show what's happening ("Searching documents...", "Generating...") instead
+ * of a blank spinner while the SSE connection is open but silent.
+ */
+export interface StreamStatusChunk {
+  type: 'status';
+  phase: 'embedding' | 'searching' | 'web-search' | 'generating';
+}
+
+/**
  * Structured legal-answer event emitted instead of token-by-token chunks
  * when `legalReviewMode` is on (structured-output APIs cannot safely stream
  * partial JSON). Sent as a single message just before `StreamDoneChunk`.
@@ -78,6 +88,7 @@ export interface StreamLegalAnswerChunk {
 
 export type StreamEvent =
   | StreamChunk
+  | StreamStatusChunk
   | StreamLegalAnswerChunk
   | StreamDoneChunk
   | StreamErrorChunk;

@@ -83,3 +83,39 @@ Invalidation is triggered by:
 
 - Jurisdiction evaluation processor (after updating document)
 - Documents service (when user overrides via PATCH)
+
+## Adding a New Jurisdiction (Phase 3 Checklist)
+
+When you add support for a new jurisdiction (ISO 3166 alpha-2 code, e.g.
+`DK`, `FI`, `IE`), do all of the following so the legal-grade pipeline
+can ground answers and red-flags against real statutes:
+
+1. **Statutes corpus** — Add YAML files under
+   `services/legal-corpus/<JURIS>/<act-slug>.yaml`. Each file MUST
+   declare `actName`, `actYear`, `jurisdiction`, `lastVerified` (ISO
+   date), `url`, and an array of `sections[]` (each with
+   `section`, `title`, `text`).
+2. **Seed** — Run `pnpm tsx apps/api/src/scripts/seed-legal-corpus.ts`
+   (or set `LEGAL_CORPUS_AUTO_SEED=on` in dev) so `LegalSource` and
+   `Embedding` rows are created/updated. The script warns on entries
+   whose `lastVerified` is older than 6 months.
+3. **Terminology rules** — In
+   `services/red-flag-rules/<version>/terminology.yaml`, add a rule
+   block with `appliesTo: jurisdiction:<JURIS>` for any imported terms
+   that are illegal/inappropriate in this jurisdiction (e.g. using UK
+   "qualifying earnings" wording in an Irish contract).
+4. **Missing-statute rules** — In
+   `services/red-flag-rules/<version>/missing-statute.yaml`, declare
+   the topic regex and the `requiredAnyPattern` set of statute names
+   that MUST appear when the topic is discussed for this jurisdiction.
+5. **Bump rules version** — If you changed any rule YAML, bump the
+   directory under `services/red-flag-rules/` (e.g. `v1` → `v2`) and
+   set `RED_FLAG_RULES_VERSION=v2` so persisted reviews regenerate
+   under the new key.
+6. **Sample contract** — Drop a representative DOCX into the test
+   fixtures and extend the golden-answer integration test
+   (`apps/api/src/rag/__tests__/golden-answer.spec.ts`) with at least
+   one assertion against a known issue and one named-statute citation.
+7. **i18n** — If the jurisdiction adds new categories or severity
+   labels, mirror them across `apps/web/src/assets/i18n/{en,de,es,pt-BR}.json`
+   under `legalAnswer.category` / `legalAnswer.severity`.

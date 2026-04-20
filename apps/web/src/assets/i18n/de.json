@@ -247,6 +247,52 @@
     "title": "Dokumenteinstellungen",
     "tabPrompts": "KI-Prompts"
   },
+  "legalAnswer": {
+    "title": "Juristische Prüfung",
+    "compliant": "Konforme Elemente",
+    "issues": "Probleme",
+    "recommendations": "Empfehlungen",
+    "legislationReferenced": "Verwendete Gesetze",
+    "suggestion": "Vorschlag",
+    "clausePrefix": "Klausel",
+    "confidence": {
+      "high": "Hohe Vertrauenswürdigkeit",
+      "medium": "Mittlere Vertrauenswürdigkeit",
+      "low": "Niedrige Vertrauenswürdigkeit"
+    },
+    "severity": {
+      "blocker": "Blockierend",
+      "high": "Hoch",
+      "medium": "Mittel",
+      "low": "Niedrig",
+      "info": "Info"
+    },
+    "category": {
+      "compliance": "Compliance",
+      "drafting": "Vertragsentwurf",
+      "terminology": "Terminologie",
+      "missing-statute": "Fehlende Gesetzesreferenz",
+      "deprecated-term": "Veralteter Begriff",
+      "ambiguous": "Mehrdeutig",
+      "template-artefact": "Vorlagenrückstand",
+      "other": "Sonstiges"
+    }
+  },
+  "legalReview": {
+    "tab": "Prüfung",
+    "title": "Juristische Prüfung",
+    "lastRun": "Zuletzt ausgeführt",
+    "rules": "Regelversion",
+    "rerun": "Prüfung erneut starten",
+    "rerunning": "Wird ausgeführt...",
+    "loading": "Prüfung wird geladen...",
+    "empty": "Es wurde noch keine Prüfung erstellt. Klicken Sie auf 'Prüfung erneut starten'.",
+    "noIssues": "Keine Probleme gefunden",
+    "degraded": "Prüfung mit eingeschränkter Abdeckung abgeschlossen",
+    "audit": {
+      "documentReviewGenerated": "Dokumentprüfung erstellt"
+    }
+  },
   "chat": {
     "voiceInput": "Spracheingabe",
     "voiceInputUnsupported": "Spracheingabe wird in diesem Browser nicht unterstützt",

@@ -249,6 +249,52 @@
     "title": "Configurações do documento",
     "tabPrompts": "Prompts de IA"
   },
+  "legalAnswer": {
+    "title": "Revisão jurídica",
+    "compliant": "Elementos em conformidade",
+    "issues": "Problemas",
+    "recommendations": "Recomendações",
+    "legislationReferenced": "Legislação referenciada",
+    "suggestion": "Sugestão",
+    "clausePrefix": "Cláusula",
+    "confidence": {
+      "high": "Confiança alta",
+      "medium": "Confiança média",
+      "low": "Confiança baixa"
+    },
+    "severity": {
+      "blocker": "Bloqueador",
+      "high": "Alta",
+      "medium": "Média",
+      "low": "Baixa",
+      "info": "Info"
+    },
+    "category": {
+      "compliance": "Conformidade",
+      "drafting": "Redação",
+      "terminology": "Terminologia",
+      "missing-statute": "Lei ausente",
+      "deprecated-term": "Termo obsoleto",
+      "ambiguous": "Ambíguo",
+      "template-artefact": "Resíduo de modelo",
+      "other": "Outro"
+    }
+  },
+  "legalReview": {
+    "tab": "Revisão",
+    "title": "Revisão jurídica",
+    "lastRun": "Última execução",
+    "rules": "regras",
+    "rerun": "Re-executar revisão",
+    "rerunning": "Executando...",
+    "loading": "Carregando revisão...",
+    "empty": "Nenhuma revisão foi gerada ainda. Clique em Re-executar revisão.",
+    "noIssues": "Sem problemas",
+    "degraded": "Revisão concluída com cobertura reduzida",
+    "audit": {
+      "documentReviewGenerated": "Revisão de documento gerada"
+    }
+  },
   "chat": {
     "voiceInput": "Entrada de voz",
     "voiceInputUnsupported": "Entrada de voz não é suportada neste navegador",

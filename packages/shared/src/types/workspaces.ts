@@ -32,6 +32,12 @@ export interface WorkspaceSettingsConfig {
   promptScopeIncludeGlobal?: boolean;
   /** Include workspace prompts when building combined prompt (additive model) */
   promptScopeIncludeWorkspace?: boolean;
+  /**
+   * When `false`, RAG chat answers stay on the legacy free-text + token-stream path.
+   * When `true` (or `undefined` and `LEGAL_REVIEW_MODE=on` server-side), the chat
+   * uses structured `LegalAnswer` output. Phase 1 of legal-review pipeline.
+   */
+  legalReviewMode?: boolean;
 }
 
 /**
@@ -75,6 +81,8 @@ export interface UpdateWorkspaceSettingsRequest {
   promptScopeIncludeGlobal?: boolean;
   /** Include workspace prompts when building combined prompt */
   promptScopeIncludeWorkspace?: boolean;
+  /** Toggle structured legal-grade answers for this workspace. */
+  legalReviewMode?: boolean;
 }
 
 export interface Workspace {

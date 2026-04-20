@@ -15,13 +15,14 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import type { ChatMessageWithAudio } from '../chat.types';
 import type { ChatResponseMode } from '@contractai-review/shared';
 import { IncremarkWrapperComponent } from '../incremark-wrapper';
+import { LegalAnswerComponent } from '../legal-answer/legal-answer.component';
 
 const TRUNCATE_LENGTH = 80;
 
 @Component({
   selector: 'app-chat-message',
   standalone: true,
-  imports: [CommonModule, Button, TooltipModule, TranslatePipe, IncremarkWrapperComponent],
+  imports: [CommonModule, Button, TooltipModule, TranslatePipe, IncremarkWrapperComponent, LegalAnswerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
@@ -78,7 +79,14 @@ const TRUNCATE_LENGTH = 80;
                 }
               </div>
               @if (chatResponseMode() !== 'audio_only') {
-                @if (showRawMarkdown()) {
+                @if (message().legalAnswer && !showRawMarkdown()) {
+                  <div class="mt-1 mb-2 w-full">
+                    <app-legal-answer
+                      [answer]="message().legalAnswer!"
+                      (jumpToClause)="jumpToClause.emit($event)"
+                    />
+                  </div>
+                } @else if (showRawMarkdown()) {
                   <pre class="text-gray-800 dark:text-gray-200 mt-1 mb-2 whitespace-pre-wrap font-sans text-sm">{{ message().answerText }}</pre>
                 } @else {
                   <div class="mt-1 mb-2 w-full">
@@ -198,6 +206,8 @@ export class ChatMessageComponent {
   pauseAudio = output<number>();
   getFreshResponse = output<number>();
   expandedChange = output<boolean>();
+  /** Forwarded from LegalAnswerComponent: clauseRef the user wants to scroll to in the document viewer. */
+  jumpToClause = output<string>();
 
   private expandedSignal = signal(true);
   private showRawMarkdownSignal = signal(false);

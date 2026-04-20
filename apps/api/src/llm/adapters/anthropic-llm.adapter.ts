@@ -3,7 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import type { LlmMessage, LlmCompleteOptions } from '@contractai-review/shared';
 import { LLM_PROVIDER_ID } from '@contractai-review/shared';
-import type { ILlmProvider } from '../interfaces/llm-provider.interface';
+import type {
+  ILlmProvider,
+  LlmStructuredResult,
+  LlmStructuredSchema,
+} from '../interfaces/llm-provider.interface';
 
 const DEFAULT_LLM_MAX_TOKENS = 2000;
 
@@ -37,12 +41,18 @@ export class AnthropicLlmAdapter implements ILlmProvider {
       content: m.content,
     }));
 
-    const response = await this.client.messages.create({
-      model: options?.model ?? this.defaultModel,
-      max_tokens: options?.maxTokens ?? this.defaultMaxTokens,
-      system: systemContent || undefined,
-      messages: anthropicMessages,
-    });
+    const response = await this.client.messages.create(
+      {
+        model: options?.model ?? this.defaultModel,
+        max_tokens: options?.maxTokens ?? this.defaultMaxTokens,
+        // Forward temperature when provided (was previously dropped — bug fix).
+        ...(options?.temperature !== undefined ? { temperature: options.temperature } : {}),
+        system: systemContent || undefined,
+        messages: anthropicMessages,
+      },
+      // Forward AbortSignal via SDK request-options arg (was previously dropped — bug fix).
+      options?.signal ? { signal: options.signal } : undefined,
+    );
 
     const textBlock = response.content.find((b) => b.type === 'text');
     return textBlock && 'text' in textBlock ? textBlock.text : 'NOT FOUND';
@@ -62,12 +72,16 @@ export class AnthropicLlmAdapter implements ILlmProvider {
       content: m.content,
     }));
 
-    const stream = this.client.messages.stream({
-      model: options?.model ?? this.defaultModel,
-      max_tokens: options?.maxTokens ?? this.defaultMaxTokens,
-      system: systemContent || undefined,
-      messages: anthropicMessages,
-    });
+    const stream = this.client.messages.stream(
+      {
+        model: options?.model ?? this.defaultModel,
+        max_tokens: options?.maxTokens ?? this.defaultMaxTokens,
+        ...(options?.temperature !== undefined ? { temperature: options.temperature } : {}),
+        system: systemContent || undefined,
+        messages: anthropicMessages,
+      },
+      options?.signal ? { signal: options.signal } : undefined,
+    );
 
     let chunkCount = 0;
     for await (const event of stream) {
@@ -79,6 +93,63 @@ export class AnthropicLlmAdapter implements ILlmProvider {
     this.logger.log(
       `[completeStream] LLM provider.completeStream done: chunkCount=${chunkCount}`,
     );
+  }
+
+  async completeStructured(
+    messages: LlmMessage[],
+    schema: LlmStructuredSchema,
+    options?: LlmCompleteOptions,
+  ): Promise<LlmStructuredResult> {
+    const model = options?.model ?? this.defaultModel;
+    this.logger.log(
+      `[completeStructured] start: model=${model} schema=${schema.name} messageCount=${messages.length}`,
+    );
+
+    const { systemMessages, chatMessages } = this.splitMessages(messages);
+    const systemContent = systemMessages.map((m) => m.content).join('\n\n');
+    const anthropicMessages = chatMessages.map((m) => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    }));
+
+    const response = await this.client.messages.create(
+      {
+        model,
+        max_tokens: options?.maxTokens ?? this.defaultMaxTokens,
+        ...(options?.temperature !== undefined ? { temperature: options.temperature } : {}),
+        system: systemContent || undefined,
+        messages: anthropicMessages,
+        // Anthropic structured-output pattern: declare a single tool with the
+        // target schema and force the model to use it via tool_choice.
+        tools: [
+          {
+            name: schema.name,
+            description: schema.description ?? `Return a ${schema.name} object`,
+            // The Anthropic SDK types `input_schema` as a specific record shape;
+            // our jsonSchema is a generic object compatible with JSON Schema draft-7.
+            input_schema: schema.jsonSchema as unknown as {
+              type: 'object';
+              properties?: Record<string, unknown>;
+            },
+          },
+        ],
+        tool_choice: { type: 'tool', name: schema.name },
+      },
+      options?.signal ? { signal: options.signal } : undefined,
+    );
+
+    const toolUseBlock = response.content.find((b) => b.type === 'tool_use');
+    if (!toolUseBlock || toolUseBlock.type !== 'tool_use') {
+      this.logger.warn(
+        `[completeStructured] no tool_use block in response (schema=${schema.name})`,
+      );
+      return { raw: '', parsed: null };
+    }
+
+    // tool_use.input is already the parsed JSON object per Anthropic's API.
+    const parsed = toolUseBlock.input ?? null;
+    const raw = JSON.stringify(parsed ?? {});
+    return { raw, parsed };
   }
 
   private splitMessages(messages: LlmMessage[]): {

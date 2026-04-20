@@ -17,6 +17,8 @@ export interface DocumentCitation {
   paragraph?: string;
   paragraphId?: string;
   quoteSnippet?: string;
+  /** Numbered clause label (e.g. "9.1.3") when the chunk has hierarchical heading metadata. Phase 2 of legal-review pipeline. */
+  clauseNumber?: string;
 }
 
 /**
@@ -42,6 +44,8 @@ export interface Citation {
   sourceName?: string;
   section?: string;
   url?: string;
+  /** Numbered clause label (e.g. "9.1.3") when the chunk has hierarchical heading metadata. Phase 2 of legal-review pipeline. */
+  clauseNumber?: string;
 }
 
 /** Citation types that denote "citation from user's document". Accept both for backward compat. */

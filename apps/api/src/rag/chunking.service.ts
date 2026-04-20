@@ -8,7 +8,24 @@ export interface Chunk {
   paragraphId?: string;
   startIndex: number;
   endIndex: number;
+  /**
+   * Numeric clause id extracted from the nearest enclosing heading
+   * (e.g. "9.1.3"). Null when the chunk's section is unnumbered or the
+   * input isn't markdown-structured.
+   */
+  clauseNumber?: string | null;
+  /**
+   * Breadcrumb of headings that govern this chunk, ordered shallow → deep
+   * (e.g. ["9. Pension", "9.1 Auto-enrolment", "9.1.3 Contributions"]).
+   */
+  headingPath?: string[] | null;
 }
+
+/**
+ * Matches a leading clause/section number such as "9", "9.1", "9.1.3", "9.1.3.4"
+ * (optionally with a trailing dot). Captures the digits-and-dots run only.
+ */
+const CLAUSE_NUMBER_RE = /^\s*((?:\d+)(?:\.\d+){0,5})\.?\s+/;
 
 @Injectable()
 export class ChunkingService {
@@ -67,35 +84,48 @@ export class ChunkingService {
     let currentIndex = 0;
 
     const normalized = this.normalizeText(text);
-    const paragraphs = this.looksLikeMarkdown(normalized)
-      ? this.splitMarkdownBlocks(normalized)
-      : this.splitHeuristicParagraphs(normalized);
+    const isMarkdown = this.looksLikeMarkdown(normalized);
+    // For markdown we keep the heading metadata alongside each block so the
+    // accumulator can attach `clauseNumber` / `headingPath` to every chunk.
+    // For plain prose we still emit blocks but with empty metadata.
+    const blocks = isMarkdown
+      ? this.splitMarkdownBlocksWithHeadings(normalized)
+      : this.splitHeuristicParagraphs(normalized).map((raw) => ({
+          raw,
+          clauseNumber: null as string | null,
+          headingPath: null as string[] | null,
+          isHeading: false,
+        }));
 
     let accumulatedText = '';
     let accumulatedStart = 0;
+    let accumulatedClause: string | null = null;
+    let accumulatedHeading: string[] | null = null;
 
-    for (const paragraph of paragraphs) {
-      const trimmedParagraph = paragraph.trim();
+    const flush = (endIndex: number, currentBlockLength = 0) => {
+      if (!accumulatedText.trim()) return;
+      chunks.push({
+        text: accumulatedText.trim(),
+        pageNumber,
+        paragraphId: `para-${chunks.length + 1}`,
+        startIndex: accumulatedStart,
+        endIndex: endIndex - currentBlockLength,
+        clauseNumber: accumulatedClause,
+        headingPath: accumulatedHeading,
+      });
+      accumulatedText = '';
+    };
 
-      if (!trimmedParagraph) {
-        continue;
-      }
+    for (const block of blocks) {
+      const trimmedParagraph = block.raw.trim();
+      if (!trimmedParagraph) continue;
 
       // A single block (code fence, wide table, very long quoted clause) can
       // exceed the configured chunk size. Flush whatever is accumulated and
       // emit the oversized block via the fixed-size splitter so we never
       // silently drop content or produce a single huge chunk.
       if (trimmedParagraph.length > this.CHUNK_SIZE * 1.5) {
-        if (accumulatedText.trim()) {
-          chunks.push({
-            text: accumulatedText.trim(),
-            pageNumber,
-            paragraphId: `para-${chunks.length + 1}`,
-            startIndex: accumulatedStart,
-            endIndex: currentIndex,
-          });
-          accumulatedText = '';
-        }
+        flush(currentIndex);
 
         const oversizedChunks = this.chunkByFixedSize(
           trimmedParagraph,
@@ -107,11 +137,15 @@ export class ChunkingService {
             paragraphId: `para-${chunks.length + 1}`,
             startIndex: currentIndex + oversized.startIndex,
             endIndex: currentIndex + oversized.endIndex,
+            clauseNumber: block.clauseNumber,
+            headingPath: block.headingPath,
           });
         }
 
-        currentIndex += paragraph.length + 2;
+        currentIndex += block.raw.length + 2;
         accumulatedStart = currentIndex;
+        accumulatedClause = block.clauseNumber;
+        accumulatedHeading = block.headingPath;
         continue;
       }
 
@@ -120,35 +154,29 @@ export class ChunkingService {
         accumulatedText &&
         accumulatedText.length + trimmedParagraph.length > this.CHUNK_SIZE
       ) {
-        chunks.push({
-          text: accumulatedText.trim(),
-          pageNumber,
-          paragraphId: `para-${chunks.length + 1}`,
-          startIndex: accumulatedStart,
-          endIndex: currentIndex - trimmedParagraph.length,
-        });
+        flush(currentIndex, trimmedParagraph.length);
 
-        // Start new chunk with overlap
+        // Start new chunk with overlap, inheriting the new block's heading
+        // metadata so the next chunk's clauseNumber tracks the document's
+        // current section rather than the previous one.
         const overlapText = accumulatedText.slice(-this.CHUNK_OVERLAP);
         accumulatedText = overlapText + ' ' + trimmedParagraph;
         accumulatedStart = currentIndex - this.CHUNK_OVERLAP;
+        accumulatedClause = block.clauseNumber;
+        accumulatedHeading = block.headingPath;
       } else {
+        if (!accumulatedText) {
+          // Starting a new accumulation — adopt this block's heading state.
+          accumulatedClause = block.clauseNumber;
+          accumulatedHeading = block.headingPath;
+        }
         accumulatedText += (accumulatedText ? '\n\n' : '') + trimmedParagraph;
       }
 
-      currentIndex += paragraph.length + 2; // +2 for paragraph separator
+      currentIndex += block.raw.length + 2; // +2 for paragraph separator
     }
 
-    // Add remaining text as final chunk
-    if (accumulatedText.trim()) {
-      chunks.push({
-        text: accumulatedText.trim(),
-        pageNumber,
-        paragraphId: `para-${chunks.length + 1}`,
-        startIndex: accumulatedStart,
-        endIndex: currentIndex,
-      });
-    }
+    flush(currentIndex);
 
     // If no paragraphs found, split by sentences
     if (chunks.length === 0) {
@@ -190,6 +218,25 @@ export class ChunkingService {
    * - Whitespace tokens are dropped.
    */
   private splitMarkdownBlocks(text: string): string[] {
+    return this.splitMarkdownBlocksWithHeadings(text).map((b) => b.raw);
+  }
+
+  /**
+   * Variant of splitMarkdownBlocks that walks the token stream and remembers
+   * the active heading hierarchy. Each emitted block carries the heading
+   * breadcrumb that governs it; numeric headings (e.g. "9.1.3 Contributions")
+   * also yield a `clauseNumber`.
+   *
+   * The stack is keyed by heading depth (h1=1 ... h6=6), so a deeper heading
+   * pushes onto the stack and a shallower or same-depth heading pops back to
+   * its level before pushing.
+   */
+  private splitMarkdownBlocksWithHeadings(text: string): Array<{
+    raw: string;
+    clauseNumber: string | null;
+    headingPath: string[] | null;
+    isHeading: boolean;
+  }> {
     let tokens: Token[];
     try {
       tokens = lexer(text);
@@ -199,26 +246,94 @@ export class ChunkingService {
           (err as Error).message
         }`,
       );
-      return this.splitHeuristicParagraphs(text);
+      return this.splitHeuristicParagraphs(text).map((raw) => ({
+        raw,
+        clauseNumber: null,
+        headingPath: null,
+        isHeading: false,
+      }));
     }
 
-    const blocks: string[] = [];
+    const blocks: Array<{
+      raw: string;
+      clauseNumber: string | null;
+      headingPath: string[] | null;
+      isHeading: boolean;
+    }> = [];
+
+    // headingStack[i] = the most recent heading text seen at depth i+1.
+    // We use a sparse array so a level-3 heading without a level-2 parent
+    // still produces a single-entry path (matches PDF reality).
+    const headingStack: Array<{ depth: number; text: string; clause: string | null }> = [];
+
+    const currentClause = (): string | null => {
+      // Deepest available numeric clause wins; fall back to shallower.
+      for (let i = headingStack.length - 1; i >= 0; i--) {
+        if (headingStack[i].clause) return headingStack[i].clause;
+      }
+      return null;
+    };
+    const currentPath = (): string[] | null =>
+      headingStack.length > 0 ? headingStack.map((h) => h.text) : null;
 
     for (const token of tokens) {
       switch (token.type) {
         case 'space':
           continue;
+        case 'heading': {
+          const heading = token as Tokens.Heading;
+          const headingText = heading.text.trim();
+          const clauseMatch = CLAUSE_NUMBER_RE.exec(headingText);
+          const clause = clauseMatch ? clauseMatch[1] : null;
+
+          // Pop any stack entry at depth >= heading.depth — shallower or
+          // same-depth heading replaces them.
+          while (
+            headingStack.length > 0 &&
+            headingStack[headingStack.length - 1].depth >= heading.depth
+          ) {
+            headingStack.pop();
+          }
+          headingStack.push({ depth: heading.depth, text: headingText, clause });
+
+          // Emit the heading line itself as a block so context retrieval can
+          // still surface it; mark `isHeading` for downstream filtering.
+          const raw = heading.raw.trim();
+          if (raw) {
+            blocks.push({
+              raw,
+              clauseNumber: currentClause(),
+              headingPath: currentPath(),
+              isHeading: true,
+            });
+          }
+          break;
+        }
         case 'list': {
           const list = token as Tokens.List;
           for (const item of list.items) {
             const raw = item.raw.trim();
-            if (raw) blocks.push(raw);
+            if (raw) {
+              blocks.push({
+                raw,
+                clauseNumber: currentClause(),
+                headingPath: currentPath(),
+                isHeading: false,
+              });
+            }
           }
           break;
         }
         default: {
           const raw = (token as { raw?: string }).raw?.trim();
-          if (raw) blocks.push(raw);
+          if (raw) {
+            blocks.push({
+              raw,
+              clauseNumber: currentClause(),
+              headingPath: currentPath(),
+              isHeading: false,
+            });
+          }
           break;
         }
       }

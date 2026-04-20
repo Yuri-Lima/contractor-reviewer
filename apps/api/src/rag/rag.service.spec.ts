@@ -23,15 +23,21 @@ interface MockBag {
   chatPrepareCacheService: { set: jest.Mock; getAndDelete: jest.Mock };
   llmProviderRegistry: { resolveProvider: jest.Mock };
   memoryService: { getDocumentAndThreadMemory: jest.Mock };
+  legalReviewModelResolver: { resolve: jest.Mock };
 }
 
-function makeChunk(distance: number, idx = 0): VectorSearchResult<Chunk> {
+function makeChunk(
+  distance: number,
+  idx = 0,
+  extra: Partial<Chunk> = {},
+): VectorSearchResult<Chunk> {
   return {
     item: {
       id: `chunk-${idx}`,
       text: `chunk text ${idx}`,
       pageNumber: idx + 1,
       paragraphId: `p-${idx}`,
+      ...extra,
     } as unknown as Chunk,
     distance,
   };
@@ -110,6 +116,9 @@ function buildService(
     memoryService: {
       getDocumentAndThreadMemory: jest.fn().mockResolvedValue(null),
     },
+    legalReviewModelResolver: {
+      resolve: jest.fn().mockReturnValue(undefined),
+    },
   };
 
   const service = new RagService(
@@ -123,6 +132,7 @@ function buildService(
     mocks.chatPrepareCacheService as never,
     mocks.llmProviderRegistry as never,
     mocks.memoryService as never,
+    mocks.legalReviewModelResolver as never,
   );
 
   return { service, mocks };
@@ -399,7 +409,53 @@ describe('RagService', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Section E: Observability
+  // Section E: Clause-aware citations & legal-review structured path
+  // ---------------------------------------------------------------------------
+  describe('clause-aware citations', () => {
+    it('propagates clauseNumber from the chunk into the document citation', async () => {
+      const chunks = [
+        makeChunk(0.9, 0, { clauseNumber: '9.1.3' } as never),
+        makeChunk(0.85, 1, { clauseNumber: '9.1.4' } as never),
+      ];
+      const { service } = buildService({}, chunks);
+      const events = await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1'),
+      );
+      const done = events.find((e) => 'type' in e && e.type === 'done') as
+        | {
+            type: 'done';
+            citations: Array<{
+              type: 'document';
+              clauseNumber?: string;
+            }>;
+          }
+        | undefined;
+      expect(done).toBeDefined();
+      expect(
+        done!.citations.filter((c) => c.type === 'document').map((c) => c.clauseNumber),
+      ).toEqual(['9.1.3', '9.1.4']);
+    });
+
+    it('omits clauseNumber when the chunk has none (back-compat)', async () => {
+      const chunks = [makeChunk(0.9, 0)];
+      const { service } = buildService({}, chunks);
+      const events = await drainStream(
+        service.generateAnswerStream('q', 'doc-1', 'ws-1'),
+      );
+      const done = events.find((e) => 'type' in e && e.type === 'done') as
+        | {
+            type: 'done';
+            citations: Array<{ clauseNumber?: string }>;
+          }
+        | undefined;
+      const docCitation = done!.citations[0];
+      expect(docCitation).toBeDefined();
+      expect(docCitation.clauseNumber).toBeUndefined();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Section F: Observability
   // ---------------------------------------------------------------------------
   describe('observability', () => {
     it('logs retrieved/kept counts after applying the floor', async () => {

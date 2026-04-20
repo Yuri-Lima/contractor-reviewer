@@ -15,12 +15,18 @@ export interface LegalChunkSearchResult
   country?: string;
   jurisdiction?: string;
   url?: string;
+  /** Canonical short name of the act, denormalized from the corpus YAML. */
+  actName?: string;
+  /** Year of the act (e.g. 1990 for "Pensions Act 1990"). */
+  actYear?: number;
 }
 
 /** Filters for legal chunk search */
 export interface LegalChunkFilters {
   country?: string;
   jurisdiction?: string;
+  /** Restrict to a single act (used by the rerank step in rag.service). */
+  actName?: string;
 }
 
 /**

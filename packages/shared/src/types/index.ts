@@ -13,3 +13,4 @@ export * from './user-storage';
 export * from './transcription';
 export * from './tts';
 export * from './llm';
+export * from './legal-review';

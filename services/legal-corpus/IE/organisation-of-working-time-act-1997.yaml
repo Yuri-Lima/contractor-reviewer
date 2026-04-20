@@ -1,0 +1,41 @@
+# Organisation of Working Time Act 1997 (Ireland)
+# https://revisedacts.lawreform.ie/eli/1997/act/20/revised/en/html
+#
+# Source verification:
+#   sourceVersion: consolidated text incl. amendments to 2024-12-31
+#   lastVerified:  2026-04-01
+
+country: IE
+jurisdiction: IE
+language: en
+sourceType: law
+sourceName: Organisation of Working Time Act 1997
+actName: Organisation of Working Time Act
+actYear: 1997
+url: https://revisedacts.lawreform.ie/eli/1997/act/20/revised/en/html
+lastVerified: 2026-04-01
+
+sections:
+  - id: owta-1997-s15-weekly
+    section: "Section 15 — Maximum average weekly working time"
+    text: |
+      An employer shall not permit an employee to work, in each period of 7
+      days, more than an average of 48 hours, calculated over a reference
+      period not exceeding 4 months (12 months by collective agreement,
+      6 months for specified activities).
+
+  - id: owta-1997-s19-annual-leave
+    section: "Section 19 — Annual leave entitlement"
+    text: |
+      Statutory minimum annual leave is 4 working weeks in a leave year for an
+      employee who has worked at least 1,365 hours; one-third of a working
+      week per month worked for shorter service; or 8% of hours worked, capped
+      at 4 weeks. Public holidays under s.21 are in addition.
+
+  - id: owta-1997-s21-public-holiday
+    section: "Section 21 — Public holiday entitlement"
+    text: |
+      An employee is entitled, in respect of a public holiday, to one of:
+      (a) a paid day off on the public holiday; (b) a paid day off within a
+      month; (c) an additional day of annual leave; or (d) an additional day's
+      pay. The choice is the employer's.

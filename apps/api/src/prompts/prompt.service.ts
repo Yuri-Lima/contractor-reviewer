@@ -11,14 +11,29 @@ import {
 
 export { PROMPT_KEYS, GLOBAL_PROMPT_KEY, WORKSPACE_PROMPT_KEY };
 
-/** Built-in defaults when DB prompt is missing */
+/**
+ * Variant identifier for the legal-grade structured-output prompts (Phase 1
+ * of legal-review pipeline). When `LEGAL_REVIEW_MODE` is on, RAG passes
+ * `variant: LEGAL_REVIEW_PROMPT_VARIANT` to `getChatPrompts`.
+ */
+export const LEGAL_REVIEW_PROMPT_VARIANT = 'legal-review-v2';
+
+/**
+ * Built-in defaults when DB prompt is missing. Keyed by `${variant}::${key}`,
+ * with a fallback to `default::${key}` when the variant lookup misses.
+ *
+ * The `legal-review-v2` variant is the structured-output prompt pair that
+ * forces the LLM to emit `LegalAnswer` JSON with clause-level citations,
+ * named statutes, severity-tagged issues, and calibrated confidence.
+ */
 const DEFAULT_PROMPTS: Record<string, string> = {
-  [GLOBAL_PROMPT_KEY]:
+  // ---- default variant (legacy free-text path) ----
+  [`default::${GLOBAL_PROMPT_KEY}`]:
     'You are a legal assistant. Provide accurate, evidence-based answers. Always cite your sources. When a language is specified, provide all answers in that language.',
-  [WORKSPACE_PROMPT_KEY]: '',
-  'chat.system':
+  [`default::${WORKSPACE_PROMPT_KEY}`]: '',
+  'default::chat.system':
     'You are a legal assistant. Provide accurate, evidence-based answers. Always cite your sources. IMPORTANT: When a language is specified, provide all answers in that language.',
-  'chat.user': `You are a legal assistant analyzing contracts. Answer the question based ONLY on the provided context. If the context doesn't contain enough information, say "NOT FOUND" and suggest where to look.
+  'default::chat.user': `You are a legal assistant analyzing contracts. Answer the question based ONLY on the provided context. If the context doesn't contain enough information, say "NOT FOUND" and suggest where to look.
 
 IMPORTANT: You MUST provide your answer in {{languageName}}. All responses must be written in {{languageName}}.
 
@@ -30,7 +45,65 @@ Context:
 Question: {{question}}
 
 Answer (be concise and cite specific excerpts, respond in {{languageName}}):`,
+
+  // ---- legal-review-v2 variant (structured-output path) ----
+  // Re-uses the same global/workspace defaults — the structured shape is enforced by the user template + provider-side JSON schema.
+  [`${LEGAL_REVIEW_PROMPT_VARIANT}::${GLOBAL_PROMPT_KEY}`]:
+    'You are a senior legal counsel reviewing a contract clause-by-clause. You answer in JSON only and cite by clause number and named statute. Do not invent legislation or clause numbers.',
+  [`${LEGAL_REVIEW_PROMPT_VARIANT}::${WORKSPACE_PROMPT_KEY}`]: '',
+  [`${LEGAL_REVIEW_PROMPT_VARIANT}::chat.system`]: `You are a senior legal counsel reviewing contracts.
+
+You produce a single JSON object that exactly matches the "LegalAnswer" schema enforced by the LLM provider. Do not include any prose, markdown, code fences or commentary outside the JSON.
+
+CITATION RULES
+- Whenever an excerpt is labelled "[Clause X.Y.Z]:" you MUST set issues[].clauseRef and compliantElements[].clauseRef to that exact clause number (e.g. "9.1.3"). When only "[Excerpt N]:" is available, omit clauseRef rather than fabricate one.
+- legislationReferenced[] MUST only contain statutes that appear in the "Legal sources" block of the user message. Use the act name + year + section EXACTLY as listed there. Never invent statute names, years, or sections. If no Legal sources block is provided, leave legislationReferenced as [].
+- Apply the same rule to issues[].legislationRef.
+
+WHAT TO LOOK FOR (always populate BOTH compliantElements and issues — never one-sided when the question is about compliance)
+- Compliance: clauses that meet or fail jurisdictional requirements.
+- Drafting: literal "OR" between options, "[XX]", "[four]", "tbc", "XX day of XX", "three/six month" slashes, blank "[ ]".
+- Terminology: jurisdiction-mismatched terms (e.g. UK "qualifying earnings" inside an Irish contract, or "statutory minimum required by Irish law" inside an occupational-scheme block).
+- Missing-clause: required obligations the contract omits for the stated jurisdiction.
+- Deprecated: outdated statute names, repealed thresholds.
+- Ambiguity: clauses whose plain meaning is genuinely unclear.
+
+SEVERITY
+- blocker: makes the contract unsignable as drafted (template artefact, contradictory clauses).
+- high: likely unenforceable or non-compliant; needs redraft before signature.
+- medium: should be fixed but not signing-blocking.
+- low: stylistic or minor.
+- info: observation, not a defect.
+
+CONFIDENCE CALIBRATION (must follow exactly)
+- "high"   = at least one named statute matched AND at least one clauseRef cited AND no internal contradictions in your output.
+- "medium" = at least one clauseRef cited but NO named statute matched, OR statute matched but no clauseRef.
+- "low"    = neither clauseRef nor statute could be cited, OR you had to fall back on general knowledge.
+
+LANGUAGE
+- All free-text fields (rationale, message, suggestion, recommendations, freeText) MUST be written in {{languageName}}. Schema enum values (severity, category, confidence) stay in English.
+
+OUTPUT
+- Return a single JSON object matching the LegalAnswer schema. No surrounding text. The provider will reject anything that does not match the schema.`,
+
+  [`${LEGAL_REVIEW_PROMPT_VARIANT}::chat.user`]: `Question (jurisdiction = {{jurisdiction}}): {{question}}
+
+Respond in {{languageName}}.
+
+{{conversationHistory}}
+
+Document excerpts (with clause numbers when available):
+{{context}}
+
+Legal sources (statutes for jurisdiction {{jurisdiction}} — use ONLY these for legislationReferenced and legislationRef):
+{{legalSources}}
+
+Return a single JSON object matching the LegalAnswer schema. No prose outside JSON.`,
 };
+
+function lookupDefault(key: string, variant: string): string | undefined {
+  return DEFAULT_PROMPTS[`${variant}::${key}`] ?? DEFAULT_PROMPTS[`default::${key}`];
+}
 
 export interface ChatPromptParams {
   languageName: string;
@@ -38,6 +111,10 @@ export interface ChatPromptParams {
   question: string;
   /** Optional conversation history for multi-turn (formatted as User: X\nAssistant: Y\n) */
   conversationHistory?: string;
+  /** ISO-ish jurisdiction code (e.g. "IE"). Used by the legal-review-v2 variant. */
+  jurisdiction?: string;
+  /** Pre-formatted legal sources block (one entry per line). Used by the legal-review-v2 variant. */
+  legalSources?: string;
 }
 
 /** Scope flags for additive prompt combination (user can enable/disable each layer) */
@@ -111,9 +188,9 @@ export class PromptService {
       return parts.join('\n\n');
     }
 
-    const defaultContent = DEFAULT_PROMPTS[key];
+    const defaultContent = lookupDefault(key, variant);
     if (defaultContent !== undefined) return defaultContent;
-    throw new Error(`Prompt not found: ${key} (no default available)`);
+    throw new Error(`Prompt not found: ${key} variant=${variant} (no default available)`);
   }
 
   /**
@@ -157,12 +234,12 @@ export class PromptService {
     }
 
     // 4. Fallback to built-in default
-    const defaultContent = DEFAULT_PROMPTS[key];
+    const defaultContent = lookupDefault(key, variant);
     if (defaultContent) {
       return defaultContent;
     }
 
-    throw new Error(`Prompt not found: ${key} (no default available)`);
+    throw new Error(`Prompt not found: ${key} variant=${variant} (no default available)`);
   }
 
   /**
@@ -213,9 +290,16 @@ export class PromptService {
       context: params.context || 'No relevant context found.',
       question: params.question,
       conversationHistory,
+      jurisdiction: params.jurisdiction || 'unknown',
+      legalSources: params.legalSources || 'No statutes available for this jurisdiction.',
     });
 
-    return { system, user };
+    const interpolatedSystem = this.interpolate(system, {
+      languageName: params.languageName,
+      jurisdiction: params.jurisdiction || 'unknown',
+    });
+
+    return { system: interpolatedSystem, user };
   }
 
   /**
@@ -242,7 +326,7 @@ export class PromptService {
         documentId: IsNull(),
       },
     });
-    const content = workspacePrompt?.content ?? DEFAULT_PROMPTS[WORKSPACE_PROMPT_KEY] ?? '';
+    const content = workspacePrompt?.content ?? lookupDefault(WORKSPACE_PROMPT_KEY, 'default') ?? '';
     return [
       {
         key: WORKSPACE_PROMPT_KEY,
@@ -276,7 +360,7 @@ export class PromptService {
         documentId: IsNull(),
       },
     });
-    const content = globalPrompt?.content ?? DEFAULT_PROMPTS[GLOBAL_PROMPT_KEY] ?? '';
+    const content = globalPrompt?.content ?? lookupDefault(GLOBAL_PROMPT_KEY, 'default') ?? '';
     return [
       {
         key: GLOBAL_PROMPT_KEY,
@@ -368,7 +452,7 @@ export class PromptService {
               variant: 'default',
               scopeFlags,
             })
-          : documentPrompt?.content ?? workspacePrompt?.content ?? globalPrompt?.content ?? DEFAULT_PROMPTS[key];
+          : documentPrompt?.content ?? workspacePrompt?.content ?? globalPrompt?.content ?? lookupDefault(key, 'default');
       if (!content) continue;
 
       const source = documentPrompt ? 'document' : workspacePrompt ? 'workspace' : 'global';

@@ -69,6 +69,7 @@ import { EditableTitleComponent } from '../../core/components/editable-title/edi
 import { BaseListConfig } from '../../core/components/base-list/base-list.config';
 import { ChatPanelComponent } from '../chat';
 import type { ChatMessageWithAudio, ChatThreadInfo } from '../chat';
+import { DocumentReviewPanelComponent } from '../document-review/document-review-panel.component';
 import { LazyLoadEvent } from 'primeng/api';
 import { PaginationService } from '../../core/services/pagination.service';
 import { WebSocketService } from '../../core/services/websocket.service';
@@ -134,6 +135,7 @@ interface FilesResourceParams extends FilesRequestParams {
     EditableTitleComponent,
     LlmPayloadDialogComponent,
     ChatPanelComponent,
+    DocumentReviewPanelComponent,
   ],
   providers: [ConfirmationService, MessageService],
   template: `
@@ -258,10 +260,11 @@ interface FilesResourceParams extends FilesRequestParams {
         </div>
       }
 
-      <p-tabs [value]="activeTab()" (valueChange)="activeTab.set($event ?? '0')">
+      <p-tabs [value]="activeTab()" (valueChange)="onTabChange($event)">
         <p-tablist>
           <p-tab value="0">{{ 'documents.files' | translate }}</p-tab>
           <p-tab value="1">{{ 'documents.chat' | translate }}</p-tab>
+          <p-tab value="2">{{ 'legalReview.tab' | translate }}</p-tab>
         </p-tablist>
         <p-tabpanels>
           <p-tabpanel value="0">
@@ -419,7 +422,19 @@ interface FilesResourceParams extends FilesRequestParams {
               (playAudio)="playMessageAudio($event)"
               (pauseAudio)="pauseMessageAudio($event)"
               (getFreshResponse)="onGetFreshResponse($event)"
+              (jumpToClause)="onJumpToClause($event)"
             />
+          </p-tabpanel>
+
+          <p-tabpanel value="2">
+            @if (workspaceId() && documentId()) {
+              <app-document-review-panel
+                #reviewPanel
+                [workspaceId]="workspaceId()!"
+                [documentId]="documentId()!"
+                (jumpToClause)="onJumpToClause($event)"
+              />
+            }
           </p-tabpanel>
         </p-tabpanels>
       </p-tabs>
@@ -604,6 +619,9 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     { value: 'createdAt', labelKey: 'documents.createdAt' },
   ];
   activeTab = signal<string | number>('0');
+  /** Lazy-loaded review tab. Triggers a fetch on first activation. */
+  reviewPanel = viewChild<DocumentReviewPanelComponent>('reviewPanel');
+  private reviewLoaded = false;
   /** Only OWNER and ADMIN can edit prompts; set from workspace settings */
   canEditPrompts = signal(false);
   textFileContent = signal<string>('');
@@ -1937,6 +1955,37 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Handles a clause-jump request emitted by `LegalAnswerComponent`.
+   *
+   * Clause-aware scrolling lands together with `Citation.clauseNumber` anchors
+   * in Phase 2 of the legal-grade RAG plan. Until then we accept the event so
+   * the UI compiles end-to-end and downstream wiring is exercised, but only
+   * surface a best-effort hint via console + tab switch.
+   */
+  onJumpToClause(clauseRef: string): void {
+    if (!clauseRef) return;
+    console.log('[ChatFlow] jumpToClause requested', { clauseRef });
+    // Switch to the document viewer tab so any future anchor-scroll has a
+    // visible target. Tab index 0 is the document viewer in current layout.
+    this.activeTab.set('0');
+  }
+
+  /**
+   * Handle tab switches. Lazy-loads the document review on first activation
+   * of the review tab so the API call only happens when needed (not on every
+   * document open).
+   */
+  onTabChange(value: string | number | null | undefined): void {
+    const v = value ?? '0';
+    this.activeTab.set(v);
+    if (String(v) === '2' && !this.reviewLoaded) {
+      this.reviewLoaded = true;
+      // Defer to next microtask so the viewChild is wired up first.
+      queueMicrotask(() => this.reviewPanel()?.load());
+    }
+  }
+
   sendQuestion(questionTextOverride?: string, forceFresh?: boolean, replaceAtIndex?: number): void {
     const questionText = (questionTextOverride ?? this.question().trim()).trim();
     if (!questionText) return;
@@ -2012,6 +2061,22 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
                 }
                 return next;
               });
+            } else if (event.type === 'legal-answer') {
+              console.log(
+                '[ChatFlow] Update chatMessages signal: legal-answer',
+                `targetIndex=${targetIndex}`,
+                `issueCount=${event.answer.issues.length}`,
+              );
+              this.chatMessages.update((messages) => {
+                const next = [...messages];
+                if (next[targetIndex]) {
+                  next[targetIndex] = {
+                    ...next[targetIndex],
+                    legalAnswer: event.answer,
+                  };
+                }
+                return next;
+              });
             } else if (event.type === 'done') {
               console.log(
                 '[ChatFlow] Update chatMessages signal: done',
@@ -2019,10 +2084,12 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
                 `answerLength=${event.answerText?.length ?? 0}`,
                 `citationsCount=${event.citations?.length ?? 0}`,
                 `fromCache=${event.fromCache}`,
+                `hasLegalAnswer=${Boolean(event.legalAnswer)}`,
               );
               const finalMessage: ChatMessageWithAudio = {
                 question: questionText,
                 answerText: event.answerText,
+                ...(event.legalAnswer ? { legalAnswer: event.legalAnswer } : {}),
                 confidence: event.confidence,
                 citations: event.citations,
                 audioState: needsAudio ? 'synthesizing' : 'none',

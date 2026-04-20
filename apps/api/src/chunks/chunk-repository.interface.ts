@@ -8,6 +8,10 @@ export interface CreateChunkDto {
   paragraphId?: string;
   startIndex: number;
   endIndex: number;
+  /** Numeric clause id (e.g. "9.1.3") extracted from the section heading. */
+  clauseNumber?: string | null;
+  /** Breadcrumb of headings governing this chunk, shallow → deep. */
+  headingPath?: string[] | null;
 }
 
 /**

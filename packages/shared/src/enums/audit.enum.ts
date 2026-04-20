@@ -13,6 +13,7 @@ export enum AuditAction {
   TTS_SYNTHESIZE = 'tts_synthesize',
   PROMPT_GENERATE = 'prompt_generate',
   JURISDICTION_OVERRIDE = 'jurisdiction_override',
+  DOCUMENT_REVIEW_GENERATED = 'document_review_generated',
 }
 
 export enum TargetType {

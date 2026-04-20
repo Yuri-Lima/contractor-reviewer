@@ -1,0 +1,21 @@
+# Deprecated-term red flags — usage of repealed or out-of-date legal terms.
+# Phase 4 of the legal-grade RAG pipeline. rulesVersion: v1.
+
+rulesVersion: v1
+category: deprecated-term
+appliesTo: jurisdiction:IE
+
+rules:
+  - id: prsa-pre-ae-language
+    pattern: "you (will|shall) be enrolled in (a |the )?PRSA from day one"
+    flags: gi
+    severity: medium
+    message: "Wording predates the Automatic Enrolment Retirement Savings System Act 2024."
+    remediation: "Update to reflect the AE Act 2024 phased rollout and NAERSA enrolment, or expressly opt out via a comparable occupational scheme."
+
+  - id: three-six-month-probation-old
+    pattern: "(three|3) (or |/|to )(six|6) months? probation"
+    flags: gi
+    severity: low
+    message: "Vague probation period band ('three/six month'). Statutory probation rules now require a determinate period."
+    remediation: "State a single probation period and ensure it is reasonable and proportionate (Probation Regulations 2022)."

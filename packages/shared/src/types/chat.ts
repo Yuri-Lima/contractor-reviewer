@@ -1,4 +1,5 @@
 import { Citation } from './common';
+import type { LegalAnswer } from './legal-review';
 
 export interface ChatThread {
   id: string;
@@ -19,6 +20,8 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   question: string;
   answerText: string | null;
+  /** Structured legal-grade answer when LEGAL_REVIEW_MODE is enabled for the workspace. Null otherwise. */
+  legalAnswer?: LegalAnswer | null;
   confidence: 'high' | 'medium' | 'low' | null;
   citations: Citation[] | null;
   notFound: boolean;
@@ -35,6 +38,12 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   answerText: string;
+  /**
+   * Structured legal-grade answer (Phase 1 of legal-review pipeline).
+   * Present when the workspace has `legalReviewMode !== false`. When present,
+   * `answerText` is set to `legalAnswer.freeText ?? <one-line summary>` so legacy renderers still work.
+   */
+  legalAnswer?: LegalAnswer;
   confidence: 'high' | 'medium' | 'low';
   citations: Citation[];
   notFound: boolean;
@@ -65,9 +74,12 @@ export interface ChatPreparePayload {
   documentChunks: ChatPrepareDocumentChunk[];
   legalChunks: ChatPrepareLegalChunk[];
   question: string;
-  model: string;
+  /** Resolved model. May be `null` to mean "let the adapter use its own default" (legal-review mode + no LEGAL_REVIEW_MODEL_<PROVIDER> env). */
+  model: string | null;
   temperature: number;
   maxTokens: number;
+  /** When true, executePreparedChat will call `completeStructured<LegalAnswer>` instead of `complete`/`completeStream`. */
+  legalReviewMode?: boolean;
 }
 
 /** Response from POST /chat/prepare */

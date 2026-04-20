@@ -1,0 +1,35 @@
+# Terms of Employment (Information) Act 1994 (Ireland)
+# https://revisedacts.lawreform.ie/eli/1994/act/5/revised/en/html
+# (As amended by the Employment Miscellaneous Provisions Act 2018 — "Day-5"
+# core terms requirement.)
+#
+# Source verification:
+#   sourceVersion: consolidated text incl. amendments to 2024-12-31
+#   lastVerified:  2026-04-01
+
+country: IE
+jurisdiction: IE
+language: en
+sourceType: law
+sourceName: Terms of Employment (Information) Act 1994
+actName: Terms of Employment (Information) Act
+actYear: 1994
+url: https://revisedacts.lawreform.ie/eli/1994/act/5/revised/en/html
+lastVerified: 2026-04-01
+
+sections:
+  - id: toe-1994-s3-day5
+    section: "Section 3 — Core terms (Day-5) and full statement (2-month)"
+    text: |
+      An employer must provide an employee with a written statement of the
+      five core terms of employment within 5 days of commencement:
+        (a) full name of employer and employee;
+        (b) employer's address;
+        (c) expected duration of the contract (if fixed-term/specified);
+        (d) rate or method of calculating pay and pay reference period;
+        (e) the number of hours the employer reasonably expects the employee
+            to work per normal working day and per normal working week.
+      A full written statement covering all s.3(1) particulars (place of
+      work, job title, paid leave, sick pay, pensions, notice etc.) must
+      follow within 2 months. Breach is enforceable at the WRC under s.7
+      and may attract compensation up to 4 weeks' remuneration.

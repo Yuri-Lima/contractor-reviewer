@@ -39,6 +39,8 @@ export class DocumentsService {
     private ragCacheService: RagCacheService,
     @InjectQueue('parsing')
     private parsingQueue: Queue,
+    @InjectQueue('chunking')
+    private chunkingQueue: Queue,
     @InjectQueue('jurisdiction-evaluation')
     private jurisdictionEvaluationQueue: Queue,
   ) {}
@@ -642,5 +644,70 @@ export class DocumentsService {
    */
   async delete(documentId: string, workspaceId: string): Promise<boolean> {
     return this.documentDeletionOrchestrator.deleteDocument(documentId, workspaceId);
+  }
+
+  /**
+   * Re-chunk a document from its already-extracted text. Used to backfill the
+   * Phase-2 `clauseNumber` / `headingPath` columns on rows that were created
+   * before the heading-aware chunker shipped, without re-running the
+   * (expensive) parsing/OCR step.
+   *
+   * Idempotent: deletes existing chunks, then enqueues a chunking job per file
+   * that already has `ocrText`. Returns the number of jobs enqueued.
+   */
+  async reindexChunks(
+    documentId: string,
+    workspaceId: string,
+  ): Promise<{ enqueuedJobs: number; deletedChunks: number }> {
+    const document = await this.documentRepository.findOne({
+      where: { id: documentId, workspaceId },
+      relations: ['files'],
+    });
+    if (!document) {
+      throw new NotFoundException(`Document ${documentId} not found`);
+    }
+
+    const filesWithText = (document.files ?? []).filter(
+      (f) => f.status === FileStatus.AVAILABLE && (f.ocrText?.length ?? 0) > 0,
+    );
+    if (filesWithText.length === 0) {
+      throw new BadRequestException(
+        'Document has no parsed text to re-chunk; re-upload or re-parse first.',
+      );
+    }
+
+    const deletedChunks = await this.chunkRepository.deleteByDocumentId(documentId);
+
+    let enqueuedJobs = 0;
+    for (const file of filesWithText) {
+      const chunkingJob = this.documentJobRepository.create({
+        documentId,
+        type: JobType.CHUNKING,
+        status: JobStatus.PENDING,
+        metadata: {
+          fileId: file.id,
+          extractedText: file.ocrText.substring(0, 100),
+          reindex: true,
+        },
+      });
+      const saved = await this.documentJobRepository.save(chunkingJob);
+      await this.chunkingQueue.add('chunk-document', {
+        jobId: saved.id,
+        documentId,
+        fileId: file.id,
+        text: file.ocrText,
+        pageCount: file.pageCount ?? null,
+      });
+      this.logger.log(
+        `[Reindex] Enqueued chunking job ${saved.id} for file ${file.id} (doc ${documentId})`,
+      );
+      enqueuedJobs++;
+    }
+
+    await this.ragCacheService.invalidateDocument(documentId).catch(() => {
+      // cache invalidation failures are non-fatal for the reindex flow
+    });
+
+    return { enqueuedJobs, deletedChunks };
   }
 }

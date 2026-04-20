@@ -5,7 +5,9 @@ import { ChunkingProcessor } from './chunking.processor';
 import { EmbeddingsProcessor } from './embeddings.processor';
 import { SummarizeMemoryProcessor } from './summarize-memory.processor';
 import { JurisdictionEvaluationProcessor } from './jurisdiction-evaluation.processor';
+import { DocumentReviewProcessor } from './document-review.processor';
 import { JobProgressPublisher } from './job-progress.publisher';
+import { DocumentReviewModule } from '../document-review/document-review.module';
 import { DocumentJob } from '../entities/document-job.entity';
 import { DocumentFile } from '../entities/document-file.entity';
 import { Document } from '../entities/document.entity';
@@ -76,6 +78,7 @@ function writeLog(location: string, message: string, data: any, hypothesisId: st
     WorkspaceModule,
     MemoryModule,
     LlmModule,
+    DocumentReviewModule,
   ],
   providers: [
     ParsingProcessor,
@@ -83,6 +86,7 @@ function writeLog(location: string, message: string, data: any, hypothesisId: st
     EmbeddingsProcessor,
     SummarizeMemoryProcessor,
     JurisdictionEvaluationProcessor,
+    DocumentReviewProcessor,
     JobProgressPublisher,
   ],
 })

@@ -99,6 +99,10 @@ export const API_CONFIG = {
     documentReEvaluateJurisdiction: (workspaceId: string, documentId: string) =>
       `/workspaces/${workspaceId}/documents/${documentId}/re-evaluate-jurisdiction`,
     documentParsers: (workspaceId: string) => `/workspaces/${workspaceId}/document-parsers`,
+    documentReview: (workspaceId: string, documentId: string) =>
+      `/workspaces/${workspaceId}/documents/${documentId}/review`,
+    documentReviewRerun: (workspaceId: string, documentId: string) =>
+      `/workspaces/${workspaceId}/documents/${documentId}/review/rerun`,
   },
 };
 

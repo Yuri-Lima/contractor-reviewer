@@ -23,6 +23,8 @@ export class TypeOrmChunkRepository implements IChunkRepository {
         paragraphId: d.paragraphId,
         startIndex: d.startIndex,
         endIndex: d.endIndex,
+        clauseNumber: d.clauseNumber ?? null,
+        headingPath: d.headingPath ?? null,
       }),
     );
     return this.chunkRepository.save(entities);

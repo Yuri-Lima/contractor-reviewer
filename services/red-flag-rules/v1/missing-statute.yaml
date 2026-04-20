@@ -1,0 +1,38 @@
+# Missing-statute red flags — the contract talks about a regulated topic
+# but never names the governing statute. Triggers when the topic keyword is
+# present and the statute name is absent in the same document.
+# Phase 4 of the legal-grade RAG pipeline. rulesVersion: v1.
+
+rulesVersion: v1
+category: missing-statute
+appliesTo: jurisdiction:IE
+
+rules:
+  - id: pension-without-ae-act
+    topicPattern: "pension|auto-enrolment|automatic enrolment|retirement savings"
+    requiredAnyPattern:
+      - "Automatic Enrolment Retirement Savings System Act 2024"
+      - "AE Act 2024"
+      - "AERSSA 2024"
+      - "NAERSA"
+      - "Pensions Act 1990"
+    severity: medium
+    message: "Pension provisions present but no Irish pensions statute is cited."
+    remediation: "Add a reference to the Automatic Enrolment Retirement Savings System Act 2024 (or, where applicable, the Pensions Act 1990 s.121 PRSA route)."
+
+  - id: working-hours-without-owta
+    topicPattern: "working hours|weekly hours|annual leave|public holiday"
+    requiredAnyPattern:
+      - "Organisation of Working Time Act 1997"
+      - "OWTA 1997"
+    severity: low
+    message: "Working-time / leave provisions present but the Organisation of Working Time Act 1997 is not cited."
+    remediation: "Cross-reference the Organisation of Working Time Act 1997 in the relevant clause."
+
+  - id: notice-without-min-notice-act
+    topicPattern: "notice (of |period|of termination)|terminate.*employment"
+    requiredAnyPattern:
+      - "Minimum Notice and Terms of Employment Act 1973"
+    severity: low
+    message: "Termination/notice provisions present but the Minimum Notice and Terms of Employment Act 1973 is not cited."
+    remediation: "Reference the Act when stating notice periods so it's clear contractual notice is on top of (not in lieu of) statutory minimums."

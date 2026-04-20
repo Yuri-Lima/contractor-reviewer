@@ -232,6 +232,70 @@ Memory is injected into the RAG context before the LLM call. Thread memory is up
 | Chunking | Paragraph/sentence/fixed-size configurable |
 | Vector search | pgvector cosine similarity |
 
+## Legal-grade Pipeline (Phase 1–4)
+
+When `LEGAL_REVIEW_MODE=on` (default), the chat answer path swaps the
+free-form prose template for a structured `LegalAnswer` and a persistent
+drafting reviewer is attached to the document lifecycle.
+
+### Pipeline shape
+
+1. **Structured chat answer (Phase 1)** — `RagService.generateAnswerStream`
+   selects the `legal-review-v2` prompt variant, calls
+   `ILlmProvider.completeStructured` (OpenAI `json_schema`, Anthropic
+   tool-use, xAI `json_schema`), and validates against `LegalAnswerZ`. A
+   single corrective retry is attempted with the first 3 Zod errors and a
+   1500-char excerpt of the rejected payload before falling back to a
+   degraded prose answer.
+2. **Clause-aware retrieval (Phase 2)** — `Chunk.clauseNumber` and
+   `Chunk.headingPath` are extracted by `ChunkingService.splitMarkdownBlocksWithHeadings`
+   from docling's heading-preserving markdown; `RagService.formatDocumentContext`
+   emits `[Clause X.Y.Z]` labels and propagates `Citation.clauseNumber`. An
+   admin `POST /workspaces/:wsId/documents/:docId/reindex` endpoint
+   re-chunks an existing document without re-parsing.
+3. **Jurisdictional legal corpus (Phase 3)** — Curated YAMLs under
+   `services/legal-corpus/<JURIS>/` are loaded by
+   `apps/api/src/scripts/seed-legal-corpus.ts` into `LegalSource` +
+   `Embedding` rows with denormalised `actName`, `actYear`, and
+   `lastVerified` columns. `RagService.rerankLegalByActMention` adds a
+   +0.1 similarity bonus when a candidate `actName` is mentioned in the
+   matching document chunks.
+4. **Persistent drafting review (Phase 4)** — On post-jurisdiction
+   completion, `JurisdictionEvaluationProcessor` enqueues a
+   `document-review` job. `DocumentReviewProcessor` runs
+   `DocumentReviewService.runReview`, which combines `RuleDetectorService`
+   (regex YAML rules versioned in `services/red-flag-rules/<version>/`)
+   with `LlmDetectorService` (16k-char windows, structured output) and
+   merges them via `MergeService` (key: `(category, clauseRef)`,
+   tie-breaker: Levenshtein ≥ 0.85). One row per
+   `(documentId, rulesVersion, llmModel)` is persisted to
+   `document_reviews`; the UI surfaces it in the **Review** tab.
+
+### Environment variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `LEGAL_REVIEW_MODE` | `on` | Master switch for the legal-grade chat answer path AND the LLM detector inside `DocumentReviewService`. Set to `off` for rules-only review. |
+| `LEGAL_REVIEW_AUTO_REVIEW` | `on` | When `off`, post-jurisdiction does NOT auto-enqueue `document-review`; reviews must be triggered via `POST .../review/rerun`. |
+| `LEGAL_REVIEW_MODEL_<PROVIDER>` | unset | Per-provider override of the model used for high-stakes structured calls (e.g. `LEGAL_REVIEW_MODEL_OPENAI=gpt-4o`, `LEGAL_REVIEW_MODEL_ANTHROPIC=claude-opus-4-7`). Falls back to the adapter's `defaultModel`. |
+| `LEGAL_CORPUS_AUTO_SEED` | `off` | When `on`, the seed script may be run as part of API startup. By default, ops run `pnpm tsx apps/api/src/scripts/seed-legal-corpus.ts` manually. |
+| `RED_FLAG_RULES_VERSION` | `v1` | Selects which YAML version under `services/red-flag-rules/` is loaded by `RuleLoaderService`. Bump to invalidate persisted reviews and force regeneration. |
+
+### Cost envelope (back-of-envelope)
+
+A typical 6-page contract under default settings:
+
+- 1 `completeStructured` chat call per question — gpt-4o-mini-class
+  prompt of ~2k tokens in / 1k tokens out → **~$0.001**.
+- 1 `document-review` run on first OCR completion — 1–2 LLM windows
+  × 4k tokens in / 1k tokens out under gpt-4o → **~$0.02**.
+- Subsequent question pages re-use the persisted review at no LLM
+  cost; rerun only on user request or rules version bump.
+
+Set `LEGAL_REVIEW_MODE=off` and `LEGAL_REVIEW_AUTO_REVIEW=off` to fall
+back to the prose answer path and rules-only reviews when running
+budget-constrained workspaces.
+
 ## Future Work
 
 Recommendations for improvements:

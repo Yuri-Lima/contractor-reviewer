@@ -356,6 +356,13 @@
       "high": "High Confidence",
       "medium": "Medium Confidence",
       "low": "Low Confidence"
+    },
+    "notFoundReason": {
+      "noChunks": "This document has not been indexed yet. Wait for processing to finish, then ask again.",
+      "embeddingsPending": "Document indexing is still in progress. Try again in a few moments.",
+      "belowFloor": "No sufficiently relevant excerpts were found for this question. Try rephrasing or asking about a more specific clause.",
+      "generic": "No relevant context was found in this document.",
+      "webSourceLabel": "Web source"
     }
   },
   "parsers": {

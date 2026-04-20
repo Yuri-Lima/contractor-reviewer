@@ -2095,6 +2095,8 @@ export class DocumentViewComponent implements OnInit, OnDestroy {
                 audioState: needsAudio ? 'synthesizing' : 'none',
                 fromCache: event.fromCache,
                 streaming: false,
+                notFound: event.notFound,
+                ...(event.notFoundReason ? { notFoundReason: event.notFoundReason } : {}),
               };
               this.chatMessages.update((messages) => {
                 const next = [...messages];

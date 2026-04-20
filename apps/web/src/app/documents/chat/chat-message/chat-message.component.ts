@@ -78,6 +78,27 @@ const TRUNCATE_LENGTH = 80;
                   ></p-button>
                 }
               </div>
+              @if (notFoundBannerKey()) {
+                <div
+                  class="not-found-banner mt-2 mb-2 w-full px-3 py-2 rounded border text-sm flex items-start gap-2"
+                  [class.border-amber-300]="notFoundReasonCode() !== 'below_floor'"
+                  [class.bg-amber-50]="notFoundReasonCode() !== 'below_floor'"
+                  [class.text-amber-900]="notFoundReasonCode() !== 'below_floor'"
+                  [class.dark:bg-amber-900/20]="notFoundReasonCode() !== 'below_floor'"
+                  [class.dark:text-amber-200]="notFoundReasonCode() !== 'below_floor'"
+                  [class.dark:border-amber-700]="notFoundReasonCode() !== 'below_floor'"
+                  [class.border-slate-300]="notFoundReasonCode() === 'below_floor'"
+                  [class.bg-slate-50]="notFoundReasonCode() === 'below_floor'"
+                  [class.text-slate-800]="notFoundReasonCode() === 'below_floor'"
+                  [class.dark:bg-slate-800/40]="notFoundReasonCode() === 'below_floor'"
+                  [class.dark:text-slate-200]="notFoundReasonCode() === 'below_floor'"
+                  [class.dark:border-slate-700]="notFoundReasonCode() === 'below_floor'"
+                  role="status"
+                >
+                  <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
+                  <span>{{ notFoundBannerKey()! | translate }}</span>
+                </div>
+              }
               @if (chatResponseMode() !== 'audio_only') {
                 @if (message().legalAnswer && !showRawMarkdown()) {
                   <div class="mt-1 mb-2 w-full">
@@ -161,17 +182,39 @@ const TRUNCATE_LENGTH = 80;
                 <div class="citations mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                   <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{{ 'documents.citations' | translate }}:</h4>
                   @for (citation of message().citations; track $index) {
-                    <div class="citation text-sm text-gray-600 dark:text-gray-400 mb-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">
-                      @if (citation.fileName) {
-                        <span class="font-medium">{{ citation.fileName }}</span>
-                      }
-                      @if (citation.pageNumber) {
-                        <span> - {{ 'documents.page' | translate }} {{ citation.pageNumber }}</span>
-                      }
-                      @if (citation.quoteSnippet) {
-                        <div class="mt-1 italic text-xs">"{{ citation.quoteSnippet }}"</div>
-                      }
-                    </div>
+                    @if (citation.type === 'web') {
+                      <div class="citation citation-web text-sm text-gray-600 dark:text-gray-400 mb-2 p-2 bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/40 rounded">
+                        <div class="flex items-start gap-2">
+                          <i class="pi pi-globe text-sky-600 dark:text-sky-400 mt-0.5 flex-shrink-0" [attr.aria-label]="'chat.notFoundReason.webSourceLabel' | translate"></i>
+                          <div class="flex-1 min-w-0">
+                            <a
+                              [href]="citation.url"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="font-medium text-sky-700 dark:text-sky-300 hover:underline break-words"
+                            >{{ citation.title || citation.url }}</a>
+                            @if (citation.snippet) {
+                              <div class="mt-1 italic text-xs">"{{ citation.snippet }}"</div>
+                            }
+                            <div class="mt-1 text-[11px] uppercase tracking-wide text-sky-700/70 dark:text-sky-400/70">
+                              {{ 'chat.notFoundReason.webSourceLabel' | translate }}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="citation text-sm text-gray-600 dark:text-gray-400 mb-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">
+                        @if (citation.fileName) {
+                          <span class="font-medium">{{ citation.fileName }}</span>
+                        }
+                        @if (citation.pageNumber) {
+                          <span> - {{ 'documents.page' | translate }} {{ citation.pageNumber }}</span>
+                        }
+                        @if (citation.quoteSnippet) {
+                          <div class="mt-1 italic text-xs">"{{ citation.quoteSnippet }}"</div>
+                        }
+                      </div>
+                    }
                   }
                 </div>
               }
@@ -242,6 +285,35 @@ export class ChatMessageComponent {
   });
 
   isPlaying = computed(() => this.playingMessageIndex() === this.index());
+
+  /** Code form of the notFoundReason, used for styling switches. */
+  notFoundReasonCode = computed(() => {
+    const m = this.message();
+    if (!m.notFound) return null;
+    return m.notFoundReason ?? 'below_floor';
+  });
+
+  /**
+   * Translation key for the notFound banner. Returns null when the message
+   * is a normal answer (no banner shown). We deliberately fall back to the
+   * generic key when the reason is missing so older cached responses still
+   * render something sensible.
+   */
+  notFoundBannerKey = computed(() => {
+    const m = this.message();
+    if (!m.notFound) return null;
+    const reason = m.notFoundReason;
+    switch (reason) {
+      case 'no_chunks':
+        return 'chat.notFoundReason.noChunks';
+      case 'embeddings_pending':
+        return 'chat.notFoundReason.embeddingsPending';
+      case 'below_floor':
+        return 'chat.notFoundReason.belowFloor';
+      default:
+        return 'chat.notFoundReason.generic';
+    }
+  });
 
   constructor() {
     effect(() => {

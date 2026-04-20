@@ -59,6 +59,7 @@ CITATION RULES
 - Whenever an excerpt is labelled "[Clause X.Y.Z]:" you MUST set issues[].clauseRef and compliantElements[].clauseRef to that exact clause number (e.g. "9.1.3"). When only "[Excerpt N]:" is available, omit clauseRef rather than fabricate one.
 - legislationReferenced[] MUST only contain statutes that appear in the "Legal sources" block of the user message. Use the act name + year + section EXACTLY as listed there. Never invent statute names, years, or sections. If no Legal sources block is provided, leave legislationReferenced as [].
 - Apply the same rule to issues[].legislationRef.
+- WEB SOURCES: a "Web search results" block may also be present. Treat it as supplementary background only — never copy a URL into legislationReferenced or legislationRef. If a web result confirms a statute that is ALSO in the Legal sources block, cite the statute (act + year + section), not the URL. If the web result mentions a statute that is NOT in the Legal sources block, you may mention the act name in rationale but you MUST NOT add it to legislationReferenced.
 
 WHAT TO LOOK FOR (always populate BOTH compliantElements and issues — never one-sided when the question is about compliance)
 - Compliance: clauses that meet or fail jurisdictional requirements.
@@ -98,6 +99,9 @@ Document excerpts (with clause numbers when available):
 Legal sources (statutes for jurisdiction {{jurisdiction}} — use ONLY these for legislationReferenced and legislationRef):
 {{legalSources}}
 
+Web search results (supplementary — prefer Legal sources and Document excerpts when available):
+{{webSources}}
+
 Return a single JSON object matching the LegalAnswer schema. No prose outside JSON.`,
 };
 
@@ -115,6 +119,13 @@ export interface ChatPromptParams {
   jurisdiction?: string;
   /** Pre-formatted legal sources block (one entry per line). Used by the legal-review-v2 variant. */
   legalSources?: string;
+  /**
+   * Pre-formatted web search results block. Empty string disables the
+   * `{{webSources}}` slot in the legal-review-v2 user template (the
+   * interpolator emits the placeholder string unchanged for empty values,
+   * so we substitute a "no results" sentinel below).
+   */
+  webSources?: string;
 }
 
 /** Scope flags for additive prompt combination (user can enable/disable each layer) */
@@ -292,6 +303,9 @@ export class PromptService {
       conversationHistory,
       jurisdiction: params.jurisdiction || 'unknown',
       legalSources: params.legalSources || 'No statutes available for this jurisdiction.',
+      webSources: params.webSources && params.webSources.trim().length > 0
+        ? params.webSources
+        : 'No web results (web search disabled or no relevant hits).',
     });
 
     const interpolatedSystem = this.interpolate(system, {

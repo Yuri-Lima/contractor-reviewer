@@ -5,6 +5,7 @@ import { Chunk } from '../entities/chunk.entity';
 import { Embedding } from '../entities/embedding.entity';
 import { arrayToVectorString } from '../vector-helpers';
 import {
+  DocumentChunkStats,
   IVectorStore,
   LegalChunkFilters,
   LegalChunkSearchResult,
@@ -124,5 +125,28 @@ export class PgVectorStore implements IVectorStore {
         actYear: (item as { actYear?: number | null }).actYear ?? undefined,
       };
     });
+  }
+
+  async getDocumentChunkStats(documentId: string): Promise<DocumentChunkStats> {
+    // Single round-trip aggregate: COUNT(*) for total, COUNT(embedding) for
+    // embedded (NULLs are excluded by COUNT(col)). Avoids a follow-up query.
+    const rows = await this.chunkRepository.query(
+      `
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(c.embedding)::int AS embedded
+      FROM chunks c
+      WHERE c."documentId" = $1
+    `,
+      [documentId],
+    );
+    const row = (rows?.[0] ?? { total: 0, embedded: 0 }) as DocumentChunkStats;
+    return {
+      total: typeof row.total === 'number' ? row.total : parseInt(String(row.total), 10) || 0,
+      embedded:
+        typeof row.embedded === 'number'
+          ? row.embedded
+          : parseInt(String(row.embedded), 10) || 0,
+    };
   }
 }

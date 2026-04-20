@@ -356,6 +356,13 @@
       "high": "Confiança alta",
       "medium": "Confiança média",
       "low": "Confiança baixa"
+    },
+    "notFoundReason": {
+      "noChunks": "Este documento ainda não foi indexado. Aguarde o processamento terminar e pergunte novamente.",
+      "embeddingsPending": "A indexação do documento ainda está em andamento. Tente novamente em alguns instantes.",
+      "belowFloor": "Não foram encontrados trechos suficientemente relevantes para esta pergunta. Reformule-a ou pergunte sobre uma cláusula mais específica.",
+      "generic": "Nenhum contexto relevante foi encontrado neste documento.",
+      "webSourceLabel": "Fonte web"
     }
   },
   "parsers": {

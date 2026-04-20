@@ -2,9 +2,10 @@
  * Citation type.
  * - 'document': Citation from the user's uploaded document (preferred).
  * - 'legal': Citation from legal/regulatory sources.
+ * - 'web': Citation from a web search result (supplementary, never canonical).
  * - 'contract': @deprecated Use 'document' instead. Kept for backward compatibility with cached/legacy responses.
  */
-export type CitationType = 'contract' | 'document' | 'legal';
+export type CitationType = 'contract' | 'document' | 'legal' | 'web';
 
 /**
  * Narrow shape for citations from the user's contract or uploaded document.
@@ -33,7 +34,19 @@ export interface LegalSourceCitation {
   quoteSnippet?: string;
 }
 
-// Common citation interface (unified wire/API shape for both document and legal citations)
+/**
+ * Narrow shape for citations from web search results. Web citations are
+ * always supplementary — the model is instructed to prefer document and
+ * legal sources for canonical claims.
+ */
+export interface WebCitation {
+  type: 'web';
+  title: string;
+  url: string;
+  snippet?: string;
+}
+
+// Common citation interface (unified wire/API shape for document, legal and web citations)
 export interface Citation {
   type: CitationType;
   fileName?: string;
@@ -46,6 +59,10 @@ export interface Citation {
   url?: string;
   /** Numbered clause label (e.g. "9.1.3") when the chunk has hierarchical heading metadata. Phase 2 of legal-review pipeline. */
   clauseNumber?: string;
+  /** Web-only: page title returned by the search provider. */
+  title?: string;
+  /** Web-only: short summary returned by the search provider. */
+  snippet?: string;
 }
 
 /** Citation types that denote "citation from user's document". Accept both for backward compat. */

@@ -13,6 +13,7 @@ import {
   LegalSourceCitation,
   type LegalAnswer,
   type LegalIssue,
+  type NotFoundReason,
   type StreamEvent,
 } from '@contractai-review/shared';
 import { EmbeddingsService } from './embeddings.service';
@@ -37,6 +38,22 @@ import {
   normaliseLegalAnswer,
 } from './legal-answer.schema';
 import { completeStructuredWithRetry } from './structured-output.helper';
+import {
+  WebSearchResult,
+  WebSearchService,
+} from '../web-search/web-search.service';
+
+/**
+ * When/whether to enrich the LLM context with web search results.
+ *
+ * - `'off'`      — never call web search (default).
+ * - `'fallback'` — only when local retrieval is sparse (`< 2` document chunks
+ *                  above the floor). Cheap-by-default — most queries with a
+ *                  well-indexed document don't pay for web search.
+ * - `'always'`   — every chat call also hits web search. Highest fidelity,
+ *                  but consumes monthly Tavily budget on every question.
+ */
+type WebSearchTrigger = 'off' | 'fallback' | 'always';
 
 // Re-export for backward compatibility
 export type { Citation };
@@ -65,8 +82,10 @@ export class RagService {
   private readonly topKDocument: number;
   private readonly topKLegal: number;
   private readonly similarityFloor: number;
+  private readonly similarityFloorFallback: number;
   private readonly citationCapDocument: number;
   private readonly citationCapLegal: number;
+  private readonly webSearchTrigger: WebSearchTrigger;
 
   constructor(
     @Inject(VECTOR_STORE)
@@ -82,6 +101,7 @@ export class RagService {
     private llmProviderRegistry: LlmProviderRegistry,
     private memoryService: MemoryService,
     private legalReviewModelResolver: LegalReviewModelResolver,
+    private webSearchService: WebSearchService,
   ) {
     this.chatModel = this.configService.get<string>('OPENAI_CHAT_MODEL') || 'gpt-4o-mini';
     const raw = this.configService.get<string>('LLM_MAX_TOKENS');
@@ -105,6 +125,15 @@ export class RagService {
       this.configService.get<string>('RAG_SIMILARITY_FLOOR'),
       0.5,
     );
+    // Soft-floor fallback (Phase 1.3): when the primary floor yields no
+    // chunks, retry with this relaxed threshold and mark the answer as
+    // low confidence so the UI can warn the user. Set to a value <=
+    // similarityFloor to disable the fallback (no relaxation).
+    this.similarityFloorFallback = parseEnvFloat(
+      'RAG_SIMILARITY_FLOOR_FALLBACK',
+      this.configService.get<string>('RAG_SIMILARITY_FLOOR_FALLBACK'),
+      0.3,
+    );
     this.citationCapDocument = parseEnvInt(
       'RAG_CITATION_CAP_DOCUMENT',
       this.configService.get<string>('RAG_CITATION_CAP_DOCUMENT'),
@@ -118,11 +147,96 @@ export class RagService {
       { max: 20 },
     );
 
+    this.webSearchTrigger = this.parseWebSearchTrigger(
+      this.configService.get<string>('WEB_SEARCH_TRIGGER'),
+    );
+
     this.logger.log(
       `[RagConfig] topKDocument=${this.topKDocument} topKLegal=${this.topKLegal} ` +
-        `similarityFloor=${this.similarityFloor} ` +
-        `citationCapDocument=${this.citationCapDocument} citationCapLegal=${this.citationCapLegal}`,
+        `similarityFloor=${this.similarityFloor} similarityFloorFallback=${this.similarityFloorFallback} ` +
+        `citationCapDocument=${this.citationCapDocument} citationCapLegal=${this.citationCapLegal} ` +
+        `webSearchTrigger=${this.webSearchTrigger}`,
     );
+  }
+
+  private parseWebSearchTrigger(raw: string | undefined): WebSearchTrigger {
+    const v = (raw ?? '').toLowerCase().trim();
+    if (v === 'always' || v === 'on') return 'always';
+    if (v === 'fallback') return 'fallback';
+    return 'off';
+  }
+
+  /**
+   * Decide whether to run web search for this query, given the trigger
+   * config and what local retrieval produced. Used by both the streaming
+   * and prepareForChat paths.
+   *
+   * - `'off'`: never.
+   * - `'always'`: always (when web search is enabled).
+   * - `'fallback'`: only when document retrieval was sparse (`< 2` chunks
+   *   above the floor) — the cheap default that respects free-tier budget.
+   */
+  private shouldRunWebSearch(
+    trigger: WebSearchTrigger,
+    documentChunkCount: number,
+  ): boolean {
+    if (trigger === 'off') return false;
+    if (!this.webSearchService.isEnabled()) return false;
+    if (trigger === 'always') return true;
+    return documentChunkCount < 2;
+  }
+
+  /** Format `WebSearchResult[]` for the {{webSources}} prompt slot. */
+  private formatWebSources(results: WebSearchResult[]): string {
+    if (results.length === 0) return '';
+    return results
+      .map((r, i) => {
+        const snippet = r.snippet ? `\n${r.snippet}` : '';
+        return `[${i + 1}] "${r.title}" — ${r.url}${snippet}`;
+      })
+      .join('\n\n');
+  }
+
+  /**
+   * Apply the configured similarity floor and, when no rows survive, retry
+   * with the relaxed `similarityFloorFallback`. Returns whether the
+   * fallback fired so callers can downgrade confidence accordingly.
+   *
+   * The fallback is skipped when `similarityFloorFallback >= similarityFloor`
+   * (operator opted out by setting them equal) or when the raw input is
+   * itself empty (no chunks to relax against).
+   */
+  private applyFloorWithFallback<T extends { distance: number }>(
+    raw: T[],
+  ): { kept: T[]; usedFallback: boolean } {
+    const primary = raw.filter((r) => r.distance > this.similarityFloor);
+    if (primary.length > 0 || raw.length === 0) {
+      return { kept: primary, usedFallback: false };
+    }
+    if (this.similarityFloorFallback >= this.similarityFloor) {
+      return { kept: primary, usedFallback: false };
+    }
+    const relaxed = raw.filter((r) => r.distance > this.similarityFloorFallback);
+    return { kept: relaxed, usedFallback: relaxed.length > 0 };
+  }
+
+  /**
+   * Pre-flight diagnostic: classify why retrieval might have produced no
+   * usable context. Returns one of the `NotFoundReason` codes, or `null`
+   * when chunks are present (the caller should treat absence of a reason
+   * as "all good, retrieve normally").
+   *
+   * Order matters: `no_chunks` shadows `embeddings_pending` (you can't
+   * have pending embeddings if no rows exist), and both shadow
+   * `below_floor` (handled later by the caller after the search runs).
+   */
+  private async classifyChunkState(
+    documentId: string,
+  ): Promise<NotFoundReason | null> {
+    const stats = await this.vectorStore.getDocumentChunkStats(documentId);
+    if (stats.total === 0) return 'no_chunks';
+    if (stats.embedded < stats.total) return 'embeddings_pending';
+    return null;
   }
 
   /**
@@ -190,15 +304,28 @@ export class RagService {
       options,
     );
 
+    // Pre-flight: if the document has no chunks or embeddings are still
+    // pending, log it so dev-mode users see why retrieval was thin. We
+    // still run the search (it'll just return []) so the prepared payload
+    // shape stays consistent with the streaming path.
+    const preflightReason = await this.classifyChunkState(documentId);
+    if (preflightReason) {
+      this.logger.warn(
+        `[prepareForChat] preflight=${preflightReason} documentId=${documentId}`,
+      );
+    }
+
     const rawDocumentChunks = await this.searchDocumentChunks(
       questionEmbedding,
       documentId,
       this.topKDocument,
     );
-    const documentChunks = this.applySimilarityFloor(rawDocumentChunks);
+    const { kept: documentChunks, usedFallback: docFallbackUsed } =
+      this.applyFloorWithFallback(rawDocumentChunks);
     this.logger.log(
       `[prepareForChat] documentChunks retrieved=${rawDocumentChunks.length} kept=${documentChunks.length} ` +
-        `floor=${this.similarityFloor} topK=${this.topKDocument}`,
+        `floor=${this.similarityFloor} fallback=${docFallbackUsed ? this.similarityFloorFallback : 'no'} ` +
+        `topK=${this.topKDocument}`,
     );
 
     const rawLegalChunks = jurisdiction
@@ -217,8 +344,33 @@ export class RagService {
       );
     }
 
+    // Run web search according to the same trigger semantics as
+    // generateAnswerStream so the prepared payload reflects what the
+    // execute path would actually send to the LLM. Web search runs AFTER
+    // the vector queries so we can mine statute hints from the retrieved
+    // chunks and feed them into the Tavily query — anchoring on real act
+    // names (e.g. "Pensions Act 1990") materially improves `.gov` recall.
+    let webResults: WebSearchResult[] = [];
+    if (this.shouldRunWebSearch(this.webSearchTrigger, documentChunks.length)) {
+      const statuteHints = this.deriveStatuteHints(
+        rawLegalChunks,
+        rawDocumentChunks,
+      );
+      webResults = await this.webSearchService.search(question, {
+        jurisdiction,
+        statuteHints,
+        signal: options?.signal,
+      });
+      if (webResults.length > 0) {
+        this.logger.log(
+          `[prepareForChat] webResults count=${webResults.length} hints=${statuteHints.join('|') || 'none'}`,
+        );
+      }
+    }
+
     const documentContext = this.formatDocumentContext(documentChunks);
     const legalContext = this.formatLegalContext(legalChunks);
+    const webSourcesStr = this.formatWebSources(webResults);
 
     const [workspaceSettings, document] = await Promise.all([
       this.workspaceSettingsService.getSettings(workspaceId),
@@ -237,10 +389,18 @@ export class RagService {
     const legalReviewMode = await this.resolveLegalReviewMode(workspaceId);
     const variant = legalReviewMode ? LEGAL_REVIEW_PROMPT_VARIANT : 'default';
 
-    // Legal-review variant has separate {{context}} and {{legalSources}} slots.
+    // Legal-review variant has separate {{context}}, {{legalSources}} and
+    // {{webSources}} slots. The default variant has no dedicated webSources
+    // slot, so we fold web hits into the combined context for parity with
+    // the streaming path.
     const combinedContext =
-      [documentContext, !legalReviewMode && legalContext ? legalContext : ''].filter(Boolean).join('\n\n') ||
-      'No relevant context found.';
+      [
+        documentContext,
+        !legalReviewMode && legalContext ? legalContext : '',
+        !legalReviewMode && webSourcesStr ? webSourcesStr : '',
+      ]
+        .filter(Boolean)
+        .join('\n\n') || 'No relevant context found.';
 
     const languageName = this.promptService.getLanguageName(language);
     const { system, user } = await this.promptService.getChatPrompts(
@@ -250,6 +410,7 @@ export class RagService {
         question,
         jurisdiction,
         legalSources: legalContext || 'No statutes available for this jurisdiction.',
+        webSources: webSourcesStr,
       },
       { workspaceId, documentId, scopeFlags, variant },
     );
@@ -385,13 +546,24 @@ export class RagService {
       }
     }
 
+    const notFound = documentChunks.length === 0 && legalChunks.length === 0;
+    let notFoundReason: NotFoundReason | undefined;
+    if (notFound) {
+      // Re-classify so the prepared/execute path also surfaces the
+      // diagnostic root cause (no_chunks / embeddings_pending /
+      // below_floor) rather than a bare `notFound: true`.
+      const preflight = await this.classifyChunkState(documentId);
+      notFoundReason = preflight ?? 'below_floor';
+    }
+
     return {
       response: {
         answerText,
         ...(legalAnswer ? { legalAnswer } : {}),
         confidence,
         citations,
-        notFound: documentChunks.length === 0 && legalChunks.length === 0,
+        notFound,
+        ...(notFoundReason ? { notFoundReason } : {}),
         fromCache: false,
       },
       question: payload.question,
@@ -497,30 +669,87 @@ export class RagService {
         `[generateAnswerStream] mode resolved: documentId=${documentId} legalReviewMode=${legalReviewMode} variant=${variant}`,
       );
 
+      // Pre-flight diagnostic: classify the document's chunk/embedding
+      // state BEFORE running the search. If the result comes back empty,
+      // we'll surface a specific `notFoundReason` instead of a generic
+      // "NOT FOUND" so the UI can render a meaningful message.
+      const preflightReason = await this.classifyChunkState(documentId);
+      if (preflightReason) {
+        this.logger.warn(
+          `[generateAnswerStream] preflight=${preflightReason} documentId=${documentId}`,
+        );
+      }
+
       this.logger.log(
-        `[generateAnswerStream] Search document chunks (vector store): documentId=${documentId}`,
+        `[generateAnswerStream] Search document + legal chunks (parallel) then web: documentId=${documentId} jurisdiction=${jurisdiction ?? 'none'} webTrigger=${this.webSearchTrigger}`,
       );
-      const rawDocumentChunks = await this.searchDocumentChunks(
+      // Vector queries run in parallel; web search runs AFTER so we can
+      // mine statute hints from the retrieved chunks and feed them into
+      // Tavily. Latency cost is small (vector queries are typically
+      // <300ms) and the relevance lift from real act names in the query
+      // is large — `Pensions Act 1990` re-ranks `.gov.ie` above generic
+      // explainers. For trigger='off' or service disabled we skip web
+      // search entirely; for trigger='fallback' we still issue the call
+      // and may discard the result post-hoc (see `shouldRunWebSearch`).
+      const documentSearchPromise = this.searchDocumentChunks(
         questionEmbedding,
         documentId,
         this.topKDocument,
       );
-      const documentChunks = this.applySimilarityFloor(rawDocumentChunks);
-      this.logger.log(
-        `[generateAnswerStream] documentChunks documentId=${documentId} retrieved=${rawDocumentChunks.length} kept=${documentChunks.length} ` +
-          `floor=${this.similarityFloor} topK=${this.topKDocument}`,
-      );
-      this.logger.log(
-        `[generateAnswerStream] Search legal chunks (vector store): documentId=${documentId} jurisdiction=${jurisdiction ?? 'none'}`,
-      );
-      const rawLegalChunks = jurisdiction
-        ? await this.searchLegalChunks(
+      const legalSearchPromise = jurisdiction
+        ? this.searchLegalChunks(
             questionEmbedding,
             undefined,
             jurisdiction,
             this.topKLegal,
           )
+        : Promise.resolve([] as Awaited<ReturnType<typeof this.searchLegalChunks>>);
+
+      const [rawDocumentChunks, rawLegalChunks] = await Promise.all([
+        documentSearchPromise,
+        legalSearchPromise,
+      ]);
+
+      const webSearchEnabled =
+        this.webSearchTrigger !== 'off' && this.webSearchService.isEnabled();
+      const statuteHints = webSearchEnabled
+        ? this.deriveStatuteHints(rawLegalChunks, rawDocumentChunks)
         : [];
+      const webResultsRaw: WebSearchResult[] = webSearchEnabled
+        ? await this.webSearchService.search(question, {
+            jurisdiction,
+            statuteHints,
+            signal: options?.signal,
+          })
+        : [];
+      if (webSearchEnabled && webResultsRaw.length > 0) {
+        this.logger.log(
+          `[generateAnswerStream] webResults raw=${webResultsRaw.length} hints=${statuteHints.join('|') || 'none'}`,
+        );
+      }
+
+      const { kept: documentChunks, usedFallback: docFallbackUsed } =
+        this.applyFloorWithFallback(rawDocumentChunks);
+      this.logger.log(
+        `[generateAnswerStream] documentChunks documentId=${documentId} retrieved=${rawDocumentChunks.length} kept=${documentChunks.length} ` +
+          `floor=${this.similarityFloor} fallback=${docFallbackUsed ? this.similarityFloorFallback : 'no'} ` +
+          `topK=${this.topKDocument}`,
+      );
+
+      // Apply the trigger gate AFTER both searches have settled so we can
+      // make an informed decision. With 'fallback', drop web results when
+      // local retrieval already produced a healthy chunk set.
+      const webResults = this.shouldRunWebSearch(
+        this.webSearchTrigger,
+        documentChunks.length,
+      )
+        ? webResultsRaw
+        : [];
+      if (webResultsRaw.length > 0 && webResults.length === 0) {
+        this.logger.log(
+          `[generateAnswerStream] Web search results discarded by trigger gate (trigger=fallback, documentChunks=${documentChunks.length})`,
+        );
+      }
       // Phase 3 rerank: nudge legal chunks whose `actName` appears verbatim in
       // any retrieved document chunk so the LLM sees the most-relevant statute
       // first. Bonus is +0.1 (cap at 1.0) and applied before the similarity
@@ -551,6 +780,11 @@ export class RagService {
       if (hasGoodMatches || hasLegalMatches) confidence = 'high';
       else if (hasMediumMatches || hasMultipleChunks) confidence = 'medium';
       else if (hasAnyMatches) confidence = 'low';
+      // Soft-floor fallback fired: every kept chunk is below the primary
+      // floor, so cap confidence at "low" regardless of how many chunks
+      // we relaxed in. Prevents a 0.31-similarity match from being
+      // labelled "high" just because it cleared the relaxed floor.
+      if (docFallbackUsed) confidence = 'low';
 
       const doc = await this.documentRepository.findOne({
         where: { id: documentId },
@@ -580,6 +814,18 @@ export class RagService {
           });
         }
       }
+      // Web citations are always supplementary — never canonical — so we
+      // surface them at the end of the citation list. Snippet is truncated
+      // to keep the wire payload small (the user can click through for the
+      // full page).
+      for (const w of webResults) {
+        citations.push({
+          type: 'web',
+          title: w.title,
+          url: w.url,
+          ...(w.snippet ? { snippet: w.snippet.substring(0, 240) } : {}),
+        });
+      }
 
       const [workspaceSettings, docForScope] = await Promise.all([
         this.workspaceSettingsService.getSettings(workspaceId),
@@ -596,13 +842,22 @@ export class RagService {
 
       const documentContextStr = this.formatDocumentContext(documentChunks);
       const legalContextStr = this.formatLegalContext(legalChunks);
+      const webSourcesStr = this.formatWebSources(webResults);
+      if (webResults.length > 0) {
+        this.logger.log(
+          `[generateAnswerStream] webResults documentId=${documentId} count=${webResults.length}`,
+        );
+      }
 
       // Legal-review variant uses a separate {{legalSources}} slot; otherwise
       // we keep the legacy concatenated context for backward compatibility.
+      // Web sources are folded into context for the legacy default variant
+      // (no dedicated slot in that template) so behaviour is consistent.
+      const legacyContextParts = legalReviewMode
+        ? [documentContextStr]
+        : [documentContextStr, legalContextStr, webSourcesStr];
       let context =
-        (legalReviewMode
-          ? documentContextStr
-          : [documentContextStr, legalContextStr].filter(Boolean).join('\n\n')) ||
+        legacyContextParts.filter(Boolean).join('\n\n') ||
         'No relevant context found.';
 
       const memorySection = await this.memoryService.getDocumentAndThreadMemory(
@@ -628,6 +883,7 @@ export class RagService {
           conversationHistory: options?.conversationHistory,
           jurisdiction,
           legalSources: legalContextStr || 'No statutes available for this jurisdiction.',
+          webSources: webSourcesStr,
         },
         { workspaceId, documentId, scopeFlags, variant },
       );
@@ -677,7 +933,21 @@ export class RagService {
         `[generateAnswerStream] LLM call done: documentId=${documentId} answerLength=${answerText.length} hasLegalAnswer=${Boolean(legalAnswer)}`,
       );
 
-      const notFound = documentChunks.length === 0 && legalChunks.length === 0;
+      // We treat the answer as "found" if any source produced material —
+      // local document chunks, legal chunks, or web results. Web-only
+      // answers are flagged as low-confidence elsewhere because they
+      // didn't ground in the user's actual document.
+      const notFound =
+        documentChunks.length === 0 &&
+        legalChunks.length === 0 &&
+        webResults.length === 0;
+      // When `notFound`, choose the most informative reason. Pre-flight
+      // (no_chunks / embeddings_pending) takes priority over below_floor
+      // because it points to a fixable system state, not a query problem.
+      let notFoundReason: NotFoundReason | undefined;
+      if (notFound) {
+        notFoundReason = preflightReason ?? 'below_floor';
+      }
       yield {
         type: 'done',
         answerText,
@@ -685,6 +955,7 @@ export class RagService {
         confidence: finalConfidence,
         citations,
         notFound,
+        ...(notFoundReason ? { notFoundReason } : {}),
         fromCache: false,
       };
 
@@ -795,6 +1066,81 @@ export class RagService {
     });
     updated.sort((a, b) => b.distance - a.distance);
     return updated;
+  }
+
+  /**
+   * Pre-compiled regex that captures `Title-Cased Act <year>` references
+   * inside contract chunks (e.g. "Pensions Act 1990", "Employment Equality
+   * Act 1998"). Whitelist-style on purpose: we only emit cap-initial
+   * tokens followed by `Act <4-digit-year>`, so it can't accidentally
+   * surface party names, salaries, or other PII to Tavily.
+   */
+  private static readonly STATUTE_ACT_REGEX =
+    /\b([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,4}\s+Act\s+\d{4})\b/g;
+
+  /**
+   * Derive up to 2 statute hints to forward to web search.
+   *
+   * Source priority:
+   *   1. `legalChunks[*].actName` (preferred — these are *our* curated
+   *      legal corpus entries; safe and high-signal).
+   *   2. Regex match over document chunk text (fallback when no jurisdictional
+   *      legal chunks were retrieved). Whitelist regex avoids leaking PII.
+   *
+   * Hints are de-duplicated case-insensitively and capped at 2 entries.
+   * The cap is enforced again inside `WebSearchService.normalizeStatuteHints`
+   * so the contract is defended at both ends.
+   */
+  private deriveStatuteHints(
+    legalChunks: Array<LegalChunkSearchResult>,
+    documentChunks: Array<VectorSearchResult<Chunk>>,
+  ): string[] {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    const push = (raw: string | undefined | null) => {
+      if (out.length >= 2) return;
+      if (!raw) return;
+      const trimmed = raw.trim();
+      if (trimmed.length < 4) return;
+      const key = trimmed.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(trimmed);
+    };
+
+    // 1) Curated legal corpus first.
+    for (const chunk of legalChunks) {
+      if (out.length >= 2) break;
+      const actName =
+        chunk.actName ??
+        (chunk.item as { actName?: string | null }).actName ??
+        undefined;
+      if (!actName) continue;
+      // actYear lives on the top-level interface (`LegalChunkSearchResult.actYear`),
+      // but the pgvector adapter sometimes mirrors it onto `item` too — check
+      // both so a populated year is never silently dropped.
+      const actYear =
+        chunk.actYear ??
+        (chunk.item as { actYear?: number | null }).actYear ??
+        undefined;
+      push(actYear ? `${actName} ${actYear}` : actName);
+    }
+
+    // 2) Regex over document chunks as a fallback.
+    if (out.length < 2) {
+      for (const chunk of documentChunks) {
+        if (out.length >= 2) break;
+        const text = chunk.item.text;
+        if (!text) continue;
+        // `matchAll` over a /g regex is reset-safe across iterations.
+        for (const match of text.matchAll(RagService.STATUTE_ACT_REGEX)) {
+          push(match[1]);
+          if (out.length >= 2) break;
+        }
+      }
+    }
+
+    return out;
   }
 
   /** Format legal-source chunks for the "Legal sources" block of the user prompt. */

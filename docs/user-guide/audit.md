@@ -54,7 +54,7 @@ The Audit Log records actions performed in the workspace: who did what, when, an
 | **view** | Document or file viewed |
 | **create** | Document or workspace created |
 
-Additional actions (e.g., export_privacy) may be logged depending on implementation. Metadata may include IP, user agent, and resource IDs. Contract content and full chat messages are not logged in plaintext.
+Additional actions (e.g., export_privacy) may be logged depending on implementation. **Target types** include: document, file, workspace, and **chat_thread** (for conversation-related events). Metadata may include IP, user agent, and resource IDs. Contract content and full chat messages are not logged in plaintext.
 
 ## Related Topics
 

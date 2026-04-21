@@ -162,6 +162,23 @@ See `.env.production.example` in the repository root. Summary:
 | `FRONTEND_URL` | For HTTPS | `https://your-domain.com` for CORS/redirects |
 | `PARSER_KEYS_ENCRYPTION_KEY` | If using DPT-2/LlamaParse/Unstructured | 32-byte hex key |
 | `S3_*` | If using S3/R2 | Storage credentials |
+| `OPENAI_CHAT_MODEL` | Optional | OpenAI chat model (default: `gpt-4o-mini`) |
+| `ANTHROPIC_API_KEY` | Optional | Required when a workspace selects Anthropic LLM provider |
+| `ANTHROPIC_CHAT_MODEL` | Optional | Anthropic chat model (default: `claude-sonnet-4-20250514`) |
+| `XAI_API_KEY` | Optional | Required when a workspace selects xAI (Grok) LLM provider |
+| `XAI_CHAT_MODEL` | Optional | xAI chat model (default: `grok-4-1-fast-reasoning`) |
+| `LLM_MAX_TOKENS` | Optional | Max output tokens per LLM completion (default: `2000`) |
+| `CHAT_PREPARE_ENABLED` | Optional | Enable dev-mode prepare/execute endpoints (default: `true`). Set `false` for production. |
+| `CHAT_PREPARE_TTL_SECONDS` | Optional | TTL for prepare payloads in seconds (default: `900` = 15 min) |
+| `RAG_TOP_K_DOCUMENT` | Optional | Document chunks per question (default: `8`) |
+| `RAG_TOP_K_LEGAL` | Optional | Legal chunks per question (default: `3`) |
+| `RAG_SIMILARITY_FLOOR` | Optional | Min similarity for chunks to reach LLM (default: `0.5`) |
+| `RAG_CITATION_CAP_DOCUMENT` | Optional | Max document citations in UI (default: `5`) |
+| `RAG_CITATION_CAP_LEGAL` | Optional | Max legal citations in UI (default: `2`) |
+| `WEB_SEARCH_ENABLED` | Optional | Enable Tavily web search in RAG pipeline (default: `off`) |
+| `TAVILY_API_KEY` | If web search | Tavily API key |
+| `POSTGRES_BIND` | Optional | Bind address for Postgres port (default: `127.0.0.1` for security) |
+| `REDIS_BIND` | Optional | Bind address for Redis port (default: `127.0.0.1` for security) |
 | `EVENTHOG_*`, `SENTRY_DSN` | Optional | Observability |
 | `LOG_LEVEL` | Optional | Log verbosity: `error`, `warn`, `log`, `info`, `debug`, `verbose`, or `off`. Default: `log` in production. Use `warn` or `error` in production to reduce flow-tracking logs. See [logging.md](logging.md). |
 
@@ -246,6 +263,10 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml down
 
 - Worker must connect to same Redis as API
 - Check worker logs: `docker compose logs worker` (VPS) or `docker compose -f docker-compose.yml -f docker-compose.prod.yml logs worker` (local)
+
+### PostgreSQL and Redis Security
+
+The production compose file binds Postgres and Redis to `POSTGRES_BIND` / `REDIS_BIND` (default `127.0.0.1`) instead of `0.0.0.0` to prevent external access. A custom `pg_hba.conf` is applied via an init script (`deploy/postgres/init/01-apply-pg_hba.sh`) to restrict connections further. If you change bind addresses, ensure your firewall rules are adequate.
 
 ### Docling/PDFPlumber unavailable
 

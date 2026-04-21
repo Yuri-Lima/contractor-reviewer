@@ -9,7 +9,7 @@ Guia de instalação e configuração para desenvolvimento local.
 - **Backend:** NestJS, TypeORM, Postgres + pgvector, BullMQ + Redis
 - **Frontend:** Angular, Capacitor (web + iOS/Android)
 - **Storage:** S3/R2 compatível (local em dev)
-- **IA:** OpenAI (RAG + citações)
+- **IA:** OpenAI (RAG + citações), Anthropic, xAI (Grok) — selecionável por workspace
 - **Parsers:** Docling e PDFPlumber (Python microservices), DPT-2/LlamaParse/Unstructured (APIs cloud)
 
 ## Pré-requisitos
@@ -116,6 +116,18 @@ Abre em http://localhost:4200.
 | `RAG_CACHE_SIMILARITY_THRESHOLD` | Não | Limiar de similaridade padrão (0.80–1.0, padrão: `0.95`) |
 | `RAG_CACHE_MAX_ENTRIES_PER_DOCUMENT` | Não | Máx. entradas por documento no índice (padrão: `50`) |
 | `CHAT_PREPARE_ENABLED` | Não | Habilita endpoints prepare/execute para inspeção do payload LLM (modo dev). Padrão: `true`. Use `false` em produção para desabilitar. |
+| `CHAT_PREPARE_TTL_SECONDS` | Não | TTL do payload prepare em segundos (padrão: `900` = 15 min). Aumente se precisar de mais tempo para inspecionar payloads. |
+| `XAI_API_KEY` | Se usar xAI | Chave da API xAI para modelos Grok. Necessário quando o workspace seleciona o provider `xai`. |
+| `XAI_CHAT_MODEL` | Não | Modelo xAI (padrão: `grok-4-1-fast-reasoning`). Opções: `grok-4.20-0309-reasoning`, `grok-4.20-multi-agent-0309`, `grok-4-1-fast-non-reasoning`. |
+| `RAG_TOP_K_DOCUMENT` | Não | Número de chunks de documento buscados por pergunta (padrão: `8`, máx: `50`). Maior = melhor recall em contratos longos, mais tokens por request. |
+| `RAG_TOP_K_LEGAL` | Não | Número de chunks legais buscados por pergunta (padrão: `3`, máx: `20`). |
+| `RAG_SIMILARITY_FLOOR` | Não | Similaridade mínima para um chunk chegar ao LLM (padrão: `0.5`). Use `0` para desabilitar filtro. |
+| `RAG_CITATION_CAP_DOCUMENT` | Não | Máximo de citações de documento exibidas na UI (padrão: `5`, máx: `20`). |
+| `RAG_CITATION_CAP_LEGAL` | Não | Máximo de citações legais exibidas na UI (padrão: `2`, máx: `20`). |
+| `WEB_SEARCH_ENABLED` | Não | Habilita busca web no pipeline RAG via Tavily (padrão: `off`). Use `on`, `true`, ou `1` para habilitar. |
+| `TAVILY_API_KEY` | Se usar web search | Chave da API Tavily (necessária quando web search está habilitado). |
+| `WEB_SEARCH_MONTHLY_BUDGET` | Não | Máximo de chamadas Tavily por mês (padrão: `900`). |
+| `WEB_SEARCH_MAX_RESULTS` | Não | Máximo de resultados por busca (padrão: `5`, máx: `5` no tier gratuito). |
 | `RATE_LIMIT_REQUESTS_PER_MINUTE` | Não | Requisições máximas por minuto por usuário/workspace (padrão: `60`) |
 | `RATE_LIMIT_REQUESTS_PER_HOUR` | Não | Requisições máximas por hora (padrão: `1000`) |
 | `RATE_LIMIT_REQUESTS_PER_DAY` | Não | Requisições máximas por dia (padrão: `10000`) |

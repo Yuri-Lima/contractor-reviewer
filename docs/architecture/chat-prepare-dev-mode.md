@@ -79,7 +79,7 @@ Same body as main chat:
 
 | Key Pattern | TTL | Purpose |
 |-------------|-----|---------|
-| `rag:prepare:{workspaceId}:{documentId}:{requestId}` | 5 min | Store prepared payload. Deleted after execute (one-time use). |
+| `rag:prepare:{workspaceId}:{documentId}:{requestId}` | 15 min (configurable via `CHAT_PREPARE_TTL_SECONDS`) | Store prepared payload. Deleted after execute (one-time use). |
 
 ## Security
 
@@ -92,8 +92,9 @@ Same body as main chat:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CHAT_PREPARE_ENABLED` | `true` | Set to `false` to disable prepare/execute endpoints (returns 404). Use in production to hide the feature. |
+| `CHAT_PREPARE_TTL_SECONDS` | `900` (15 min) | Time-to-live for cached prepare payloads in Redis. Increase if developers need more time to inspect payloads before approving. |
 | `LLM_MAX_TOKENS` | `2000` | Max output tokens for the LLM call (shared with the streaming chat path). Reflected as `maxTokens` in the prepare payload. |
-| `OPENAI_CHAT_MODEL` / `ANTHROPIC_CHAT_MODEL` | `gpt-4o-mini` / `claude-sonnet-4-20250514` | Chat model used by the resolved LLM provider. Reflected as `model` in the prepare payload. |
+| `OPENAI_CHAT_MODEL` / `ANTHROPIC_CHAT_MODEL` / `XAI_CHAT_MODEL` | `gpt-4o-mini` / `claude-sonnet-4-20250514` / `grok-4-1-fast-reasoning` | Chat model used by the resolved LLM provider. Reflected as `model` in the prepare payload. |
 
 ## Related
 

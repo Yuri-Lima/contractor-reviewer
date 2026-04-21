@@ -25,7 +25,8 @@ Chat lets you ask questions about your contract in natural language. The AI assi
 3. (Optional) Select an existing **conversation** from the list, or click **New conversation** to start fresh.
 4. Type your question in the input field (e.g., "What is the termination notice period?").
 5. Click **Send** or press Enter.
-6. The assistant responds with an answer and citations.
+6. While the AI prepares, you'll see real-time **status indicators** showing the current phase: *Embedding question*, *Searching documents*, *Searching the web* (when web search is enabled), and *Generating answer*.
+7. The assistant responds with an answer and citations.
 
 ### Manage Conversations
 
@@ -58,8 +59,9 @@ Chat lets you ask questions about your contract in natural language. The AI assi
 2. Citations show:
    - **Contract citations**: File name, page number, paragraph ID, and a quote snippet.
    - **Legal citations**: Source name, section/article, and URL (when legal sources are used).
-3. Use **View Source** or the link to jump to the relevant part of the document or legal source.
-4. The answer may include a **Confidence** level (High, Medium, Low) indicating how strongly the evidence supports the response.
+3. **Web sources** (when available): If web search is enabled for the workspace, the answer may include links to relevant external legal sources found online.
+4. Use **View Source** or the link to jump to the relevant part of the document or legal source.
+5. The answer may include a **Confidence** level (High, Medium, Low) indicating how strongly the evidence supports the response.
 
 ### Get a Fresh Response (Skip Cache)
 
@@ -85,7 +87,7 @@ To change the mode: go to **Account Settings** (or Workspace Settings → Voice)
 - **Medium confidence**: Partial evidence or ambiguous wording.
 - **Low confidence**: Inference, missing jurisdiction, or weak contractual/legal support.
 
-When the AI cannot find sufficient evidence, it may respond with **NOT FOUND** and suggest where to look or what to ask instead.
+When the AI cannot find sufficient evidence, it may respond with **NOT FOUND** along with a specific reason (e.g., no relevant chunks found, document still processing, jurisdiction not resolved, or low-similarity results). The message suggests where to look or what to ask instead.
 
 ## Developer Mode
 

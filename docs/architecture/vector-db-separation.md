@@ -21,7 +21,7 @@ This document describes the architecture for future migration from a single Post
 | Relational | User, Workspace, WorkspaceMember, Document, DocumentFile, DocumentJob, ChatMessage, AuditLog, WorkspaceSettings, LegalSource, UserOnboarding, UserStorageSettings, Prompt, ImageAsset | Relational |
 | Vector | Chunk, Embedding | Vector (pgvector) |
 
-See `apps/api/src/entities/entity-boundaries.ts` for the constants.
+These boundaries are maintained by convention in the codebase (the previously standalone `entity-boundaries.ts` constants file was removed during cleanup).
 
 ## Key Components
 
@@ -56,7 +56,7 @@ Centralizes document deletion order:
 - `DATABASE_URL` - relational connection
 - `VECTOR_DATABASE_URL` (optional) - vector connection; when unset, uses `DATABASE_URL`
 
-See `apps/api/src/config/database.config.ts` for `getDatabaseConfig()`.
+Database connection configuration is resolved via NestJS `ConfigModule` and the TypeORM module configuration in `app.module.ts` (the previously standalone `database.config.ts` helper was removed during cleanup).
 
 ## Migration Checklist (When Separating)
 

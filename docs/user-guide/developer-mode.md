@@ -44,7 +44,7 @@ Developer Mode is a feature for workspace owners that lets you inspect the full 
 
 ### Payload Lifecycle
 
-- The prepared payload is cached for a short time (e.g., 5 minutes).
+- The prepared payload is cached for **15 minutes** by default (configurable via `CHAT_PREPARE_TTL_SECONDS`).
 - **One-time use**: After you click **Approve and Send**, the payload is consumed and deleted.
 - If you wait too long or navigate away, the preparation may expire. Submit your question again to get a fresh payload.
 

@@ -42,6 +42,9 @@ Logs use consistent prefixes for filtering:
 | `[DeleteDocument]` | Document deletion orchestrator |
 | `[Parsing]`, `[Embeddings]`, `[PROGRESS]` | BullMQ workers |
 | `[VectorSearch]` | pgvector queries |
+| `[WebSearch]`, `[WebSearchConfig]` | Web search (Tavily) |
+| `[DocumentReview]` | Document review (rule + LLM detection) |
+| `[RAGConfig]` | RAG retrieval tuning parameters at startup |
 | `[WorkspaceGuard]` | Workspace access |
 
 ## Main Flows and Log Points
@@ -76,7 +79,8 @@ ChatController → RagService → embeddings → vector search → LLM → cache
 | Cache hit | rag.service.ts | `[generateAnswerStream] Cache hit` |
 | Vector search | rag.service.ts | `[generateAnswerStream] Search document/legal chunks result` |
 | Stream complete | rag.service.ts | `[generateAnswerStream] LLM provider.completeStream done` |
-| Stream persist | chat.controller.ts | `[ChatStream] Calling chatMessageService.saveChatMessage` (includes `fromCache`) |
+| Status phases | chat.controller.ts | `status` events emitted during RAG preparation (embedding, searching, web-search, generating) |
+| Stream persist | chat.controller.ts | `[ChatStream] Calling chatMessageService.saveChatMessage` (includes `fromCache`) — runs in background |
 | Execute payload | rag.service.ts | `[RAG] Execute payload consumed` or `expired or invalid` |
 | Prepare cache | chat-prepare-cache.service.ts | `[ChatPrepare] Payload stored` |
 | Vector store | pgvector-store.service.ts | `[VectorSearch]` (resultCount, queryTimeMs) — debug level |

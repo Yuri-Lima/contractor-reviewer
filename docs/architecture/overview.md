@@ -29,7 +29,7 @@ contractor-reviwer/
 | **Parsers** | Docling, PDFPlumber (Python), DPT-2, LlamaParse, Unstructured (cloud) |
 | **Frontend** | Angular 21, PrimeNG, Tailwind, Capacitor |
 | **AI (embeddings)** | OpenAI `text-embedding-3-small` |
-| **AI (chat LLM)** | Provider-agnostic via `LlmProviderRegistry`. Adapters: OpenAI (default), Anthropic. Selected per-workspace via `defaultLlmProvider` setting. |
+| **AI (chat LLM)** | Provider-agnostic via `LlmProviderRegistry`. Adapters: OpenAI (default), Anthropic, xAI (Grok). Selected per-workspace via `defaultLlmProvider` setting. All support streaming and structured output. |
 | **WebSocket** | Socket.IO + Redis adapter + Redis Streams (job progress) |
 
 ## Services Diagram
@@ -122,9 +122,12 @@ Inject memory (document/thread conversation summaries)
   ↓
 Build context with citations (DocumentCitation / LegalSourceCitation)
   ↓
-LLM provider streaming completion (OpenAI or Anthropic, per workspace)
+Optional web search (Tavily, when WEB_SEARCH_ENABLED=on)
   ↓
-SSE stream of `chunk` events → final `done` event { answerText, confidence, citations, fromCache }
+LLM provider streaming completion (OpenAI, Anthropic, or xAI, per workspace)
+  ↓
+SSE stream of `status` events (embedding → searching → web-search → generating)
+  then `chunk` events → final `done` event { answerText, confidence, citations, fromCache }
   ↓
 Persist message + SummarizeMemory job (async) → update thread memory
 ```

@@ -20,6 +20,7 @@ Canonical reference for the ContractAI Review RAG pipeline. Use this document to
 | Memory summarization | `apps/api/src/workers/summarize-memory.processor.ts` | BullMQ job: summarize thread Q&A → upsert thread memory |
 | Memory | `apps/api/src/memory/memory.service.ts` | Thread/document memory for RAG context injection |
 | Memory entity | `apps/api/src/entities/memory.entity.ts` | `scopeType` (thread/document/workspace), `scopeId`, `content`, `version` |
+| Web search | `apps/api/src/web-search/web-search.service.ts` | Tavily-backed web search for supplementing RAG with web sources (jurisdiction-aware) |
 | Parsers | `apps/api/src/parsers/` | Docling, PDFPlumber, DPT-2 adapters |
 
 ## Data Flow
@@ -59,7 +60,9 @@ flowchart TD
     StoreCache --> ReturnFresh[Return + fromCache: false]
 ```
 
-Flow: `ChatController.chatStream()` (`POST /chat/stream`, SSE) → `RagService.generateAnswerStream()` → semantic cache lookup (or bypass if `forceFresh`) → `EmbeddingsService` + `IVectorStore` + `MemoryService.getDocumentAndThreadMemory()` + `PromptService` → LLM provider streaming completion → cache store on miss. The controller persists the assembled answer (carrying `fromCache`) and enqueues a `SummarizeMemory` job after the `done` event (unless no-logs skips persistence or the client aborted mid-stream). The non-stream `POST /chat` endpoint and `RagService.generateAnswer()` / `generateAnswerText()` were removed; streaming is the single chat path.
+Flow: `ChatController.chatStream()` (`POST /chat/stream`, SSE) → `RagService.generateAnswerStream()` → semantic cache lookup (or bypass if `forceFresh`) → `EmbeddingsService` + `IVectorStore` + `MemoryService.getDocumentAndThreadMemory()` + optional `WebSearchService.search()` + `PromptService` → LLM provider streaming completion → cache store on miss. The controller persists the assembled answer (carrying `fromCache`) and enqueues a `SummarizeMemory` job after the `done` event (unless no-logs skips persistence or the client aborted mid-stream). The non-stream `POST /chat` endpoint and `RagService.generateAnswer()` / `generateAnswerText()` were removed; streaming is the single chat path.
+
+**Status phases**: During the preparation phase, the SSE stream emits `status` events (`StreamStatusChunk`) so the UI shows real-time progress instead of a blank spinner. Phases: `embedding` → `searching` → `web-search` (when enabled) → `generating`. Embedding, settings retrieval, and preflight checks run concurrently to reduce latency. Message persistence and audit logging run in the background after the stream completes.
 
 ### Semantic Query Cache
 
@@ -172,18 +175,47 @@ interface LegalChunkSearchResult extends VectorSearchResult<Embedding> {
 | `LLM_MAX_TOKENS` | Max output tokens per LLM completion. Default: `2000`. Higher values allow longer answers but increase cost. |
 | `DOCLING_URL` | Docling service URL (default: `http://localhost:8000`) |
 | `PDFPLUMBER_URL` | PDFPlumber service URL (default: `http://localhost:8001`) |
+| `XAI_API_KEY` | Required when a workspace selects the xAI (Grok) LLM provider |
+| `XAI_CHAT_MODEL` | xAI chat model (default: `grok-4-1-fast-reasoning`) |
 | `LOG_LLM_PROMPT_CONTEXT` | When `true`, logs the full system + user prompt sent to the LLM (debug only — never enable in production). |
 
 ### LLM Provider Selection
 
-LLM completions are abstracted by `LlmProviderRegistry` (`apps/api/src/llm/`). Two adapters are bundled:
+LLM completions are abstracted by `LlmProviderRegistry` (`apps/api/src/llm/`). Three adapters are bundled:
 
-| Provider | Adapter | ID |
-|----------|---------|----|
-| OpenAI (default) | `OpenAILlmAdapter` | `openai` |
-| Anthropic | `AnthropicLlmAdapter` | `anthropic` |
+| Provider | Adapter | ID | Structured Output |
+|----------|---------|----|-------------------|
+| OpenAI (default) | `OpenAILlmAdapter` | `openai` | `json_schema` response format |
+| Anthropic | `AnthropicLlmAdapter` | `anthropic` | Single-tool `tool_choice` |
+| xAI (Grok) | `XaiLlmAdapter` | `xai` | `json_schema` response format (OpenAI-compatible API) |
 
-Per-workspace override: `WorkspaceSettings.documentProcessing.defaultLlmProvider` (`openai` \| `anthropic`). When unset, the registry falls back to OpenAI. Both adapters honor `LLM_MAX_TOKENS` and stream via `completeStream()` for SSE chat.
+Per-workspace override: `WorkspaceSettings.documentProcessing.defaultLlmProvider` (`openai` \| `anthropic` \| `xai`). When unset, the registry falls back to OpenAI. All adapters honor `LLM_MAX_TOKENS` and implement `completeStream()` for SSE chat and `completeStructured()` for structured-output calls (legal-grade pipeline). xAI uses an OpenAI-compatible endpoint at `https://api.x.ai/v1`; embeddings continue to use OpenAI regardless of the selected chat provider.
+
+### RAG Retrieval Tuning
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RAG_TOP_K_DOCUMENT` | `8` | Number of top-similarity document chunks fetched per question. Range: 1..50. Higher = better recall on long contracts, more tokens per request. |
+| `RAG_TOP_K_LEGAL` | `3` | Number of top-similarity legal chunks fetched per question (when jurisdiction set). Range: 1..20. |
+| `RAG_SIMILARITY_FLOOR` | `0.5` | Minimum cosine similarity for a chunk to reach the LLM. Set to 0 to disable filtering. |
+| `RAG_SIMILARITY_FLOOR_FALLBACK` | `0.3` | Relaxed floor used when the strict floor yields zero chunks. Set equal to `RAG_SIMILARITY_FLOOR` to disable relaxation. |
+| `RAG_CITATION_CAP_DOCUMENT` | `5` | Maximum document citations returned to the UI. Range: 1..20. |
+| `RAG_CITATION_CAP_LEGAL` | `2` | Maximum legal citations returned to the UI. Range: 1..20. |
+
+Parsed at startup via `parseEnvInt` / `parseEnvFloat` utility functions with bounds checking. Logged at `[RAGConfig]` prefix.
+
+### Web Search (Tavily)
+
+When enabled, the RAG pipeline conditionally supplements vector-retrieved chunks with web search results for legal questions. Uses the Tavily Search API (free tier).
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `WEB_SEARCH_ENABLED` | `off` | Set to `on`, `true`, or `1` to enable web search in the RAG pipeline. |
+| `TAVILY_API_KEY` | — | Tavily API key (required when web search is enabled). |
+| `WEB_SEARCH_MONTHLY_BUDGET` | `900` | Maximum Tavily API calls per calendar month (in-memory counter; resets on process restart). |
+| `WEB_SEARCH_MAX_RESULTS` | `5` | Max results per query (capped at Tavily free-tier limit of 5). |
+
+`WebSearchService` features: jurisdiction-aware query enrichment (ISO codes expanded to English names), statute hint forwarding (act names from RAG context), 600ms rate limiting (100 RPM), monthly budget tracking, graceful degradation (returns `[]` on any failure — never blocks the RAG pipeline). Web sources appear as `webSources` in the prompt and citation output.
 
 ### Workspace Settings (via Workspace Settings UI or API)
 
@@ -242,8 +274,8 @@ drafting reviewer is attached to the document lifecycle.
 
 1. **Structured chat answer (Phase 1)** — `RagService.generateAnswerStream`
    selects the `legal-review-v2` prompt variant, calls
-   `ILlmProvider.completeStructured` (OpenAI `json_schema`, Anthropic
-   tool-use, xAI `json_schema`), and validates against `LegalAnswerZ`. A
+   `ILlmProvider.completeStructured` (OpenAI/xAI `json_schema`, Anthropic
+   single-tool `tool_choice`), and validates against `LegalAnswerZ`. A
    single corrective retry is attempted with the first 3 Zod errors and a
    1500-char excerpt of the rejected payload before falling back to a
    degraded prose answer.

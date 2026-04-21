@@ -1,16 +1,18 @@
 /**
  * Cache for chat prepare payloads (dev mode LLM payload preview).
  * Uses Redis with workspace/document-scoped keys for horizontal scaling.
- * TTL 5 minutes; one-time use (deleted after execute).
+ * TTL configurable via CHAT_PREPARE_TTL_SECONDS (default 15 min);
+ * one-time use (deleted after execute).
  */
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import IORedis from 'ioredis';
 import { randomUUID } from 'crypto';
 import { ChatPreparePayload } from '@contractai-review/shared';
 import { REDIS_CLIENT } from '../queue/redis.provider';
 
 const KEY_PREFIX = 'rag:prepare:';
-const TTL_SECONDS = 300; // 5 minutes
+const DEFAULT_TTL_SECONDS = 900; // 15 minutes
 
 const buildKey = (workspaceId: string, documentId: string, requestId: string) =>
   `${KEY_PREFIX}${workspaceId}:${documentId}:${requestId}`;
@@ -38,11 +40,17 @@ function parsePayload(raw: string | null): ChatPreparePayload | null {
 @Injectable()
 export class ChatPrepareCacheService {
   private readonly logger = new Logger(ChatPrepareCacheService.name);
+  private readonly ttlSeconds: number;
 
   constructor(
     @Inject(REDIS_CLIENT)
     private readonly redis: IORedis,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    const raw = this.configService.get<string>('CHAT_PREPARE_TTL_SECONDS');
+    const parsed = raw ? parseInt(raw, 10) : NaN;
+    this.ttlSeconds = parsed > 0 ? parsed : DEFAULT_TTL_SECONDS;
+  }
 
   /**
    * Store a prepared payload. Returns the requestId used.
@@ -55,7 +63,7 @@ export class ChatPrepareCacheService {
     const requestId = randomUUID();
     const key = buildKey(workspaceId, documentId, requestId);
     const value = JSON.stringify(payload);
-    await this.redis.set(key, value, 'EX', TTL_SECONDS);
+    await this.redis.set(key, value, 'EX', this.ttlSeconds);
     this.logger.log('[ChatPrepare] Payload stored', {
       workspaceId,
       documentId,

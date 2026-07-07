@@ -6,8 +6,10 @@ import {
   computed,
   effect,
   inject,
+  DestroyRef,
   ChangeDetectionStrategy,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { Button } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
@@ -16,6 +18,8 @@ import type { ChatMessageWithAudio } from '../chat.types';
 import type { ChatResponseMode } from '@contractai-review/shared';
 import { IncremarkWrapperComponent } from '../incremark-wrapper';
 import { LegalAnswerComponent } from '../legal-answer/legal-answer.component';
+import { WebSocketService } from '../../../core/services/websocket.service';
+
 
 const TRUNCATE_LENGTH = 80;
 
@@ -248,12 +252,17 @@ const TRUNCATE_LENGTH = 80;
 })
 export class ChatMessageComponent {
   private readonly translateService = inject(TranslateService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly webSocketService = inject(WebSocketService, { optional: true });
 
   message = input.required<ChatMessageWithAudio>();
   index = input.required<number>();
   chatResponseMode = input.required<ChatResponseMode>();
   playingMessageIndex = input<number | null>(null);
   defaultExpanded = input<boolean>(true);
+  /** Optional: when set, component listens for job-progress WS events for this document. */
+  workspaceId = input<string | null>(null);
+  documentId = input<string | null>(null);
 
   playAudio = output<void>();
   pauseAudio = output<number>();
@@ -264,6 +273,8 @@ export class ChatMessageComponent {
 
   private expandedSignal = signal(true);
   private showRawMarkdownSignal = signal(false);
+  /** Latest job-progress stamp observed via WebSocket (dev/diagnostics). */
+  private lastJobProgressAt = signal<number | null>(null);
 
   expanded = computed(() => this.expandedSignal());
   showRawMarkdown = computed(() => this.showRawMarkdownSignal());
@@ -335,6 +346,42 @@ export class ChatMessageComponent {
     effect(() => {
       this.expandedSignal.set(this.defaultExpanded());
     });
+
+    // Re-compute translated labels when the active language changes.
+    // takeUntilDestroyed auto-unsubscribes when the component is destroyed —
+    // critical because long chat histories instantiate one component per message.
+    this.translateService.onLangChange
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        // Touch signals so OnPush re-evaluates confidence/status labels
+        this.expandedSignal.update((v) => v);
+      });
+
+    // Optional document job-progress stream. Previously this subscription was
+    // opened in ngOnInit without teardown → memory leak per message instance
+    // when scrolling a long conversation. DestroyRef + takeUntilDestroyed fixes it.
+    effect((onCleanup) => {
+      const wsId = this.workspaceId();
+      const docId = this.documentId();
+      const ws = this.webSocketService;
+      if (!ws || !wsId || !docId) return;
+
+      const sub = ws
+        .subscribeDocument(wsId, docId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => this.lastJobProgressAt.set(Date.now()),
+          error: () => {
+            /* parent view handles reconnect / polling fallback */
+          },
+        });
+      onCleanup(() => sub.unsubscribe());
+    });
+  }
+
+  /** Test seam: last observed job-progress timestamp (ms), or null. */
+  getLastJobProgressAt(): number | null {
+    return this.lastJobProgressAt();
   }
 
   toggleExpand(): void {

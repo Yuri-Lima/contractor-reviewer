@@ -63,9 +63,13 @@ function parseCli(): CliOpts {
   return opts;
 }
 
+function activeEmbeddingModel(): string {
+  return process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
+}
+
 async function generateEmbedding(client: OpenAI, text: string): Promise<number[]> {
   const res = await client.embeddings.create({
-    model: process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
+    model: activeEmbeddingModel(),
     input: text,
   });
   return res.data[0].embedding;
@@ -189,9 +193,14 @@ async function seed() {
       console.log(`[corpus] ${doc.sourceName}: removed ${stale.length} stale section(s)`);
     }
 
+    const model = activeEmbeddingModel();
     for (const section of doc.sections) {
       const existingRow = existing.find((e) => e.section === section.section);
-      const needsEmbed = !existingRow || existingRow.text !== section.text;
+      // Re-embed when text changed OR the stored model no longer matches
+      const needsEmbed =
+        !existingRow ||
+        existingRow.text !== section.text ||
+        existingRow.embeddingModel !== model;
       const embeddingVec = needsEmbed
         ? await generateEmbedding(openai!, `${section.section}\n\n${section.text}`)
         : null;
@@ -207,6 +216,7 @@ async function seed() {
           url: doc.url ?? undefined,
           section: section.section,
           embedding: embeddingVec ?? [],
+          embeddingModel: model,
         });
       row.text = section.text;
       row.actName = doc.actName ?? null;
@@ -215,6 +225,7 @@ async function seed() {
       if (embeddingVec) {
         // Use raw vector string assignment (transformer handles serialisation)
         (row as unknown as { embedding: number[] }).embedding = embeddingVec;
+        row.embeddingModel = model;
       }
       await embeddingRepo!.save(row);
       totalSections++;

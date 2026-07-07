@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { DocumentJob, JobStatus } from '../entities/document-job.entity';
 import { CHUNK_REPOSITORY, IChunkRepository } from '../chunks/chunk-repository.interface';
 import { EmbeddingsService } from '../rag/embeddings.service';
+import { needsReembed } from '../rag/embedding-model.util';
 import { RagCacheService } from '../cache/rag-cache.service';
 import { JobProgressPublisher } from './job-progress.publisher';
 import { abortAsPromise } from '../common/utils/abort-promise';
@@ -85,8 +86,12 @@ export class EmbeddingsProcessor extends WorkerHost {
         throw new Error('No chunks found');
       }
 
-      // Filter chunks that don't have embeddings yet
-      const chunksToEmbed = chunks.filter((c) => !c.embedding);
+      // Re-embed missing vectors OR vectors produced by a different model
+      // (prevents silent mixed-model recall degradation).
+      const activeModel = this.embeddingsService.modelName;
+      const chunksToEmbed = chunks.filter((c) =>
+        needsReembed(!!c.embedding, c.embeddingModel, activeModel),
+      );
 
       if (chunksToEmbed.length === 0) {
         await this.updateJobStatus(jobId, JobStatus.COMPLETED, 100);
@@ -120,9 +125,10 @@ export class EmbeddingsProcessor extends WorkerHost {
         }
         const embeddings = await embedPromise;
 
-        // Update chunks with embeddings
+        // Update chunks with embeddings + model identity
         for (let j = 0; j < batch.length; j++) {
           batch[j].embedding = embeddings[j];
+          batch[j].embeddingModel = activeModel;
         }
 
         await this.chunkRepository.save(batch);

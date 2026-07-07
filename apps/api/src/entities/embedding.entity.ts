@@ -42,6 +42,15 @@ export class Embedding {
   @Column({ type: 'text', transformer: vectorTransformer })
   embedding: number[]; // pgvector column
 
+  /**
+   * OpenAI (or other) model that produced this vector, e.g.
+   * `text-embedding-3-small` or `text-embedding-ada-002`.
+   * Required to prevent silent RAG recall degradation when the default model
+   * changes: mixed-model vectors are not comparable under cosine similarity.
+   */
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  embeddingModel: string | null;
+
   @Column({ nullable: true })
   section: string; // Article, section, etc.
 

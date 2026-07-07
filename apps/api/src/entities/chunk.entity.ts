@@ -55,6 +55,13 @@ export class Chunk {
   @Column({ type: 'text', nullable: true, transformer: vectorTransformer })
   embedding: number[] | null; // pgvector column
 
+  /**
+   * Model that produced `embedding`. Null for legacy rows written before
+   * model tracking. Search filters by the active model to avoid mixed-model drift.
+   */
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  embeddingModel: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -27,6 +27,11 @@ export interface LegalChunkFilters {
   jurisdiction?: string;
   /** Restrict to a single act (used by the rerank step in rag.service). */
   actName?: string;
+  /**
+   * Only return vectors produced by this embedding model.
+   * Required to prevent mixed-model cosine comparisons.
+   */
+  embeddingModel?: string;
 }
 
 /**
@@ -56,6 +61,8 @@ export interface IVectorStore {
     queryEmbedding: number[],
     documentId: string,
     limit?: number,
+    /** When set, only rows with this embeddingModel are considered. */
+    embeddingModel?: string,
   ): Promise<VectorSearchResult<Chunk>[]>;
 
   /** Search legal embeddings by embedding similarity. Uses denormalized columns (no JOIN). Returns embedding + sourceName, section, country, jurisdiction, url. */

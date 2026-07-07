@@ -24,6 +24,12 @@ export interface RawRule {
   severity: IssueSeverity;
   message: string;
   remediation?: string;
+  /**
+   * Canonical section IDs from services/legal-corpus YAML files.
+   * Validated at test time so renames in the corpus cannot silently break
+   * red-flag cross-references.
+   */
+  corpusSectionIds?: string[];
   legislationReferenced?: Array<{
     actName: string;
     actYear?: number;

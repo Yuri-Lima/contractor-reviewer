@@ -1,4 +1,4 @@
-import { APIRequestContext } from '@playwright/test';
+import { waitForReady } from '../src/app/core/utils/wait-for-ready';
 
 const API_URL = process.env['E2E_API_URL'] || 'http://localhost:3000/api';
 const E2E_TEST_EMAIL = process.env['E2E_TEST_EMAIL'] || 'e2e-test@example.com';
@@ -46,6 +46,16 @@ async function ensureTestUser(): Promise<void> {
 }
 
 export default async function globalSetup(): Promise<void> {
+  // Block until /api/health is green so the first auth call never races seeding
+  try {
+    console.log('E2E: waiting for API health...');
+    await waitForReady({ timeoutMs: 90_000, pollIntervalMs: 500 });
+    console.log('E2E: API is ready');
+  } catch (err) {
+    console.warn('E2E: API health wait failed — some tests may fail:', err);
+    // Still attempt user bootstrap; individual setup also waits
+  }
+
   try {
     await ensureTestUser();
   } catch (err) {

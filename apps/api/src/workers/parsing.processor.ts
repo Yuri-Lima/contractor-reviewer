@@ -15,6 +15,8 @@ import { DocumentParser, ParsingContext } from '@contractai-review/shared';
 import { WorkspaceSettingsService } from '../workspace/workspace-settings.service';
 import { JobProgressPublisher } from './job-progress.publisher';
 import { abortAsPromise } from '../common/utils/abort-promise';
+import { withDocumentLock } from './document-job-lock';
+
 interface ParsingJobData {
   jobId: string;
   documentId: string;
@@ -173,12 +175,18 @@ export class ParsingProcessor extends WorkerHost {
           `Failed to read file ${storageKey}`,
         );
         extractedText = fileBuffer.toString('utf-8');
-        file.ocrText = extractedText;
-        file.parsingContext = {
-          parserId: 'direct',
-          exportFormat: 'plain',
-        };
-        await this.fileRepository.save(file);
+        // Lock document while mutating file OCR results so concurrent parsing
+        // jobs for the same document cannot clobber each other.
+        await withDocumentLock(this.documentRepository, documentId, async (manager) => {
+          const lockedFile = await manager.findOne(DocumentFile, { where: { id: fileId } });
+          if (!lockedFile) throw new Error(`File ${fileId} not found`);
+          lockedFile.ocrText = extractedText;
+          lockedFile.parsingContext = {
+            parserId: 'direct',
+            exportFormat: 'plain',
+          };
+          await manager.save(lockedFile);
+        });
         usedParser = 'direct';
       } else {
         const preferredId = (parserParam as DocumentParser) ?? await this.getDefaultParser(workspaceId);
@@ -214,17 +222,23 @@ export class ParsingProcessor extends WorkerHost {
         pageCount = result.pageCount ?? null;
         usedParser = parserId;
 
-        file.ocrText = extractedText;
-        if (pageCount != null) file.pageCount = pageCount;
-        file.parsedBy = usedParser;
-        file.parsingContext = result.parserContext
-          ? result.parserContext
-          : ({
-              parserId: usedParser,
-              pageCount: pageCount ?? undefined,
-              exportFormat: 'markdown',
-            });
-        await this.fileRepository.save(file);
+        const resolvedParserId: string = usedParser ?? preferredId;
+        usedParser = resolvedParserId;
+        await withDocumentLock(this.documentRepository, documentId, async (manager) => {
+          const lockedFile = await manager.findOne(DocumentFile, { where: { id: fileId } });
+          if (!lockedFile) throw new Error(`File ${fileId} not found`);
+          lockedFile.ocrText = extractedText;
+          if (pageCount != null) lockedFile.pageCount = pageCount;
+          lockedFile.parsedBy = resolvedParserId;
+          lockedFile.parsingContext = result.parserContext
+            ? result.parserContext
+            : ({
+                parserId: resolvedParserId,
+                pageCount: pageCount ?? undefined,
+                exportFormat: 'markdown',
+              });
+          await manager.save(lockedFile);
+        });
       }
 
       await this.updateJobStatus(jobId, JobStatus.PROCESSING, 80);

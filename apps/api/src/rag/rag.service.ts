@@ -266,7 +266,15 @@ export class RagService {
     documentId: string,
     limit: number,
   ): Promise<VectorSearchResult<Chunk>[]> {
-    return this.vectorStore.searchDocumentChunks(queryEmbedding, documentId, limit);
+    // Always scope by the active embedding model so mixed-model vectors
+    // (e.g. ada-002 leftovers after switching to text-embedding-3-small)
+    // cannot silently degrade recall.
+    return this.vectorStore.searchDocumentChunks(
+      queryEmbedding,
+      documentId,
+      limit,
+      this.embeddingsService.modelName,
+    );
   }
 
   /**
@@ -282,7 +290,11 @@ export class RagService {
   ): Promise<LegalChunkSearchResult[]> {
     return this.vectorStore.searchLegalChunks(
       queryEmbedding,
-      { country, jurisdiction },
+      {
+        country,
+        jurisdiction,
+        embeddingModel: this.embeddingsService.modelName,
+      },
       limit,
     );
   }

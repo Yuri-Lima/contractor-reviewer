@@ -19,6 +19,10 @@ rules:
     severity: medium
     message: "Pension provisions present but no Irish pensions statute is cited."
     remediation: "Add a reference to the Automatic Enrolment Retirement Savings System Act 2024 (or, where applicable, the Pensions Act 1990 s.121 PRSA route)."
+    corpusSectionIds:
+      - ae-act-2024-s10-eligibility
+      - ae-act-2024-s30-contributions
+      - pensions-act-1990-s121-prsa
 
   - id: working-hours-without-owta
     topicPattern: "working hours|weekly hours|annual leave|public holiday"
@@ -28,6 +32,10 @@ rules:
     severity: low
     message: "Working-time / leave provisions present but the Organisation of Working Time Act 1997 is not cited."
     remediation: "Cross-reference the Organisation of Working Time Act 1997 in the relevant clause."
+    corpusSectionIds:
+      - owta-1997-s15-weekly
+      - owta-1997-s19-annual-leave
+      - owta-1997-s21-public-holiday
 
   - id: notice-without-min-notice-act
     topicPattern: "notice (of |period|of termination)|terminate.*employment"
@@ -36,3 +44,6 @@ rules:
     severity: low
     message: "Termination/notice provisions present but the Minimum Notice and Terms of Employment Act 1973 is not cited."
     remediation: "Reference the Act when stating notice periods so it's clear contractual notice is on top of (not in lieu of) statutory minimums."
+    corpusSectionIds:
+      - mn-1973-s4-notice
+      - mn-1973-s5-pay-in-lieu

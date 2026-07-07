@@ -12,7 +12,7 @@ type EnvOverrides = Record<string, string | undefined>;
 interface MockBag {
   vectorStore: jest.Mocked<IVectorStore>;
   documentRepository: { findOne: jest.Mock };
-  embeddingsService: { generateEmbedding: jest.Mock };
+  embeddingsService: { generateEmbedding: jest.Mock; modelName: string };
   promptService: {
     getChatPrompts: jest.Mock;
     getLanguageName: jest.Mock;
@@ -21,7 +21,10 @@ interface MockBag {
   configService: { get: jest.Mock };
   ragCacheService: { get: jest.Mock; set: jest.Mock };
   chatPrepareCacheService: { set: jest.Mock; getAndDelete: jest.Mock };
-  llmProviderRegistry: { resolveProvider: jest.Mock };
+  llmProviderRegistry: {
+    resolveProvider: jest.Mock;
+    resolveFromSettings: jest.Mock;
+  };
   memoryService: { getDocumentAndThreadMemory: jest.Mock };
   legalReviewModelResolver: { resolve: jest.Mock };
   webSearchService: { isEnabled: jest.Mock; search: jest.Mock };
@@ -88,6 +91,7 @@ function buildService(
     },
     embeddingsService: {
       generateEmbedding: jest.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+      modelName: 'text-embedding-3-small',
     },
     promptService: {
       getChatPrompts: jest.fn().mockResolvedValue({
@@ -112,6 +116,16 @@ function buildService(
     },
     llmProviderRegistry: {
       resolveProvider: jest.fn().mockResolvedValue({
+        id: 'mock-provider',
+        complete: jest.fn().mockResolvedValue('answer'),
+        completeStream: jest
+          .fn()
+          .mockImplementation(async function* () {
+            yield 'answer';
+          }),
+      }),
+      // generateAnswerStream uses the sync path after settings are already loaded
+      resolveFromSettings: jest.fn().mockReturnValue({
         id: 'mock-provider',
         complete: jest.fn().mockResolvedValue('answer'),
         completeStream: jest
@@ -189,6 +203,7 @@ describe('RagService', () => {
         expect.any(Array),
         'doc-1',
         8,
+        expect.any(String), // active embedding model filter
       );
     });
 
@@ -202,6 +217,7 @@ describe('RagService', () => {
         expect.any(Array),
         'doc-1',
         12,
+        expect.any(String),
       );
     });
 
@@ -214,7 +230,11 @@ describe('RagService', () => {
       await service.prepareForChat('q', 'doc-1', 'ws-1', 'BR');
       expect(mocks.vectorStore.searchLegalChunks).toHaveBeenCalledWith(
         expect.any(Array),
-        { country: undefined, jurisdiction: 'BR' },
+        {
+          country: undefined,
+          jurisdiction: 'BR',
+          embeddingModel: expect.any(String),
+        },
         7,
       );
     });
@@ -254,6 +274,7 @@ describe('RagService', () => {
         expect.any(Array),
         'doc-1',
         8,
+        expect.any(String),
       );
       expect(warnSpy).toHaveBeenCalled();
     });

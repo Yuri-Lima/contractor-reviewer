@@ -27,9 +27,23 @@ export class PgVectorStore implements IVectorStore {
     queryEmbedding: number[],
     documentId: string,
     limit: number = 5,
+    embeddingModel?: string,
   ): Promise<VectorSearchResult<Chunk>[]> {
     const start = Date.now();
     const embeddingVector = arrayToVectorString(queryEmbedding);
+
+    // Filter by embeddingModel when provided so mixed-model vectors never
+    // participate in cosine ranking (silent recall degradation bug).
+    const params: unknown[] = [embeddingVector, documentId];
+    let modelClause = '';
+    if (embeddingModel) {
+      params.push(embeddingModel);
+      modelClause = ` AND c."embeddingModel" = $3`;
+      params.push(limit);
+    } else {
+      params.push(limit);
+    }
+    const limitParam = embeddingModel ? '$4' : '$3';
 
     const results = await this.chunkRepository.query(
       `
@@ -39,10 +53,11 @@ export class PgVectorStore implements IVectorStore {
       FROM chunks c
       WHERE c."documentId" = $2
         AND c.embedding IS NOT NULL
+        ${modelClause}
       ORDER BY c.embedding::vector <=> $1::vector
-      LIMIT $3
+      LIMIT ${limitParam}
     `,
-      [embeddingVector, documentId, limit],
+      params,
     );
 
     const queryTimeMs = Date.now() - start;
@@ -50,6 +65,7 @@ export class PgVectorStore implements IVectorStore {
       documentId,
       resultCount: results.length,
       queryTimeMs,
+      embeddingModel,
     });
 
     return results.map((r: Record<string, unknown>) => {
@@ -98,6 +114,12 @@ export class PgVectorStore implements IVectorStore {
       paramIndex++;
     }
 
+    if (filters?.embeddingModel) {
+      query += ` AND e."embeddingModel" = $${paramIndex}`;
+      params.push(filters.embeddingModel);
+      paramIndex++;
+    }
+
     query += ` ORDER BY e.embedding::vector <=> $1::vector LIMIT $${paramIndex}`;
     params.push(limit);
 
@@ -108,6 +130,7 @@ export class PgVectorStore implements IVectorStore {
       resultCount: results.length,
       queryTimeMs,
       jurisdiction: filters?.jurisdiction,
+      embeddingModel: filters?.embeddingModel,
     });
 
     return results.map((r: Record<string, unknown>) => {

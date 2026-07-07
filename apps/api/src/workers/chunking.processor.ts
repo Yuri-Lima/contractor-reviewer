@@ -12,6 +12,8 @@ import { JobProgressPublisher } from './job-progress.publisher';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { abortAsPromise } from '../common/utils/abort-promise';
+import { withDocumentLock } from './document-job-lock';
+import { Chunk } from '../entities/chunk.entity';
 
 interface ChunkingJobData {
   jobId: string;
@@ -143,7 +145,8 @@ export class ChunkingProcessor extends WorkerHost {
       await this.updateJobStatus(jobId, JobStatus.PROCESSING, 40);
       this.logger.debug(`Job ${jobId}: Created ${chunks.length} chunks, progress 40%`);
 
-      // Save chunks to database
+      // Save chunks under a document row lock so concurrent chunking jobs for
+      // the same document cannot interleave delete/insert (last-writer race).
       await this.updateJobStatus(jobId, JobStatus.PROCESSING, 50);
       this.logger.debug(`Job ${jobId}: Saving chunks to database, progress 50%`);
 
@@ -158,15 +161,38 @@ export class ChunkingProcessor extends WorkerHost {
         headingPath: chunk.headingPath ?? null,
       }));
 
-      let createPromise = this.chunkRepository.create(chunkDtos);
+      let replacePromise = withDocumentLock(
+        this.documentRepository,
+        documentId,
+        async (manager) => {
+          // Atomic replace: delete prior chunks then insert this job's set
+          await manager
+            .getRepository(Chunk)
+            .createQueryBuilder()
+            .delete()
+            .where('documentId = :documentId', { documentId })
+            .execute();
+
+          const entities = chunkDtos.map((d) =>
+            manager.getRepository(Chunk).create({
+              documentId: d.documentId,
+              text: d.text,
+              pageNumber: d.pageNumber,
+              paragraphId: d.paragraphId,
+              startIndex: d.startIndex,
+              endIndex: d.endIndex,
+              clauseNumber: d.clauseNumber ?? null,
+              headingPath: d.headingPath ?? null,
+            }),
+          );
+          return manager.getRepository(Chunk).save(entities);
+        },
+      );
       if (signal) {
-        createPromise = Promise.race([
-          createPromise,
-          abortAsPromise(signal),
-        ]);
+        replacePromise = Promise.race([replacePromise, abortAsPromise(signal)]);
       }
       const savedChunks = await this.withTimeout(
-        createPromise,
+        replacePromise,
         60000, // 60 second timeout for saving chunks
         `Failed to save chunks for document ${documentId}`,
       );

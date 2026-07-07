@@ -16,6 +16,10 @@ rules:
     severity: high
     message: "'Qualifying earnings' is a UK Pensions Act 2008 term and is not defined under Irish law."
     remediation: "Replace with 'gross earnings' to align with the Automatic Enrolment Retirement Savings System Act 2024."
+    # Fixed: was aerssa-2024-interpretation (renamed in corpus reorg)
+    corpusSectionIds:
+      - ae-act-2024-s2
+      - ae-act-2024-s10-eligibility
     legislationReferenced:
       - actName: Automatic Enrolment Retirement Savings System Act
         actYear: 2024
@@ -26,6 +30,9 @@ rules:
     severity: medium
     message: "'NEST' is the UK National Employment Savings Trust; Ireland uses NAERSA under the AE Act 2024."
     remediation: "If the intent is the Irish auto-enrolment scheme, refer to NAERSA."
+    # Fixed: was aerssa-2024-eligibility (renamed in corpus reorg)
+    corpusSectionIds:
+      - ae-act-2024-s10-eligibility
 
   - id: workplace-pension-uk-phrase
     pattern: "workplace pension scheme \\(as defined under (the )?Pensions Act 200[48]\\)"
@@ -33,3 +40,7 @@ rules:
     severity: high
     message: "Reference to the UK Pensions Act 2004/2008 in an Irish contract."
     remediation: "Cite the Pensions Act 1990 (Ireland) or the Automatic Enrolment Retirement Savings System Act 2024 instead."
+    # Fixed: was pensions-1990-prsa-access (renamed in corpus reorg)
+    corpusSectionIds:
+      - pensions-act-1990-s121-prsa
+      - ae-act-2024-s30-contributions

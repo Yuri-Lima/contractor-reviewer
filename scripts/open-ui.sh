@@ -18,7 +18,7 @@ if command -v python3 >/dev/null 2>&1; then
   if command -v lsof >/dev/null 2>&1; then
     lsof -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true
   fi
-  (cd "$UI_DIR" && python3 -m http.server "$PORT" >/tmp/contractai-ui-server.log 2>&1 &) 
+  python3 -m http.server "$PORT" --directory "$UI_DIR" >/tmp/contractai-ui-server.log 2>&1 &
   SERVER_PID=$!
   echo "Serving ui/ at http://127.0.0.1:${PORT}/ (pid ${SERVER_PID})"
   URL="http://127.0.0.1:${PORT}/index.html"

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ContractAI Pipeline Health Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header" role="banner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">◈</span>
+      <div>
+        <h1>Pipeline Health Dashboard</h1>
+        <p class="tagline">Document review pipeline — six root-cause fixes visualized</p>
+      </div>
+    </div>
+    <nav class="toc" aria-label="Sections">
+      <a href="#timeline">Timeline</a>
+      <a href="#embeddings">Embeddings</a>
+      <a href="#redflags">Red flags</a>
+      <a href="#memory">Memory</a>
+      <a href="#guards">Guards</a>
+    </nav>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section class="hero panel" aria-labelledby="hero-title">
+      <h2 id="hero-title">False claim vs real bottleneck</h2>
+      <p>
+        Claim: <em>“Parsing is slow because pdfplumber is single-threaded — switch to docling.”</em>
+        <strong>False.</strong> Both Python services are FastAPI + uvicorn (async). The real
+        bottleneck was a <strong>BullMQ document-job race</strong> causing duplicate work and
+        last-writer-wins chunk loss.
+      </p>
+      <ul class="fix-grid" role="list">
+        <li><span class="fix-ok">✓</span> Migration safety guard</li>
+        <li><span class="fix-ok">✓</span> Embedding model tracking</li>
+        <li><span class="fix-ok">✓</span> Document job lock</li>
+        <li><span class="fix-ok">✓</span> Red-flag corpus refs</li>
+        <li><span class="fix-ok">✓</span> WS leak (DestroyRef)</li>
+        <li><span class="fix-ok">✓</span> E2E waitForReady</li>
+      </ul>
+    </section>
+
+    <section id="timeline" class="panel" aria-labelledby="timeline-title">
+      <h2 id="timeline-title">1. Document processing timeline</h2>
+      <p class="section-desc">
+        Before: two concurrent chunking jobs for the same document overlap and overwrite each
+        other’s chunks. After: pessimistic row lock forces clean sequential critical sections.
+      </p>
+      <div class="chart-wrap">
+        <canvas id="timelineChart" role="img" aria-label="Gantt-style chart of overlapping jobs before and sequential after"></canvas>
+      </div>
+      <div class="legend-note" id="timelineNote"></div>
+    </section>
+
+    <section id="embeddings" class="panel" aria-labelledby="embed-title">
+      <h2 id="embed-title">2. Embedding model drift</h2>
+      <p class="section-desc">
+        Mixed-model vectors (ada-002 vs text-embedding-3-small) share 1536 dims but are not
+        comparable. Scatter shows cosine similarity of a fixed query against stored chunks —
+        mixed corpus silently degrades recall until we filter by <code>embeddingModel</code>.
+      </p>
+      <div class="chart-wrap">
+        <canvas id="embedChart" role="img" aria-label="Scatter plot of cosine similarity for same-model vs mixed-model embeddings"></canvas>
+      </div>
+    </section>
+
+    <section id="redflags" class="panel" aria-labelledby="rf-title">
+      <h2 id="rf-title">3. Red-flag rule coverage matrix</h2>
+      <p class="section-desc">
+        Rules vs corpus statute sections. Broken cells were renamed IDs after legal-corpus reorg;
+        now all <code>corpusSectionIds</code> resolve.
+      </p>
+      <div class="table-wrap" role="region" aria-label="Rule coverage matrix" tabindex="0">
+        <table id="coverageMatrix">
+          <caption class="sr-only">Red-flag rules mapped to legal corpus section IDs</caption>
+          <thead>
+            <tr>
+              <th scope="col">Rule</th>
+              <th scope="col">Corpus section IDs</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="memory" class="panel" aria-labelledby="mem-title">
+      <h2 id="mem-title">4. WebSocket subscription leak</h2>
+      <p class="section-desc">
+        Each chat-message instance previously retained a live WebSocket subscription after
+        scroll-away. Fix: <code>DestroyRef</code> + <code>takeUntilDestroyed</code>.
+      </p>
+      <div class="chart-wrap">
+        <canvas id="memoryChart" role="img" aria-label="Line chart of open WebSocket subscriptions per navigation cycle before and after fix"></canvas>
+      </div>
+    </section>
+
+    <section id="guards" class="panel" aria-labelledby="guards-title">
+      <h2 id="guards-title">5. Startup &amp; E2E guards</h2>
+      <div class="two-col">
+        <article>
+          <h3>TypeORM synchronize</h3>
+          <p>
+            <code>assertSynchronizeSafe(true, 'production')</code> throws
+            <code>TypeOrmSynchronizeForbiddenError</code> — a mis-set env var can no longer
+            drop legal-document columns in prod.
+          </p>
+          <pre class="code-block" tabindex="0"><code>if (synchronize &amp;&amp; isProduction) {
+  throw new TypeOrmSynchronizeForbiddenError(env);
+}</code></pre>
+        </article>
+        <article>
+          <h3>E2E waitForReady</h3>
+          <p>
+            Playwright <code>auth.setup.ts</code> and global setup poll
+            <code>GET /api/health</code> before creating the test user — eliminates the
+            first-test 404 race against DB seeding.
+          </p>
+          <pre class="code-block" tabindex="0"><code>await waitForReady({ timeoutMs: 60_000 });
+// then login / register test user</code></pre>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>ContractAI Review · pipeline health · keyboard accessible · dark theme</p>
+    <p><kbd>Tab</kbd> navigate · <kbd>Enter</kbd> activate links</p>
+  </footer>
+</body>
+</html>

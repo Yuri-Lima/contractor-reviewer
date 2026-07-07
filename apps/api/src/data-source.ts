@@ -1,27 +1,28 @@
 import { DataSource } from 'typeorm';
 import { resolve, join } from 'path';
+import { assertSynchronizeSafe } from './common/utils/typeorm-sync-guard';
 
 // Get the source directory - works reliably with ts-node and TypeORM CLI
 // Determine source directory based on current working directory
 const getSourceDir = (): string => {
   const cwd = process.cwd();
-  
+
   // If __dirname is available (CommonJS), use it
   if (typeof __dirname !== 'undefined') {
     return __dirname;
   }
-  
+
   // Otherwise, resolve from process.cwd()
   // When running from apps/api directory
   if (cwd.includes('apps/api')) {
     return resolve(cwd.replace(/apps\/api.*$/, 'apps/api/src'));
   }
-  
+
   // When running from project root
   if (cwd.endsWith('contractor-reviwer') || !cwd.includes('apps')) {
     return resolve(cwd, 'apps/api/src');
   }
-  
+
   // Fallback: assume we're in src directory
   return resolve(cwd, 'src');
 };
@@ -51,12 +52,16 @@ try {
   // dotenv not available, assume env vars are set externally
 }
 
+// CLI / migration DataSource — never auto-sync; still run the production guard
+const cliSynchronize = false;
+assertSynchronizeSafe(cliSynchronize, process.env.NODE_ENV);
+
 export const AppDataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
   entities: [join(sourceDir, '**/*.entity{.ts,.js}')],
   migrations: [join(sourceDir, 'migrations/*{.ts,.js}')],
-  synchronize: false,
+  synchronize: cliSynchronize,
   logging: ['error', 'warn', 'migration'],
   // Note: pgvector 'vector' type columns are handled via transformers in entities
   // Vector similarity operations should use raw SQL queries
